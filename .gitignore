@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+.env
+*.log
+uploads/*
+!uploads/.gitkeep
+nginx/ssl/*.pem
+nginx/ssl/*.key
+.DS_Store
+*.swp
+*.swo
+coverage/
+.prisma/

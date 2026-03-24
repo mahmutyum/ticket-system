@@ -1,0 +1,350 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ŞİRKET & LOKASYON ====================
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  groupType String   @map("group_type") // "call_center", "corporate", "warehouse"
+  logo      String?
+  isActive  Boolean  @default(true) @map("is_active")
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  locations    Location[]
+  categories   Category[]
+  customFields CustomField[]
+  tickets      Ticket[]
+  users        User[]
+
+  @@map("companies")
+}
+
+model Location {
+  id        String   @id @default(cuid())
+  companyId String   @map("company_id")
+  name      String
+  address   String?
+  phone     String?
+  floor     String?
+  itRoom    String?  @map("it_room")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  company        Company         @relation(fields: [companyId], references: [id])
+  tickets        Ticket[]
+  users          User[]
+  onsiteSupports OnsiteSupport[]
+
+  @@unique([companyId, name])
+  @@map("locations")
+}
+
+// ==================== KATEGORİ (HİYERARŞİK) ====================
+
+model Category {
+  id                   String   @id @default(cuid())
+  companyId            String?  @map("company_id")
+  name                 String
+  description          String?
+  parentId             String?  @map("parent_id")
+  sortOrder            Int      @default(0) @map("sort_order")
+  isActive             Boolean  @default(true) @map("is_active")
+  slaResponseMinutes   Int?     @map("sla_response_minutes")
+  slaResolutionMinutes Int?     @map("sla_resolution_minutes")
+  autoAssignTo         String?  @map("auto_assign_to")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  company         Company?         @relation(fields: [companyId], references: [id])
+  parent          Category?        @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children        Category[]       @relation("CategoryHierarchy")
+  tickets         Ticket[]
+  ticketTemplates TicketTemplate[]
+
+  @@map("categories")
+}
+
+// ==================== ÖZEL ALANLAR ====================
+
+model CustomField {
+  id          String   @id @default(cuid())
+  companyId   String?  @map("company_id")
+  fieldName   String   @map("field_name")
+  fieldLabel  String   @map("field_label")
+  fieldType   String   @map("field_type") // "text", "number", "select", "phone", "url"
+  options     Json?
+  required    Boolean  @default(false)
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  placeholder String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  company Company?            @relation(fields: [companyId], references: [id])
+  values  TicketCustomValue[]
+
+  @@map("custom_fields")
+}
+
+// ==================== KULLANICILAR ====================
+
+model User {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  fullName   String   @map("full_name")
+  phone      String?
+  companyId  String?  @map("company_id")
+  locationId String?  @map("location_id")
+  department String?
+  extraInfo  Json     @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  company  Company?  @relation(fields: [companyId], references: [id])
+  location Location? @relation(fields: [locationId], references: [id])
+  tickets  Ticket[]  @relation("TicketCreator")
+
+  @@map("users")
+}
+
+model Staff {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  fullName     String   @map("full_name")
+  passwordHash String   @map("password_hash")
+  role         String   // "admin", "it_manager", "it_staff"
+  department   String?
+  phone        String?
+  isActive     Boolean  @default(true) @map("is_active")
+  avatarUrl    String?  @map("avatar_url")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  assignedTickets Ticket[]        @relation("TicketAssignee")
+  ticketNotes     TicketNote[]
+  ticketHistory   TicketHistory[]
+
+  @@map("staff")
+}
+
+// ==================== TİCKET SİSTEMİ ====================
+
+model Ticket {
+  id              String    @id @default(cuid())
+  ticketNumber    String    @unique @map("ticket_number")
+  companyId       String    @map("company_id")
+  locationId      String    @map("location_id")
+  categoryId      String    @map("category_id")
+  createdByEmail  String    @map("created_by_email")
+  createdByUserId String?   @map("created_by_user_id")
+  assignedToId    String?   @map("assigned_to_id")
+  subject         String
+  description     String
+  priority        String    @default("medium")
+  status          String    @default("open")
+  accessToken     String    @unique @map("access_token")
+  slaResponseDue  DateTime? @map("sla_response_due")
+  slaResolveDue   DateTime? @map("sla_resolve_due")
+  slaResponseMet  Boolean?  @map("sla_response_met")
+  slaResolveMet   Boolean?  @map("sla_resolve_met")
+  firstRespondedAt DateTime? @map("first_responded_at")
+  resolvedAt      DateTime? @map("resolved_at")
+  closedAt        DateTime? @map("closed_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  company       Company             @relation(fields: [companyId], references: [id])
+  location      Location            @relation(fields: [locationId], references: [id])
+  category      Category            @relation(fields: [categoryId], references: [id])
+  createdBy     User?               @relation("TicketCreator", fields: [createdByUserId], references: [id])
+  assignedTo    Staff?              @relation("TicketAssignee", fields: [assignedToId], references: [id])
+  customValues  TicketCustomValue[]
+  notes         TicketNote[]
+  history       TicketHistory[]
+  attachments   Attachment[]
+  onsiteSupport OnsiteSupport[]
+  notifications Notification[]
+
+  @@index([status])
+  @@index([companyId])
+  @@index([assignedToId])
+  @@index([createdByEmail])
+  @@index([createdAt])
+  @@map("tickets")
+}
+
+model TicketCustomValue {
+  id            String @id @default(cuid())
+  ticketId      String @map("ticket_id")
+  customFieldId String @map("custom_field_id")
+  value         String
+
+  ticket      Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  customField CustomField @relation(fields: [customFieldId], references: [id])
+
+  @@unique([ticketId, customFieldId])
+  @@map("ticket_custom_values")
+}
+
+model TicketNote {
+  id          String   @id @default(cuid())
+  ticketId    String   @map("ticket_id")
+  content     String
+  isInternal  Boolean  @default(false) @map("is_internal")
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  ticket    Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  createdBy Staff  @relation(fields: [createdById], references: [id])
+
+  @@map("ticket_notes")
+}
+
+model TicketHistory {
+  id             String   @id @default(cuid())
+  ticketId       String   @map("ticket_id")
+  action         String
+  field          String?
+  oldValue       String?  @map("old_value")
+  newValue       String?  @map("new_value")
+  createdById    String?  @map("created_by_id")
+  createdByEmail String?  @map("created_by_email")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  ticket    Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  createdBy Staff? @relation(fields: [createdById], references: [id])
+
+  @@map("ticket_history")
+}
+
+model Attachment {
+  id         String   @id @default(cuid())
+  ticketId   String   @map("ticket_id")
+  fileName   String   @map("file_name")
+  filePath   String   @map("file_path")
+  fileSize   Int      @map("file_size")
+  mimeType   String   @map("mime_type")
+  uploadedBy String   @map("uploaded_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@map("attachments")
+}
+
+// ==================== YERİNDE DESTEK ====================
+
+model OnsiteSupport {
+  id           String    @id @default(cuid())
+  ticketId     String    @map("ticket_id")
+  locationId   String    @map("location_id")
+  type         String    // "visit_employee", "come_to_it_room"
+  scheduledAt  DateTime  @map("scheduled_at")
+  scheduledEnd DateTime? @map("scheduled_end")
+  roomInfo     String?   @map("room_info")
+  floorInfo    String?   @map("floor_info")
+  notes        String?
+  status       String    @default("scheduled") // "scheduled", "in_progress", "completed", "cancelled"
+  completedAt  DateTime? @map("completed_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  ticket   Ticket   @relation(fields: [ticketId], references: [id])
+  location Location @relation(fields: [locationId], references: [id])
+
+  @@map("onsite_support")
+}
+
+// ==================== BİLDİRİMLER ====================
+
+model Notification {
+  id        String    @id @default(cuid())
+  ticketId  String?   @map("ticket_id")
+  type      String    // "email", "sms"
+  channel   String    // "ticket_created", "status_changed", etc.
+  recipient String
+  subject   String?
+  body      String
+  status    String    @default("pending") // "pending", "sent", "failed"
+  errorMsg  String?   @map("error_msg")
+  sentAt    DateTime? @map("sent_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  ticket Ticket? @relation(fields: [ticketId], references: [id])
+
+  @@index([status])
+  @@map("notifications")
+}
+
+// ==================== ŞABLONLAR ====================
+
+model TicketTemplate {
+  id          String   @id @default(cuid())
+  categoryId  String   @map("category_id")
+  name        String
+  subject     String
+  description String
+  priority    String   @default("medium")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@map("ticket_templates")
+}
+
+model CannedResponse {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  category  String?
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("canned_responses")
+}
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  subject   String
+  bodyHtml  String   @map("body_html")
+  bodyText  String   @map("body_text")
+  variables Json     @default("[]")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("email_templates")
+}
+
+model SmsTemplate {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  body      String
+  variables Json     @default("[]")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("sms_templates")
+}
+
+// ==================== AUDIT LOG ====================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id")
+  action      String
+  changes     Json     @default("{}")
+  performedBy String   @map("performed_by")
+  ipAddress   String?  @map("ip_address")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_log")
+}

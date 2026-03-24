@@ -1,0 +1,491 @@
+import { FastifyPluginAsync } from 'fastify';
+import { z } from 'zod';
+import { nanoid } from 'nanoid';
+import { generateTicketNumber } from '../../utils/ticket-number.js';
+import { paginationSchema, paginate, paginatedResponse } from '../../utils/pagination.js';
+import { TICKET_STATUSES, TICKET_STATUS_LABELS } from '../../config/constants.js';
+import { queueEmail, queueSms } from '../../jobs/queue.js';
+import { saveFile, isAllowedMimeType } from '../../services/storage.service.js';
+import { config } from '../../config/index.js';
+import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.js';
+
+const ticketCreateSchema = z.object({
+  companyId: z.string().cuid(),
+  locationId: z.string().cuid(),
+  categoryId: z.string().cuid(),
+  email: z.string().email(),
+  fullName: z.string().min(1),
+  phone: z.string().optional(),
+  department: z.string().optional(),
+  subject: z.string().min(1).max(200),
+  description: z.string().min(1),
+  priority: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
+  customFields: z.array(z.object({
+    fieldId: z.string().cuid(),
+    value: z.string(),
+  })).optional(),
+});
+
+const VALID_STATUSES = [
+  'open', 'in_progress', 'waiting_user_response', 'waiting_other_department',
+  'topic_transferred', 'process_outside_it', 'on_hold', 'resolved', 'closed',
+] as const;
+
+const ticketUpdateSchema = z.object({
+  status: z.enum(VALID_STATUSES).optional(),
+  priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+  assignedToId: z.string().cuid().nullable().optional(),
+});
+
+const ticketFilterSchema = paginationSchema.extend({
+  status: z.string().optional(),
+  priority: z.string().optional(),
+  companyId: z.string().optional(),
+  categoryId: z.string().optional(),
+  assignedToId: z.string().optional(),
+  search: z.string().optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+});
+
+export const ticketRoutes: FastifyPluginAsync = async (app) => {
+  // PUBLIC: Create ticket
+  app.post('/', {
+    config: {
+      rateLimit: { max: 10, timeWindow: '1 minute' },
+    },
+  }, async (request, reply) => {
+    const body = ticketCreateSchema.parse(request.body);
+
+    // Find or create user
+    let user = await app.prisma.user.findUnique({
+      where: { email: body.email },
+    });
+
+    if (user) {
+      // Update user info
+      user = await app.prisma.user.update({
+        where: { email: body.email },
+        data: {
+          fullName: body.fullName,
+          phone: body.phone || user.phone,
+          companyId: body.companyId,
+          locationId: body.locationId,
+          department: body.department || user.department,
+        },
+      });
+    } else {
+      user = await app.prisma.user.create({
+        data: {
+          email: body.email,
+          fullName: body.fullName,
+          phone: body.phone,
+          companyId: body.companyId,
+          locationId: body.locationId,
+          department: body.department,
+        },
+      });
+    }
+
+    const ticketNumber = await generateTicketNumber(app.prisma);
+    const accessToken = nanoid(32);
+
+    // Calculate SLA if category has SLA settings
+    const category = await app.prisma.category.findUnique({
+      where: { id: body.categoryId },
+    });
+
+    let slaResponseDue: Date | undefined;
+    let slaResolveDue: Date | undefined;
+
+    if (category?.slaResponseMinutes) {
+      slaResponseDue = new Date(Date.now() + category.slaResponseMinutes * 60 * 1000);
+    }
+    if (category?.slaResolutionMinutes) {
+      slaResolveDue = new Date(Date.now() + category.slaResolutionMinutes * 60 * 1000);
+    }
+
+    // Create ticket with custom fields
+    const ticket = await app.prisma.ticket.create({
+      data: {
+        ticketNumber,
+        companyId: body.companyId,
+        locationId: body.locationId,
+        categoryId: body.categoryId,
+        createdByEmail: body.email,
+        createdByUserId: user.id,
+        subject: body.subject,
+        description: body.description,
+        priority: body.priority,
+        accessToken,
+        slaResponseDue,
+        slaResolveDue,
+        // Auto-assign if category has it set
+        assignedToId: category?.autoAssignTo || undefined,
+        customValues: body.customFields
+          ? {
+              create: body.customFields.map(cf => ({
+                customFieldId: cf.fieldId,
+                value: cf.value,
+              })),
+            }
+          : undefined,
+        history: {
+          create: {
+            action: 'ticket_created',
+            newValue: 'open',
+            createdByEmail: body.email,
+          },
+        },
+      },
+      include: {
+        company: { select: { name: true } },
+        location: { select: { name: true } },
+        category: { select: { name: true } },
+      },
+    });
+
+    // Queue email notification
+    const trackingUrl = `${config.APP_URL}/ticket/${accessToken}`;
+    await queueEmail({
+      to: body.email,
+      templateSlug: 'ticket_created',
+      variables: {
+        ticketNumber,
+        userName: body.fullName,
+        subject: body.subject,
+        priority: body.priority,
+        trackingUrl,
+      },
+      ticketId: ticket.id,
+    });
+
+    // Queue SMS if phone provided
+    if (body.phone) {
+      await queueSms({
+        to: body.phone,
+        templateSlug: 'ticket_created',
+        variables: { ticketNumber, trackingUrl },
+        ticketId: ticket.id,
+      });
+    }
+
+    // Broadcast to staff
+    broadcastToStaff('ticket_created', {
+      id: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      subject: ticket.subject,
+      status: ticket.status,
+      priority: body.priority,
+      company: ticket.company.name,
+    });
+
+    reply.status(201).send({
+      success: true,
+      data: {
+        ticketNumber: ticket.ticketNumber,
+        accessToken: ticket.accessToken,
+        trackingUrl: `${config.APP_URL}/ticket/${ticket.accessToken}`,
+        status: ticket.status,
+        subject: ticket.subject,
+      },
+    });
+  });
+
+  // STAFF: List tickets with filters
+  app.get('/', {
+    preHandler: [app.authenticate],
+  }, async (request, reply) => {
+    const query = ticketFilterSchema.parse(request.query);
+    const { skip, take } = paginate(query);
+
+    const where: any = {};
+    if (query.status) where.status = query.status;
+    if (query.priority) where.priority = query.priority;
+    if (query.companyId) where.companyId = query.companyId;
+    if (query.categoryId) where.categoryId = query.categoryId;
+    if (query.assignedToId) where.assignedToId = query.assignedToId;
+    if (query.dateFrom || query.dateTo) {
+      where.createdAt = {};
+      if (query.dateFrom) where.createdAt.gte = new Date(query.dateFrom);
+      if (query.dateTo) where.createdAt.lte = new Date(query.dateTo);
+    }
+    if (query.search) {
+      where.OR = [
+        { subject: { contains: query.search, mode: 'insensitive' } },
+        { description: { contains: query.search, mode: 'insensitive' } },
+        { ticketNumber: { contains: query.search, mode: 'insensitive' } },
+        { createdByEmail: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [tickets, total] = await Promise.all([
+      app.prisma.ticket.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { [query.sortBy || 'createdAt']: query.sortOrder },
+        include: {
+          company: { select: { name: true } },
+          location: { select: { name: true } },
+          category: { select: { name: true } },
+          assignedTo: { select: { id: true, fullName: true } },
+          createdBy: { select: { fullName: true, phone: true } },
+        },
+      }),
+      app.prisma.ticket.count({ where }),
+    ]);
+
+    reply.send(paginatedResponse(tickets, total, query));
+  });
+
+  // STAFF: Get ticket detail
+  app.get('/:id', {
+    preHandler: [app.authenticate],
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    const ticket = await app.prisma.ticket.findUnique({
+      where: { id },
+      include: {
+        company: true,
+        location: true,
+        category: true,
+        assignedTo: { select: { id: true, fullName: true, email: true, role: true } },
+        createdBy: true,
+        customValues: { include: { customField: true } },
+        notes: {
+          include: { createdBy: { select: { fullName: true, role: true } } },
+          orderBy: { createdAt: 'asc' },
+        },
+        history: {
+          include: { createdBy: { select: { fullName: true } } },
+          orderBy: { createdAt: 'asc' },
+        },
+        attachments: true,
+        onsiteSupport: { include: { location: true } },
+      },
+    });
+
+    if (!ticket) {
+      return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
+    }
+
+    reply.send({ success: true, data: ticket });
+  });
+
+  // STAFF: Update ticket (status, priority, assignment)
+  app.put('/:id', {
+    preHandler: [app.authenticate],
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = ticketUpdateSchema.parse(request.body);
+    const staffUser = request.staffUser!;
+
+    const currentTicket = await app.prisma.ticket.findUnique({ where: { id } });
+    if (!currentTicket) {
+      return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
+    }
+
+    const historyEntries: any[] = [];
+    const updateData: any = {};
+
+    if (body.status && body.status !== currentTicket.status) {
+      updateData.status = body.status;
+      historyEntries.push({
+        action: 'status_changed',
+        field: 'status',
+        oldValue: currentTicket.status,
+        newValue: body.status,
+        createdById: staffUser.id,
+      });
+
+      // Track first response and resolution
+      if (!currentTicket.firstRespondedAt && body.status === TICKET_STATUSES.IN_PROGRESS) {
+        updateData.firstRespondedAt = new Date();
+        updateData.slaResponseMet = currentTicket.slaResponseDue
+          ? new Date() <= currentTicket.slaResponseDue
+          : null;
+      }
+      if (body.status === TICKET_STATUSES.RESOLVED) {
+        updateData.resolvedAt = new Date();
+        updateData.slaResolveMet = currentTicket.slaResolveDue
+          ? new Date() <= currentTicket.slaResolveDue
+          : null;
+      }
+      if (body.status === TICKET_STATUSES.CLOSED) {
+        updateData.closedAt = new Date();
+      }
+    }
+
+    if (body.priority && body.priority !== currentTicket.priority) {
+      updateData.priority = body.priority;
+      historyEntries.push({
+        action: 'priority_changed',
+        field: 'priority',
+        oldValue: currentTicket.priority,
+        newValue: body.priority,
+        createdById: staffUser.id,
+      });
+    }
+
+    if (body.assignedToId !== undefined && body.assignedToId !== currentTicket.assignedToId) {
+      updateData.assignedToId = body.assignedToId;
+      historyEntries.push({
+        action: 'assigned',
+        field: 'assignedToId',
+        oldValue: currentTicket.assignedToId,
+        newValue: body.assignedToId,
+        createdById: staffUser.id,
+      });
+    }
+
+    const ticket = await app.prisma.ticket.update({
+      where: { id },
+      data: {
+        ...updateData,
+        history: historyEntries.length > 0
+          ? { create: historyEntries }
+          : undefined,
+      },
+      include: {
+        company: { select: { name: true } },
+        assignedTo: { select: { id: true, fullName: true } },
+      },
+    });
+
+    // SSE broadcast
+    broadcastToStaff('ticket_updated', {
+      id: ticket.id,
+      ticketNumber: currentTicket.ticketNumber,
+      status: ticket.status,
+      priority: ticket.priority,
+      assignedTo: ticket.assignedTo?.fullName,
+    });
+    broadcastToTicket(currentTicket.accessToken, 'ticket_updated', {
+      status: ticket.status,
+      priority: ticket.priority,
+    });
+
+    // Queue notification for status change
+    if (body.status && body.status !== currentTicket.status) {
+      const trackingUrl = `${config.APP_URL}/ticket/${currentTicket.accessToken}`;
+      await queueEmail({
+        to: currentTicket.createdByEmail,
+        templateSlug: 'status_changed',
+        variables: {
+          ticketNumber: currentTicket.ticketNumber,
+          userName: currentTicket.createdByEmail,
+          oldStatus: TICKET_STATUS_LABELS[currentTicket.status] || currentTicket.status,
+          newStatus: TICKET_STATUS_LABELS[body.status] || body.status,
+          trackingUrl,
+        },
+        ticketId: currentTicket.id,
+      });
+    }
+
+    reply.send({ success: true, data: ticket });
+  });
+
+  // STAFF: Bulk update tickets
+  app.post('/bulk', {
+    preHandler: [app.requireRole('admin', 'it_manager')],
+  }, async (request, reply) => {
+    const body = z.object({
+      ticketIds: z.array(z.string().cuid()),
+      status: z.string().optional(),
+      assignedToId: z.string().cuid().nullable().optional(),
+      priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+    }).parse(request.body);
+
+    const updateData: any = {};
+    if (body.status) updateData.status = body.status;
+    if (body.assignedToId !== undefined) updateData.assignedToId = body.assignedToId;
+    if (body.priority) updateData.priority = body.priority;
+
+    const result = await app.prisma.ticket.updateMany({
+      where: { id: { in: body.ticketIds } },
+      data: updateData,
+    });
+
+    reply.send({ success: true, data: { updatedCount: result.count } });
+  });
+
+  // STAFF: Upload attachment
+  app.post('/:id/attachments', {
+    preHandler: [app.authenticate],
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    const ticket = await app.prisma.ticket.findUnique({ where: { id } });
+    if (!ticket) {
+      return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
+    }
+
+    const file = await request.file();
+    if (!file) {
+      return reply.status(400).send({ success: false, error: 'Dosya gerekli' });
+    }
+
+    if (!isAllowedMimeType(file.mimetype)) {
+      return reply.status(400).send({ success: false, error: 'Desteklenmeyen dosya türü' });
+    }
+
+    const buffer = await file.toBuffer();
+    const saved = await saveFile(buffer, file.filename, id);
+
+    const attachment = await app.prisma.attachment.create({
+      data: {
+        ticketId: id,
+        fileName: saved.fileName,
+        filePath: saved.filePath,
+        fileSize: saved.fileSize,
+        mimeType: file.mimetype,
+        uploadedBy: request.staffUser!.email,
+      },
+    });
+
+    await app.prisma.ticketHistory.create({
+      data: {
+        ticketId: id,
+        action: 'attachment_added',
+        newValue: saved.fileName,
+        createdById: request.staffUser!.id,
+      },
+    });
+
+    reply.status(201).send({ success: true, data: attachment });
+  });
+
+  // STAFF: Search tickets
+  app.get('/search', {
+    preHandler: [app.authenticate],
+  }, async (request, reply) => {
+    const { q } = request.query as { q: string };
+    if (!q || q.length < 2) {
+      return reply.send({ success: true, data: [] });
+    }
+
+    const tickets = await app.prisma.ticket.findMany({
+      where: {
+        OR: [
+          { subject: { contains: q, mode: 'insensitive' } },
+          { description: { contains: q, mode: 'insensitive' } },
+          { ticketNumber: { contains: q, mode: 'insensitive' } },
+        ],
+      },
+      take: 20,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        ticketNumber: true,
+        subject: true,
+        status: true,
+        priority: true,
+        createdAt: true,
+      },
+    });
+
+    reply.send({ success: true, data: tickets });
+  });
+};
