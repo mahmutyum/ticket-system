@@ -57,8 +57,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   // Refresh token
   app.post('/staff/refresh', async (request, reply) => {
+    const bodyToken = refreshTokenSchema.safeParse(request.body);
     const token = request.cookies?.refresh_token ||
-      (request.body as any)?.refreshToken;
+      (bodyToken.success ? bodyToken.data.refreshToken : undefined);
 
     if (!token) {
       return reply.status(401).send({ success: false, error: 'Refresh token gerekli' });

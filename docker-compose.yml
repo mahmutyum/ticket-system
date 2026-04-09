@@ -1,38 +1,10 @@
-version: "3.9"
-
 services:
-  nginx:
-    build: ./nginx
-    ports:
-      - "443:443"
-      - "80:80"
-    depends_on:
-      frontend:
-        condition: service_started
-      backend:
-        condition: service_started
-    volumes:
-      - uploads:/app/uploads:ro
-    networks:
-      - app-network
-    restart: unless-stopped
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    expose:
-      - "3000"
-    networks:
-      - app-network
-    restart: unless-stopped
-
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    expose:
-      - "4000"
+    ports:
+      - "${BACKEND_PORT:-4000}:4000"
     env_file:
       - .env
     depends_on:
@@ -42,6 +14,28 @@ services:
         condition: service_healthy
     volumes:
       - uploads:/app/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     networks:
       - app-network
     restart: unless-stopped
@@ -49,13 +43,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: ticketdb
+      POSTGRES_DB: ${DB_NAME:-ticketdb}
       POSTGRES_USER: ${DB_USER:-ticket}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    ports:
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ticket} -d ticketdb"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ticket} -d ${DB_NAME:-ticketdb}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -65,7 +61,9 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redisdata:/data
     healthcheck:
@@ -77,13 +75,33 @@ services:
       - app-network
     restart: unless-stopped
 
+  # Optional: built-in nginx proxy (use if NOT behind Coolify/NPM)
+  # Activate with: docker compose --profile proxy up
+  nginx:
+    build: ./nginx
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/uploads:ro
+    networks:
+      - app-network
+    restart: unless-stopped
+    profiles:
+      - proxy
+
   pgadmin:
     image: dpage/pgadmin4:latest
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@company.com}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
-    expose:
-      - "80"
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-changeme}
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
     depends_on:
       - postgres
     networks:

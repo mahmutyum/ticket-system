@@ -4,6 +4,8 @@ import helmet from '@fastify/helmet';
 import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
+import fastifyStatic from '@fastify/static';
+import { join } from 'path';
 import { config } from './config/index.js';
 import { prismaPlugin } from './plugins/prisma.js';
 import { redisPlugin } from './plugins/redis.js';
@@ -66,6 +68,13 @@ export async function buildApp() {
   await app.register(prismaPlugin);
   await app.register(redisPlugin);
   await app.register(authPlugin);
+
+  // Static file serving (uploads)
+  await app.register(fastifyStatic, {
+    root: config.UPLOAD_DIR,
+    prefix: '/uploads/',
+    decorateReply: false,
+  });
 
   // Health check
   app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));

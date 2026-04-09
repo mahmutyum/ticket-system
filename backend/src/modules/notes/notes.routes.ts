@@ -20,7 +20,7 @@ export const noteRoutes: FastifyPluginAsync = async (app) => {
 
     const ticket = await app.prisma.ticket.findUnique({
       where: { id: ticketId },
-      select: { id: true, ticketNumber: true, createdByEmail: true, accessToken: true },
+      select: { id: true, ticketNumber: true, createdByEmail: true, accessToken: true, companyId: true },
     });
     if (!ticket) {
       return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
@@ -74,6 +74,7 @@ export const noteRoutes: FastifyPluginAsync = async (app) => {
           trackingUrl,
         },
         ticketId: ticket.id,
+        companyId: ticket.companyId,
       });
     }
 
@@ -95,15 +96,5 @@ export const noteRoutes: FastifyPluginAsync = async (app) => {
     });
 
     reply.send({ success: true, data: notes });
-  });
-
-  // STAFF: Get canned responses
-  app.get('/canned-responses', {
-    preHandler: [app.authenticate],
-  }, async (request, reply) => {
-    const responses = await app.prisma.cannedResponse.findMany({
-      orderBy: [{ category: 'asc' }, { sortOrder: 'asc' }],
-    });
-    reply.send({ success: true, data: responses });
   });
 };

@@ -57,6 +57,55 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
   }, async (request, reply) => {
     const body = ticketCreateSchema.parse(request.body);
 
+    // Validate company access
+    const company = await app.prisma.company.findUnique({
+      where: { id: body.companyId },
+      select: { allowedDomains: true, portalDomains: true },
+    });
+
+    if (!company) {
+      return reply.status(404).send({ success: false, error: 'Şirket bulunamadı' });
+    }
+
+    // Portal domain lock: if request comes from a portal domain mapped to a DIFFERENT company, block it
+    const origin = request.headers['origin'] || request.headers['referer'] || '';
+    let originHostname = '';
+    try { originHostname = new URL(origin as string).hostname.toLowerCase(); } catch { /* ignore */ }
+
+    if (originHostname) {
+      // Check if this origin is locked to another company
+      const allCompanies = await app.prisma.company.findMany({
+        where: { isActive: true },
+        select: { id: true, portalDomains: true },
+      });
+
+      for (const c of allCompanies) {
+        const portals = c.portalDomains as string[];
+        if (portals && portals.length > 0) {
+          const match = portals.some(d => d.toLowerCase() === originHostname);
+          if (match && c.id !== body.companyId) {
+            return reply.status(403).send({
+              success: false,
+              error: 'Bu portal üzerinden yalnızca ilgili şirket için talep oluşturabilirsiniz.',
+            });
+          }
+        }
+      }
+    }
+
+    // Email domain restriction
+    const allowedDomains = company.allowedDomains as string[];
+    if (allowedDomains && allowedDomains.length > 0) {
+      const emailDomain = body.email.split('@')[1]?.toLowerCase();
+      const domainAllowed = allowedDomains.some(d => d.toLowerCase() === emailDomain);
+      if (!domainAllowed) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Bu email adresi ile destek talebi oluşturamazsınız.',
+        });
+      }
+    }
+
     // Find or create user
     let user = await app.prisma.user.findUnique({
       where: { email: body.email },
@@ -158,6 +207,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
         trackingUrl,
       },
       ticketId: ticket.id,
+      companyId: body.companyId,
     });
 
     // Queue SMS if phone provided
@@ -381,6 +431,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
           trackingUrl,
         },
         ticketId: currentTicket.id,
+        companyId: currentTicket.companyId,
       });
     }
 

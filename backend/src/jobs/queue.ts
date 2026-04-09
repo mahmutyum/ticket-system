@@ -13,6 +13,7 @@ export interface EmailJobData {
   templateSlug: string;
   variables: Record<string, string>;
   ticketId?: string;
+  companyId?: string; // Used to resolve company-specific SMTP
 }
 
 export interface SmsJobData {

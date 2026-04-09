@@ -102,25 +102,82 @@
 
 ---
 
+## Faz 10: Şirket Bazlı SMTP ✅
+**Durum**: Tamamlandı
+
+### Yapılanlar
+- **Prisma**: `CompanySmtp` modeli — host, port, secure, user, pass, fromName, fromEmail, isActive
+- **Email Service**: Şirket bazlı transporter cache (10dk TTL), `sendEmailForCompany()`, `invalidateCompanyTransporter()`, `testSmtpConnection()`
+- **Queue**: `EmailJobData`'ya `companyId` eklendi
+- **Email Worker**: `companyId` varsa → company_smtp tablosundan config çek → o SMTP ile gönder, yoksa → global fallback
+- **Companies API**: `GET/PUT/DELETE /:id/smtp` CRUD + `POST /:id/smtp/test` bağlantı testi
+- **Tüm queueEmail çağrıları güncellendi**: tickets create/update, notes, onsite-support → hepsi `companyId` geçiriyor
+- **Frontend CompanyManagementPage**: Her şirket kartında SMTP butonu + yapılandırma modal (host, port, SSL, user, pass, from, test bağlantısı, kaldırma)
+- **Admin all endpoint**: SMTP config bilgisini include ediyor (şifre hariç)
+
+---
+
+## Faz 11: Domain Kısıtlama + Eksik Düzeltmeleri ✅
+**Durum**: Tamamlandı
+
+### Yapılanlar
+- **Domain kısıtlama**: Company'ye `allowedDomains` alanı eklendi. Email domain'i eşleşmeyen şirketler wizard'da gösterilmez. Backend'de de doğrulama var. İzinli domainler hata mesajında ifşa edilmez
+- **Tek lokasyon auto-select**: Şirketin 1 lokasyonu varsa otomatik seçilir ve lokasyon adımı atlanır
+- **Kullanıcı yanıt bildirimi**: Public reply sonrası atanan IT personeline email + tüm staff'a SSE broadcast. Seed'e `user_reply` email şablonu eklendi
+- **Public dosya yükleme**: Ticket oluştururken çoklu dosya seçimi + ticket takip sayfasından tek dosya yükleme. `POST /public/ticket/:accessToken/attachments` endpoint'i
+- **CompanyManagementPage**: Şirket formuna "İzinli Email Domainleri" alanı eklendi. Şirket kartında domain kısıtı badge'i
+
+### Staff Yönetimi (mevcut — doğrulandı)
+- `/staff/staff-management` sayfası: Ekleme, düzenleme, rol değiştirme (admin/it_manager/it_staff), aktif/pasif toggle, şifre sıfırlama
+- Backend: `POST/PUT/DELETE /staff` endpoints with RBAC (admin only)
+
+---
+
 ## Proje Durumu: TAMAMLANDI ✅
 
 ### Tüm Özellikler
 - ✅ Dockerize yapı (nginx + backend + frontend + postgres + redis)
 - ✅ IP whitelist / VPN erişim (nginx geo)
-- ✅ Şirket/Lokasyon seçimi (hiyerarşik)
+- ✅ **Şirket domain kısıtlaması** (sadece izinli domainler ticket açabilir)
+- ✅ Şirket/Lokasyon seçimi (tek lokasyonda otomatik seçim + adım atlama)
 - ✅ Şirket grubuna göre kategori ve özel alanlar
 - ✅ AnyDesk, telefon vb. özel alan girişi
 - ✅ Ticket durumu + atama + süreç yönetimi
 - ✅ Şifresiz kullanıcı (email tabanlı) + email ile eşleştirme
 - ✅ Sadece IT'nin göreceği dahili notlar
+- ✅ IT personel yönetimi (ekleme, rol değişikliği, aktif/pasif)
 - ✅ Raporlama, personel performansı, kategori analizi, CSV export
 - ✅ Email + SMS bildirim (BullMQ queue + retry)
+- ✅ Şirket bazlı SMTP (her şirket kendi email sunucusu, global fallback)
+- ✅ Kullanıcı yanıtında IT'ye bildirim (email + SSE)
 - ✅ Yerinde destek randevu sistemi + takvim + güncelleme bildirimi
 - ✅ SLA takibi + otomatik ihlal bildirimi
-- ✅ SSE ile canlı güncellemeler (token-based auth)
-- ✅ Dosya ekleri (MIME validation)
+- ✅ SSE ile canlı güncellemeler (token-based auth + exponential backoff)
+- ✅ Dosya ekleri (staff + public, MIME validation)
 - ✅ Hazır yanıtlar (CRUD yönetimi)
 - ✅ Şablon yönetimi (email/SMS/canned)
 - ✅ Audit log
 - ✅ Rate limiting (global + endpoint-specific)
 - ✅ Strict input validation (Zod enum statuses)
+
+---
+
+## Faz 12: Kalite + Coolify Deploy Yapısı ✅
+**Durum**: Tamamlandı
+
+### Yapılanlar — Kalite
+- SSE entegrasyonu: DashboardPage, TicketListPage, TicketStatusPage artık SSE ile canlı güncelleniyor (polling kaldırıldı)
+- React ErrorBoundary: Sayfa crash'lerinde kullanıcı dostu hata ekranı
+- Audit log kapsamı genişletildi: company create/update, staff update/deactivate, SMTP config değişiklikleri
+- Public email lookup rate limit: 10/5dk
+- Auth refresh token: `as any` → Zod schema validation
+- Duplicate canned-responses endpoint kaldırıldı (notes route'tan)
+
+### Yapılanlar — Coolify / NPM Deploy
+- Docker Compose yeniden yapılandırıldı: tüm portlar `.env`'den kontrol edilir (`BACKEND_PORT`, `FRONTEND_PORT`, `DB_PORT`, `REDIS_PORT`)
+- Dahili nginx → `profiles: [proxy]` ile opsiyonel hale getirildi (NPM varsa gerek yok)
+- Frontend container: kendi nginx'i ile API proxy + SSE support + SPA routing
+- Backend: `@fastify/static` ile uploads serve, healthcheck endpoint
+- Tüm servislerde healthcheck tanımı
+- `.env.example` Coolify-uyumlu: port, domain, SMTP bölümleri ayrı
+- CLAUDE.md'ye Coolify + NPM deploy rehberi eklendi

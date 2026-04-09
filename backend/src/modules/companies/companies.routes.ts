@@ -1,10 +1,25 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { testSmtpConnection, invalidateCompanyTransporter } from '../../services/email.service.js';
+import { createAuditLog } from '../../middleware/audit.js';
+
+const smtpConfigSchema = z.object({
+  host: z.string().min(1),
+  port: z.coerce.number().int().min(1).max(65535).default(587),
+  secure: z.boolean().default(false),
+  user: z.string().min(1),
+  pass: z.string().min(1),
+  fromName: z.string().min(1),
+  fromEmail: z.string().email(),
+  isActive: z.boolean().default(true),
+});
 
 const companyCreateSchema = z.object({
   name: z.string().min(1),
   groupType: z.string().min(1),
   logo: z.string().optional(),
+  allowedDomains: z.array(z.string()).default([]),
+  portalDomains: z.array(z.string()).default([]),
   settings: z.record(z.unknown()).optional(),
 });
 
@@ -23,6 +38,8 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
         name: true,
         groupType: true,
         logo: true,
+        allowedDomains: true,
+        portalDomains: true,
       },
     });
     reply.send({ success: true, data: companies });
@@ -88,6 +105,7 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
   }, async (request, reply) => {
     const body = companyCreateSchema.parse(request.body);
     const company = await app.prisma.company.create({ data: body });
+    await createAuditLog({ entityType: 'company', entityId: company.id, action: 'create', changes: { name: body.name, groupType: body.groupType }, performedBy: request.staffUser!.email, ipAddress: request.headers['x-real-ip'] as string });
     reply.status(201).send({ success: true, data: company });
   });
 
@@ -101,6 +119,7 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
       where: { id },
       data: body,
     });
+    await createAuditLog({ entityType: 'company', entityId: id, action: 'update', changes: body, performedBy: request.staffUser!.email, ipAddress: request.headers['x-real-ip'] as string });
     reply.send({ success: true, data: company });
   });
 
@@ -112,8 +131,116 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
       orderBy: { name: 'asc' },
       include: {
         _count: { select: { locations: true, tickets: true } },
+        smtpConfig: {
+          select: {
+            id: true,
+            host: true,
+            port: true,
+            secure: true,
+            user: true,
+            // pass deliberately excluded from list response
+            fromName: true,
+            fromEmail: true,
+            isActive: true,
+          },
+        },
       },
     });
     reply.send({ success: true, data: companies });
+  });
+
+  // ==================== COMPANY SMTP CONFIG ====================
+
+  // Get company SMTP config
+  app.get('/:id/smtp', {
+    preHandler: [app.requireRole('admin')],
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    const smtp = await app.prisma.companySmtp.findUnique({
+      where: { companyId: id },
+      select: {
+        id: true,
+        host: true,
+        port: true,
+        secure: true,
+        user: true,
+        // pass excluded — return masked
+        fromName: true,
+        fromEmail: true,
+        isActive: true,
+        updatedAt: true,
+      },
+    });
+
+    reply.send({ success: true, data: smtp });
+  });
+
+  // Create or update company SMTP config
+  app.put('/:id/smtp', {
+    preHandler: [app.requireRole('admin')],
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = smtpConfigSchema.parse(request.body);
+
+    const company = await app.prisma.company.findUnique({ where: { id } });
+    if (!company) {
+      return reply.status(404).send({ success: false, error: 'Şirket bulunamadı' });
+    }
+
+    const smtp = await app.prisma.companySmtp.upsert({
+      where: { companyId: id },
+      create: { companyId: id, ...body },
+      update: body,
+    });
+
+    invalidateCompanyTransporter(id);
+    await createAuditLog({ entityType: 'company_smtp', entityId: id, action: 'update', changes: { host: body.host, fromEmail: body.fromEmail }, performedBy: request.staffUser!.email, ipAddress: request.headers['x-real-ip'] as string });
+
+    reply.send({ success: true, data: {
+      id: smtp.id,
+      host: smtp.host,
+      port: smtp.port,
+      secure: smtp.secure,
+      user: smtp.user,
+      fromName: smtp.fromName,
+      fromEmail: smtp.fromEmail,
+      isActive: smtp.isActive,
+    }});
+  });
+
+  // Delete company SMTP config (revert to global)
+  app.delete('/:id/smtp', {
+    preHandler: [app.requireRole('admin')],
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    await app.prisma.companySmtp.deleteMany({ where: { companyId: id } });
+    invalidateCompanyTransporter(id);
+
+    reply.send({ success: true, message: 'SMTP yapılandırması kaldırıldı, global SMTP kullanılacak' });
+  });
+
+  // Test company SMTP connection
+  app.post('/:id/smtp/test', {
+    preHandler: [app.requireRole('admin')],
+  }, async (request, reply) => {
+    const body = smtpConfigSchema.parse(request.body);
+
+    const result = await testSmtpConnection({
+      host: body.host,
+      port: body.port,
+      secure: body.secure,
+      user: body.user,
+      pass: body.pass,
+      fromName: body.fromName,
+      fromEmail: body.fromEmail,
+    });
+
+    if (result.success) {
+      reply.send({ success: true, message: 'SMTP bağlantısı başarılı' });
+    } else {
+      reply.status(400).send({ success: false, error: `SMTP bağlantısı başarısız: ${result.error}` });
+    }
   });
 };

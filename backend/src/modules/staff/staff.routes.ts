@@ -111,6 +111,10 @@ export const staffRoutes: FastifyPluginAsync = async (app) => {
       },
     });
 
+    const auditChanges: Record<string, any> = { ...body };
+    delete auditChanges.password;
+    await createAuditLog({ entityType: 'staff', entityId: id, action: 'update', changes: auditChanges, performedBy: request.staffUser!.email, ipAddress: request.headers['x-real-ip'] as string });
+
     reply.send({ success: true, data: staff });
   });
 
@@ -124,6 +128,8 @@ export const staffRoutes: FastifyPluginAsync = async (app) => {
       where: { id },
       data: { isActive: false },
     });
+
+    await createAuditLog({ entityType: 'staff', entityId: id, action: 'deactivate', performedBy: request.staffUser!.email, ipAddress: request.headers['x-real-ip'] as string });
 
     await app.redis.del(`refresh:${id}`);
 

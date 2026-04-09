@@ -56,6 +56,8 @@ async function main() {
     create: {
       name: 'ABC Çağrı Merkezi',
       groupType: 'call_center',
+      allowedDomains: ['abc.com.tr', 'abccagri.com'],
+      portalDomains: ['ticket.abc.com.tr'],
     },
   });
 
@@ -65,6 +67,8 @@ async function main() {
     create: {
       name: 'XYZ Kurumsal',
       groupType: 'corporate',
+      allowedDomains: ['xyz.com', 'xyz.com.tr'],
+      portalDomains: ['ticket.xyz.com'],
     },
   });
 
@@ -74,6 +78,7 @@ async function main() {
     create: {
       name: 'DEF Lojistik',
       groupType: 'warehouse',
+      allowedDomains: [], // Tüm domainlere açık
     },
   });
   console.log('Companies created');
@@ -217,6 +222,16 @@ async function main() {
 <p>Detay: <a href="{{trackingUrl}}">Buraya tıklayın</a></p>`,
       bodyText: 'Talebinize yanıt eklendi. Talep: {{ticketNumber}}. Takip: {{trackingUrl}}',
       variables: JSON.stringify(['ticketNumber', 'userName', 'trackingUrl']),
+    },
+    {
+      slug: 'user_reply',
+      subject: 'Kullanıcı Yanıtı — {{ticketNumber}}',
+      bodyHtml: `<h2>Kullanıcı Yanıt Verdi</h2>
+<p>Sayın {{staffName}},</p>
+<p><strong>{{ticketNumber}}</strong> numaralı talebe kullanıcı (<strong>{{userEmail}}</strong>) yanıt verdi:</p>
+<blockquote style="border-left:3px solid #ccc;padding-left:12px;color:#555;">{{replyContent}}</blockquote>`,
+      bodyText: 'Kullanıcı yanıtı: {{ticketNumber}} — {{userEmail}}: {{replyContent}}',
+      variables: JSON.stringify(['ticketNumber', 'staffName', 'userEmail', 'replyContent']),
     },
   ];
 

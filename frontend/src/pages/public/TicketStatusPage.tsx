@@ -5,19 +5,28 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import {
   Clock, Building2, MapPin, Tag, User, Send,
-  Calendar, MapPinned,
+  Calendar, MapPinned, Upload, Paperclip, FileText,
 } from 'lucide-react';
 import { STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS } from '../../types';
+import { useTicketSSE } from '../../hooks/useSSE';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function TicketStatusPage() {
   const { accessToken } = useParams<{ accessToken: string }>();
+  const queryClient = useQueryClient();
   const [reply, setReply] = useState('');
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const { data: ticket, isLoading, refetch } = useQuery({
     queryKey: ['public-ticket', accessToken],
     queryFn: async () => (await axios.get(`/api/public/ticket/${accessToken}`)).data.data,
     enabled: !!accessToken,
+  });
+
+  // SSE: live updates for this ticket
+  useTicketSSE(accessToken, () => {
+    queryClient.invalidateQueries({ queryKey: ['public-ticket', accessToken] });
   });
 
   const handleReply = async (e: React.FormEvent) => {
@@ -181,7 +190,31 @@ export default function TicketStatusPage() {
         </div>
       </div>
 
-      {/* Reply form */}
+      {/* Attachments */}
+      {ticket.attachments?.length > 0 && (
+        <div className="card">
+          <h3 className="text-sm font-semibold text-gray-500 mb-3 flex items-center gap-2">
+            <Paperclip className="w-4 h-4" /> Dosyalar
+          </h3>
+          <div className="space-y-2">
+            {ticket.attachments.map((att: any) => (
+              <a
+                key={att.id}
+                href={`/uploads/${att.filePath}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 text-sm"
+              >
+                <FileText className="w-4 h-4 text-gray-400" />
+                <span className="flex-1 truncate">{att.fileName}</span>
+                <span className="text-xs text-gray-400">{(att.fileSize / 1024).toFixed(0)} KB</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Reply form + file upload */}
       {!closedStatuses.includes(ticket.status) && (
         <div className="card">
           <h3 className="text-sm font-semibold text-gray-500 mb-3">Yanıt Gönder</h3>
@@ -192,10 +225,40 @@ export default function TicketStatusPage() {
               onChange={e => setReply(e.target.value)}
               placeholder="Mesajınızı yazın..."
             />
-            <button type="submit" disabled={sending || !reply.trim()} className="btn-primary flex items-center gap-2">
-              <Send className="w-4 h-4" />
-              {sending ? 'Gönderiliyor...' : 'Gönder'}
-            </button>
+            <div className="flex items-center gap-3">
+              <button type="submit" disabled={sending || !reply.trim()} className="btn-primary flex items-center gap-2">
+                <Send className="w-4 h-4" />
+                {sending ? 'Gönderiliyor...' : 'Gönder'}
+              </button>
+              <label className={`btn-secondary text-sm flex items-center gap-1 cursor-pointer ${uploading ? 'opacity-50' : ''}`}>
+                <Upload className="w-4 h-4" />
+                {uploading ? 'Yükleniyor...' : 'Dosya Ekle'}
+                <input
+                  type="file"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setUploading(true);
+                    try {
+                      const formData = new FormData();
+                      formData.append('file', file);
+                      await axios.post(`/api/public/ticket/${accessToken}/attachments`, formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' },
+                      });
+                      refetch();
+                      toast.success('Dosya yüklendi');
+                    } catch {
+                      toast.error('Dosya yüklenemedi');
+                    } finally {
+                      setUploading(false);
+                      e.target.value = '';
+                    }
+                  }}
+                />
+              </label>
+            </div>
           </form>
         </div>
       )}

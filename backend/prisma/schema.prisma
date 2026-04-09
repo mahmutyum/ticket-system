@@ -10,12 +10,14 @@ datasource db {
 // ==================== ŞİRKET & LOKASYON ====================
 
 model Company {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  groupType String   @map("group_type") // "call_center", "corporate", "warehouse"
-  logo      String?
-  isActive  Boolean  @default(true) @map("is_active")
-  settings  Json     @default("{}")
+  id             String   @id @default(cuid())
+  name           String   @unique
+  groupType      String   @map("group_type") // "call_center", "corporate", "warehouse"
+  logo           String?
+  allowedDomains Json     @default("[]") @map("allowed_domains") // ["company.com","abc.com.tr"] — email domain kısıtı
+  portalDomains  Json     @default("[]") @map("portal_domains")  // ["ticket.abc.com.tr"] — erişim domain kilidi
+  isActive       Boolean  @default(true) @map("is_active")
+  settings       Json     @default("{}")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -24,8 +26,28 @@ model Company {
   customFields CustomField[]
   tickets      Ticket[]
   users        User[]
+  smtpConfig   CompanySmtp?
 
   @@map("companies")
+}
+
+model CompanySmtp {
+  id        String  @id @default(cuid())
+  companyId String  @unique @map("company_id")
+  host      String
+  port      Int     @default(587)
+  secure    Boolean @default(false)
+  user      String
+  pass      String  // encrypted in production
+  fromName  String  @map("from_name")  // "ABC IT Destek"
+  fromEmail String  @map("from_email") // "it@abc.com"
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@map("company_smtp")
 }
 
 model Location {

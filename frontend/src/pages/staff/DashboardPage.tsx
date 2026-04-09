@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   AlertCircle, Clock, CheckCircle2, TrendingUp,
@@ -6,12 +6,20 @@ import {
 import api from '../../api/client';
 import { STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS } from '../../types';
 import type { DashboardStats } from '../../types';
+import { useStaffSSE } from '../../hooks/useSSE';
 
 export default function DashboardPage() {
+  const queryClient = useQueryClient();
+
+  // SSE: auto-refresh on ticket events
+  useStaffSSE({
+    onTicketCreated: () => queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] }),
+    onTicketUpdated: () => queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] }),
+  });
+
   const { data: stats, isLoading } = useQuery<DashboardStats>({
     queryKey: ['dashboard-stats'],
     queryFn: async () => (await api.get('/dashboard/stats')).data.data,
-    refetchInterval: 30000,
   });
 
   if (isLoading || !stats) {

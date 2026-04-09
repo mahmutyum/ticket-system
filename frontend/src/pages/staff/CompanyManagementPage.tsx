@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit2, MapPin, Building2 } from 'lucide-react';
+import { Plus, Edit2, MapPin, Building2, Mail, Trash2, CheckCircle2, XCircle, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
 
@@ -11,16 +11,25 @@ const GROUP_TYPES = [
   { value: 'retail', label: 'Mağaza / Perakende' },
 ];
 
+const emptySmtpForm = { host: '', port: 587, secure: false, user: '', pass: '', fromName: '', fromEmail: '', isActive: true };
+
 export default function CompanyManagementPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', groupType: 'corporate' });
+  const [form, setForm] = useState({ name: '', groupType: 'corporate', allowedDomains: '', portalDomains: '' });
 
   // Location form
   const [showLocForm, setShowLocForm] = useState(false);
   const [locCompanyId, setLocCompanyId] = useState('');
   const [locForm, setLocForm] = useState({ name: '', address: '', phone: '', floor: '', itRoom: '' });
+
+  // SMTP form
+  const [showSmtpForm, setShowSmtpForm] = useState(false);
+  const [smtpCompanyId, setSmtpCompanyId] = useState('');
+  const [smtpCompanyName, setSmtpCompanyName] = useState('');
+  const [smtpForm, setSmtpForm] = useState(emptySmtpForm);
+  const [smtpTesting, setSmtpTesting] = useState(false);
 
   const { data: companies } = useQuery({
     queryKey: ['companies-admin'],
@@ -30,17 +39,26 @@ export default function CompanyManagementPage() {
   const handleSubmitCompany = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const payload = {
+        ...form,
+        allowedDomains: form.allowedDomains
+          ? form.allowedDomains.split(',').map(d => d.trim().toLowerCase()).filter(Boolean)
+          : [],
+        portalDomains: form.portalDomains
+          ? form.portalDomains.split(',').map(d => d.trim().toLowerCase()).filter(Boolean)
+          : [],
+      };
       if (editId) {
-        await api.put(`/companies/${editId}`, form);
+        await api.put(`/companies/${editId}`, payload);
         toast.success('Şirket güncellendi');
       } else {
-        await api.post('/companies', form);
+        await api.post('/companies', payload);
         toast.success('Şirket eklendi');
       }
       queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
       setShowForm(false);
       setEditId(null);
-      setForm({ name: '', groupType: 'corporate' });
+      setForm({ name: '', groupType: 'corporate', allowedDomains: '', portalDomains: '' });
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Hata');
     }
@@ -59,11 +77,72 @@ export default function CompanyManagementPage() {
     }
   };
 
+  // SMTP handlers
+  const openSmtpForm = async (companyId: string, companyName: string) => {
+    setSmtpCompanyId(companyId);
+    setSmtpCompanyName(companyName);
+    try {
+      const res = await api.get(`/companies/${companyId}/smtp`);
+      if (res.data.data) {
+        const s = res.data.data;
+        setSmtpForm({ host: s.host, port: s.port, secure: s.secure, user: s.user, pass: '', fromName: s.fromName, fromEmail: s.fromEmail, isActive: s.isActive });
+      } else {
+        setSmtpForm(emptySmtpForm);
+      }
+    } catch {
+      setSmtpForm(emptySmtpForm);
+    }
+    setShowSmtpForm(true);
+  };
+
+  const handleTestSmtp = async () => {
+    if (!smtpForm.host || !smtpForm.user || !smtpForm.pass) {
+      toast.error('Tüm SMTP alanları doldurulmalı');
+      return;
+    }
+    setSmtpTesting(true);
+    try {
+      await api.post(`/companies/${smtpCompanyId}/smtp/test`, smtpForm);
+      toast.success('SMTP bağlantısı başarılı!');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Bağlantı başarısız');
+    } finally {
+      setSmtpTesting(false);
+    }
+  };
+
+  const handleSaveSmtp = async () => {
+    if (!smtpForm.host || !smtpForm.user || !smtpForm.fromEmail) {
+      toast.error('Zorunlu alanları doldurun');
+      return;
+    }
+    try {
+      await api.put(`/companies/${smtpCompanyId}/smtp`, smtpForm);
+      toast.success('SMTP ayarları kaydedildi');
+      queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
+      setShowSmtpForm(false);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Kayıt başarısız');
+    }
+  };
+
+  const handleDeleteSmtp = async () => {
+    if (!confirm('SMTP ayarlarını kaldırmak istediğinize emin misiniz? Global SMTP kullanılacak.')) return;
+    try {
+      await api.delete(`/companies/${smtpCompanyId}/smtp`);
+      toast.success('SMTP ayarları kaldırıldı');
+      queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
+      setShowSmtpForm(false);
+    } catch {
+      toast.error('Silme başarısız');
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Şirket & Lokasyon Yönetimi</h1>
-        <button onClick={() => { setShowForm(true); setEditId(null); setForm({ name: '', groupType: 'corporate' }); }} className="btn-primary flex items-center gap-2">
+        <button onClick={() => { setShowForm(true); setEditId(null); setForm({ name: '', groupType: 'corporate', allowedDomains: '', portalDomains: '' }); }} className="btn-primary flex items-center gap-2">
           <Plus className="w-4 h-4" /> Yeni Şirket
         </button>
       </div>
@@ -83,6 +162,16 @@ export default function CompanyManagementPage() {
                 <select className="input-field" value={form.groupType} onChange={e => setForm({ ...form, groupType: e.target.value })}>
                   {GROUP_TYPES.map(gt => <option key={gt.value} value={gt.value}>{gt.label}</option>)}
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">İzinli Email Domainleri</label>
+                <input type="text" className="input-field" value={form.allowedDomains} onChange={e => setForm({ ...form, allowedDomains: e.target.value })} placeholder="company.com, company.com.tr" />
+                <p className="text-xs text-gray-400 mt-1">Virgülle ayırın. Boş bırakırsanız tüm email domainlerine açık olur.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Portal Domain Kilidi</label>
+                <input type="text" className="input-field" value={form.portalDomains} onChange={e => setForm({ ...form, portalDomains: e.target.value })} placeholder="ticket.abc.com.tr" />
+                <p className="text-xs text-gray-400 mt-1">Bu domainlerden erişildiğinde sadece bu şirket için ticket açılabilir. Boş bırakırsanız genel portaldan erişilir.</p>
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="submit" className="btn-primary flex-1">Kaydet</button>
@@ -130,6 +219,87 @@ export default function CompanyManagementPage() {
         </div>
       )}
 
+      {/* SMTP Config Modal */}
+      {showSmtpForm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <Mail className="w-5 h-5" /> SMTP Ayarları — {smtpCompanyName}
+              </h2>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">
+              Boş bırakılırsa global SMTP ayarları kullanılır. Her şirket kendi SMTP sunucusuyla email gönderebilir.
+            </p>
+
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">SMTP Sunucu *</label>
+                  <input type="text" className="input-field" value={smtpForm.host} onChange={e => setSmtpForm({ ...smtpForm, host: e.target.value })} placeholder="smtp.company.com" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Port</label>
+                    <input type="number" className="input-field" value={smtpForm.port} onChange={e => setSmtpForm({ ...smtpForm, port: parseInt(e.target.value) || 587 })} />
+                  </div>
+                  <div className="flex items-end pb-1">
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input type="checkbox" checked={smtpForm.secure} onChange={e => setSmtpForm({ ...smtpForm, secure: e.target.checked })} className="rounded" />
+                      SSL/TLS
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Kullanıcı *</label>
+                  <input type="text" className="input-field" value={smtpForm.user} onChange={e => setSmtpForm({ ...smtpForm, user: e.target.value })} placeholder="noreply@company.com" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Şifre *</label>
+                  <input type="password" className="input-field" value={smtpForm.pass} onChange={e => setSmtpForm({ ...smtpForm, pass: e.target.value })} placeholder="••••••••" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Gönderen Adı *</label>
+                  <input type="text" className="input-field" value={smtpForm.fromName} onChange={e => setSmtpForm({ ...smtpForm, fromName: e.target.value })} placeholder="ABC IT Destek" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Gönderen Email *</label>
+                  <input type="email" className="input-field" value={smtpForm.fromEmail} onChange={e => setSmtpForm({ ...smtpForm, fromEmail: e.target.value })} placeholder="it@company.com" />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={smtpForm.isActive} onChange={e => setSmtpForm({ ...smtpForm, isActive: e.target.checked })} className="rounded" />
+                  Aktif (pasifse global SMTP kullanılır)
+                </label>
+              </div>
+
+              <div className="flex gap-2 pt-3 border-t">
+                <button onClick={handleTestSmtp} disabled={smtpTesting} className="btn-secondary flex items-center gap-2 text-sm">
+                  {smtpTesting ? 'Test ediliyor...' : 'Bağlantı Test Et'}
+                </button>
+                <div className="flex-1" />
+                <button onClick={handleDeleteSmtp} className="btn-danger text-sm flex items-center gap-1">
+                  <Trash2 className="w-3 h-3" /> Kaldır
+                </button>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button onClick={handleSaveSmtp} className="btn-primary flex-1">Kaydet</button>
+                <button onClick={() => setShowSmtpForm(false)} className="btn-secondary flex-1">İptal</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Companies list */}
       <div className="space-y-4">
         {companies?.map((company: any) => (
@@ -148,19 +318,53 @@ export default function CompanyManagementPage() {
               </div>
               <div className="flex gap-2">
                 <button
+                  onClick={() => openSmtpForm(company.id, company.name)}
+                  className={`btn-secondary text-xs flex items-center gap-1 ${company.smtpConfig ? 'ring-1 ring-green-300' : ''}`}
+                  title={company.smtpConfig ? 'SMTP yapılandırılmış' : 'SMTP ayarla'}
+                >
+                  <Mail className="w-3 h-3" />
+                  {company.smtpConfig ? (
+                    <span className="flex items-center gap-1">
+                      SMTP <CheckCircle2 className="w-3 h-3 text-green-500" />
+                    </span>
+                  ) : 'SMTP'}
+                </button>
+                <button
                   onClick={() => { setLocCompanyId(company.id); setShowLocForm(true); setLocForm({ name: '', address: '', phone: '', floor: '', itRoom: '' }); }}
                   className="btn-secondary text-xs flex items-center gap-1"
                 >
                   <MapPin className="w-3 h-3" /> Lokasyon Ekle
                 </button>
                 <button
-                  onClick={() => { setEditId(company.id); setForm({ name: company.name, groupType: company.groupType }); setShowForm(true); }}
+                  onClick={() => { setEditId(company.id); setForm({ name: company.name, groupType: company.groupType, allowedDomains: (company.allowedDomains as string[] || []).join(', '), portalDomains: (company.portalDomains as string[] || []).join(', ') }); setShowForm(true); }}
                   className="p-1.5 hover:bg-gray-100 rounded"
                 >
                   <Edit2 className="w-4 h-4 text-gray-500" />
                 </button>
               </div>
             </div>
+
+            {/* Domain restriction badges */}
+            {company.allowedDomains && (company.allowedDomains as string[]).length > 0 && (
+              <div className="mb-2 text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg">
+                Email kısıtı: {(company.allowedDomains as string[]).join(', ')}
+              </div>
+            )}
+            {company.portalDomains && (company.portalDomains as string[]).length > 0 && (
+              <div className="mb-2 text-xs bg-purple-50 text-purple-700 px-3 py-1.5 rounded-lg">
+                Portal kilidi: {(company.portalDomains as string[]).join(', ')}
+              </div>
+            )}
+
+            {/* SMTP Status Badge */}
+            {company.smtpConfig && (
+              <div className="mb-2 flex items-center gap-2 text-xs bg-green-50 text-green-700 px-3 py-1.5 rounded-lg">
+                <Mail className="w-3 h-3" />
+                <span>Özel SMTP: {company.smtpConfig.fromName} &lt;{company.smtpConfig.fromEmail}&gt; — {company.smtpConfig.host}:{company.smtpConfig.port}</span>
+                {!company.smtpConfig.isActive && <span className="text-orange-600">(Pasif)</span>}
+              </div>
+            )}
+
             {company.locations?.length > 0 && (
               <div className="ml-8 space-y-1">
                 {company.locations.map((loc: any) => (

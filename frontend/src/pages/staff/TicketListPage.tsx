@@ -1,16 +1,24 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../../api/client';
 import { STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS } from '../../types';
 import type { Ticket, PaginatedResponse } from '../../types';
+import { useStaffSSE } from '../../hooks/useSSE';
 
 export default function TicketListPage() {
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
+
+  // SSE: auto-refresh on ticket events
+  useStaffSSE({
+    onTicketCreated: () => queryClient.invalidateQueries({ queryKey: ['tickets'] }),
+    onTicketUpdated: () => queryClient.invalidateQueries({ queryKey: ['tickets'] }),
+  });
 
   const { data, isLoading } = useQuery<PaginatedResponse<Ticket>>({
     queryKey: ['tickets', page, search, statusFilter, priorityFilter],

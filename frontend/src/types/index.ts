@@ -3,6 +3,8 @@ export interface Company {
   name: string;
   groupType: string;
   logo?: string;
+  allowedDomains?: string[];
+  portalDomains?: string[];
 }
 
 export interface Location {

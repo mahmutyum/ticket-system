@@ -32,7 +32,7 @@ export const onsiteRoutes: FastifyPluginAsync = async (app) => {
 
     const ticket = await app.prisma.ticket.findUnique({
       where: { id: body.ticketId },
-      select: { id: true, createdByEmail: true, createdBy: { select: { fullName: true } } },
+      select: { id: true, companyId: true, createdByEmail: true, createdBy: { select: { fullName: true } } },
     });
 
     if (!ticket) {
@@ -85,6 +85,7 @@ export const onsiteRoutes: FastifyPluginAsync = async (app) => {
           : 'IT ekibi belirtilen saatte size gelecektir.',
       },
       ticketId: body.ticketId,
+      companyId: ticket.companyId,
     });
 
     reply.status(201).send({ success: true, data: onsite });
@@ -157,7 +158,7 @@ export const onsiteRoutes: FastifyPluginAsync = async (app) => {
     if (body.scheduledAt || body.status === 'cancelled') {
       const ticket = await app.prisma.ticket.findUnique({
         where: { id: onsite.ticket.id },
-        select: { createdByEmail: true, accessToken: true, createdBy: { select: { fullName: true } } },
+        select: { companyId: true, createdByEmail: true, accessToken: true, createdBy: { select: { fullName: true } } },
       });
 
       if (ticket) {
@@ -179,6 +180,7 @@ export const onsiteRoutes: FastifyPluginAsync = async (app) => {
               : 'Yerinde destek randevunuz güncellendi.',
           },
           ticketId: onsite.ticket.id,
+          companyId: ticket.companyId,
         });
       }
     }

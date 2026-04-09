@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CheckCircle, ArrowLeft, ArrowRight, Building2, MapPin, Tag, FileText } from 'lucide-react';
+import { CheckCircle, ArrowLeft, ArrowRight, Building2, MapPin, Tag, FileText, Upload, Paperclip, XCircle, AlertTriangle } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import type { Company, Location, Category, CustomField } from '../../types';
@@ -25,6 +25,7 @@ export default function CreateTicketPage() {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [form, setForm] = useState<FormData>({
     email: '', fullName: '', phone: '', department: '',
     companyId: '', locationId: '', categoryId: '',
@@ -33,6 +34,15 @@ export default function CreateTicketPage() {
   });
 
   const update = (fields: Partial<FormData>) => setForm(prev => ({ ...prev, ...fields }));
+
+  // Current portal hostname
+  const currentHostname = useMemo(() => window.location.hostname.toLowerCase(), []);
+
+  // Extract email domain
+  const emailDomain = useMemo(() => {
+    const parts = form.email.split('@');
+    return parts.length === 2 ? parts[1].toLowerCase() : '';
+  }, [form.email]);
 
   // Lookup user by email
   const lookupUser = async () => {
@@ -53,11 +63,52 @@ export default function CreateTicketPage() {
     } catch { /* ignore */ }
   };
 
-  // Fetch companies
-  const { data: companies } = useQuery<Company[]>({
+  // Fetch all companies
+  const { data: allCompanies } = useQuery<Company[]>({
     queryKey: ['companies'],
     queryFn: async () => (await axios.get('/api/companies')).data.data,
   });
+
+  // Portal domain lock: check if current hostname is mapped to a specific company
+  const portalCompany = useMemo(() => {
+    if (!allCompanies) return null;
+    return allCompanies.find(c => {
+      const portals = c.portalDomains as string[] | undefined;
+      if (!portals || portals.length === 0) return false;
+      return portals.some(d => d.toLowerCase() === currentHostname);
+    }) || null;
+  }, [allCompanies, currentHostname]);
+
+  const isPortalLocked = !!portalCompany;
+
+  // Filter companies: portal locked → only that company, otherwise → email domain filter
+  const companies = useMemo(() => {
+    if (!allCompanies || !emailDomain) return [];
+
+    if (isPortalLocked) {
+      // Portal locked: only the matched company, still validate email domain
+      const c = portalCompany!;
+      const emailDomains = c.allowedDomains as string[] | undefined;
+      if (emailDomains && emailDomains.length > 0) {
+        const allowed = emailDomains.some(d => d.toLowerCase() === emailDomain);
+        return allowed ? [c] : [];
+      }
+      return [c];
+    }
+
+    // General portal: filter by email domain
+    return allCompanies.filter(c => {
+      // Skip companies that have portal domains (they're only accessible from their own portals)
+      const portals = c.portalDomains as string[] | undefined;
+      if (portals && portals.length > 0) return false;
+
+      const domains = c.allowedDomains as string[] | undefined;
+      if (!domains || domains.length === 0) return true;
+      return domains.some(d => d.toLowerCase() === emailDomain);
+    });
+  }, [allCompanies, emailDomain, isPortalLocked, portalCompany]);
+
+  const hasAccessibleCompanies = companies.length > 0;
 
   // Fetch locations for selected company
   const { data: locations } = useQuery<Location[]>({
@@ -65,6 +116,20 @@ export default function CreateTicketPage() {
     queryFn: async () => (await axios.get(`/api/companies/${form.companyId}/locations`)).data.data,
     enabled: !!form.companyId,
   });
+
+  // Auto-select company when portal locked or single company
+  useEffect(() => {
+    if (companies.length === 1 && !form.companyId) {
+      update({ companyId: companies[0].id });
+    }
+  }, [companies]);
+
+  // Auto-select single location
+  useEffect(() => {
+    if (locations && locations.length === 1 && !form.locationId) {
+      update({ locationId: locations[0].id });
+    }
+  }, [locations]);
 
   // Fetch categories for selected company
   const { data: categories } = useQuery<Category[]>({
@@ -86,13 +151,41 @@ export default function CreateTicketPage() {
 
   const canNext = () => {
     switch (step) {
-      case 0: return form.email && form.fullName;
+      case 0: return form.email && form.fullName && emailDomain && hasAccessibleCompanies;
       case 1: return !!form.companyId;
       case 2: return !!form.locationId;
       case 3: return !!form.categoryId;
       case 4: return form.subject && form.description;
       default: return true;
     }
+  };
+
+  // Smart step navigation — skip company step if locked, skip location step if single
+  const shouldSkipCompany = isPortalLocked || companies.length === 1;
+  const shouldSkipLocation = locations && locations.length <= 1 && form.locationId;
+
+  const handleNext = () => {
+    let next = step + 1;
+    if (next === 1 && shouldSkipCompany) next = 2;       // skip company
+    if (next === 2 && shouldSkipLocation) next = 3;      // skip location
+    setStep(next);
+  };
+
+  const handlePrev = () => {
+    let prev = step - 1;
+    if (prev === 2 && shouldSkipLocation) prev = 1;      // skip location back
+    if (prev === 1 && shouldSkipCompany) prev = 0;       // skip company back
+    setStep(prev);
+  };
+
+  const handleFileAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newFiles = Array.from(e.target.files || []);
+    setFiles(prev => [...prev, ...newFiles]);
+    e.target.value = '';
+  };
+
+  const handleFileRemove = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
@@ -105,7 +198,24 @@ export default function CreateTicketPage() {
           .map(([fieldId, value]) => ({ fieldId, value })),
       };
       const res = await axios.post('/api/tickets', payload);
-      setResult(res.data.data);
+      const ticketData = res.data.data;
+
+      // Upload files if any
+      if (files.length > 0) {
+        for (const file of files) {
+          const formData = new FormData();
+          formData.append('file', file);
+          try {
+            await axios.post(`/api/public/ticket/${ticketData.accessToken}/attachments`, formData, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+            });
+          } catch {
+            // Continue even if a file fails
+          }
+        }
+      }
+
+      setResult(ticketData);
       toast.success('Destek talebiniz oluşturuldu!');
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Bir hata oluştu');
@@ -167,19 +277,30 @@ export default function CreateTicketPage() {
         {step === 0 && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Bilgileriniz</h3>
+            {isPortalLocked && portalCompany && (
+              <div className="flex items-center gap-2 bg-primary-50 text-primary-700 px-3 py-2 rounded-lg text-sm">
+                <Building2 className="w-4 h-4" />
+                <span><strong>{portalCompany.name}</strong> destek portalı</span>
+              </div>
+            )}
             <p className="text-sm text-gray-500">Daha önce talep oluşturduysanız bilgileriniz otomatik getirilecektir.</p>
             <div>
               <label className="block text-sm font-medium mb-1">Email Adresiniz *</label>
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  className="input-field flex-1"
-                  value={form.email}
-                  onChange={e => update({ email: e.target.value })}
-                  placeholder="email@company.com"
-                  onBlur={lookupUser}
-                />
-              </div>
+              <input
+                type="email"
+                className="input-field"
+                value={form.email}
+                onChange={e => update({ email: e.target.value })}
+                placeholder="email@company.com"
+                onBlur={lookupUser}
+              />
+              {/* Domain rejection — no detail about which domains are allowed */}
+              {form.email && emailDomain && allCompanies && !hasAccessibleCompanies && (
+                <div className="mt-2 flex items-start gap-2 text-red-600 bg-red-50 rounded-lg p-3 text-sm">
+                  <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <span>Bu email adresi ile destek talebi oluşturamazsınız. Lütfen kurumsal email adresinizi kullanın.</span>
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Ad Soyad *</label>
@@ -214,7 +335,7 @@ export default function CreateTicketPage() {
           </div>
         )}
 
-        {/* Step 1: Company */}
+        {/* Step 1: Company (filtered by email domain) */}
         {step === 1 && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -236,32 +357,39 @@ export default function CreateTicketPage() {
                 </button>
               ))}
             </div>
+            {companies?.length === 0 && (
+              <p className="text-center text-gray-400 py-4">Kullanılabilir şirket bulunamadı.</p>
+            )}
           </div>
         )}
 
-        {/* Step 2: Location */}
+        {/* Step 2: Location (skipped if single) */}
         {step === 2 && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <MapPin className="w-5 h-5" /> Lokasyon Seçimi
             </h3>
             <p className="text-sm text-gray-500">{selectedCompany?.name} için lokasyon seçin</p>
-            <div className="space-y-2">
-              {locations?.map(loc => (
-                <button
-                  key={loc.id}
-                  onClick={() => update({ locationId: loc.id })}
-                  className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                    form.locationId === loc.id
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <span className="font-medium">{loc.name}</span>
-                  {loc.address && <span className="block text-xs text-gray-400 mt-1">{loc.address}</span>}
-                </button>
-              ))}
-            </div>
+            {locations && locations.length === 0 ? (
+              <p className="text-center text-gray-400 py-4">Bu şirkete tanımlı lokasyon bulunamadı.</p>
+            ) : (
+              <div className="space-y-2">
+                {locations?.map(loc => (
+                  <button
+                    key={loc.id}
+                    onClick={() => update({ locationId: loc.id })}
+                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                      form.locationId === loc.id
+                        ? 'border-primary-500 bg-primary-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="font-medium">{loc.name}</span>
+                    {loc.address && <span className="block text-xs text-gray-400 mt-1">{loc.address}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -290,7 +418,7 @@ export default function CreateTicketPage() {
           </div>
         )}
 
-        {/* Step 4: Details + Custom Fields */}
+        {/* Step 4: Details + Custom Fields + File Upload */}
         {step === 4 && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -327,6 +455,29 @@ export default function CreateTicketPage() {
                 <option value="high">Yüksek</option>
                 <option value="critical">Kritik</option>
               </select>
+            </div>
+
+            {/* File upload */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Dosya Ekle</label>
+              <label className="flex items-center gap-2 btn-secondary text-sm cursor-pointer w-fit">
+                <Upload className="w-4 h-4" /> Dosya Seç
+                <input type="file" className="hidden" onChange={handleFileAdd} multiple />
+              </label>
+              {files.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {files.map((f, i) => (
+                    <div key={i} className="flex items-center gap-2 text-sm bg-gray-50 rounded-lg px-3 py-1.5">
+                      <Paperclip className="w-3 h-3 text-gray-400" />
+                      <span className="flex-1 truncate">{f.name}</span>
+                      <span className="text-xs text-gray-400">{(f.size / 1024).toFixed(0)} KB</span>
+                      <button onClick={() => handleFileRemove(i)} className="text-red-400 hover:text-red-600">
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Dynamic custom fields */}
@@ -412,6 +563,21 @@ export default function CreateTicketPage() {
                 <span className="text-gray-500">Açıklama:</span>
                 <p className="mt-1 text-gray-800">{form.description}</p>
               </div>
+              {files.length > 0 && (
+                <>
+                  <hr />
+                  <div>
+                    <span className="text-gray-500">Dosyalar ({files.length}):</span>
+                    <div className="mt-1 space-y-1">
+                      {files.map((f, i) => (
+                        <div key={i} className="text-gray-600 flex items-center gap-1">
+                          <Paperclip className="w-3 h-3" /> {f.name}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -419,7 +585,7 @@ export default function CreateTicketPage() {
         {/* Navigation */}
         <div className="flex justify-between mt-8 pt-4 border-t">
           <button
-            onClick={() => setStep(s => s - 1)}
+            onClick={handlePrev}
             disabled={step === 0}
             className="btn-secondary flex items-center gap-2 disabled:opacity-30"
           >
@@ -428,7 +594,7 @@ export default function CreateTicketPage() {
 
           {step < STEPS.length - 1 ? (
             <button
-              onClick={() => setStep(s => s + 1)}
+              onClick={handleNext}
               disabled={!canNext()}
               className="btn-primary flex items-center gap-2"
             >

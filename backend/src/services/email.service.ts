@@ -2,11 +2,22 @@ import nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 import { config } from '../config/index.js';
 
-let transporter: Transporter | null = null;
+// Global (default) transporter
+let globalTransporter: Transporter | null = null;
 
-function getTransporter(): Transporter {
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
+// Per-company transporter cache: companyId → { transporter, fromAddress, expiresAt }
+interface CachedTransporter {
+  transporter: Transporter;
+  from: string;
+  expiresAt: number;
+}
+const companyTransporters = new Map<string, CachedTransporter>();
+
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+function getGlobalTransporter(): Transporter {
+  if (!globalTransporter) {
+    globalTransporter = nodemailer.createTransport({
       host: config.SMTP_HOST,
       port: config.SMTP_PORT,
       secure: config.SMTP_SECURE,
@@ -16,7 +27,55 @@ function getTransporter(): Transporter {
       },
     });
   }
-  return transporter;
+  return globalTransporter;
+}
+
+export interface SmtpConfig {
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string;
+  pass: string;
+  fromName: string;
+  fromEmail: string;
+}
+
+/**
+ * Get or create a transporter for a specific company SMTP config.
+ * Caches transporters for CACHE_TTL to avoid recreating connections.
+ */
+function getCompanyTransporter(companyId: string, smtp: SmtpConfig): { transporter: Transporter; from: string } {
+  const cached = companyTransporters.get(companyId);
+  if (cached && cached.expiresAt > Date.now()) {
+    return { transporter: cached.transporter, from: cached.from };
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: smtp.host,
+    port: smtp.port,
+    secure: smtp.secure,
+    auth: {
+      user: smtp.user,
+      pass: smtp.pass,
+    },
+  });
+
+  const from = `${smtp.fromName} <${smtp.fromEmail}>`;
+
+  companyTransporters.set(companyId, {
+    transporter,
+    from,
+    expiresAt: Date.now() + CACHE_TTL,
+  });
+
+  return { transporter, from };
+}
+
+/**
+ * Invalidate cached transporter when SMTP settings change
+ */
+export function invalidateCompanyTransporter(companyId: string): void {
+  companyTransporters.delete(companyId);
 }
 
 export interface EmailOptions {
@@ -26,8 +85,11 @@ export interface EmailOptions {
   text?: string;
 }
 
+/**
+ * Send email using global SMTP config
+ */
 export async function sendEmail(options: EmailOptions): Promise<void> {
-  const transport = getTransporter();
+  const transport = getGlobalTransporter();
   await transport.sendMail({
     from: config.SMTP_FROM,
     to: options.to,
@@ -35,6 +97,29 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
     html: options.html,
     text: options.text,
   });
+}
+
+/**
+ * Send email using company-specific SMTP config, fallback to global
+ */
+export async function sendEmailForCompany(
+  options: EmailOptions,
+  companyId: string | null,
+  companySmtp: SmtpConfig | null,
+): Promise<void> {
+  if (companyId && companySmtp) {
+    const { transporter, from } = getCompanyTransporter(companyId, companySmtp);
+    await transporter.sendMail({
+      from,
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      text: options.text,
+    });
+  } else {
+    // Fallback to global SMTP
+    await sendEmail(options);
+  }
 }
 
 /**
@@ -46,4 +131,22 @@ export function renderTemplate(template: string, variables: Record<string, strin
     result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value ?? '');
   }
   return result;
+}
+
+/**
+ * Test an SMTP connection (used from admin UI)
+ */
+export async function testSmtpConnection(smtp: SmtpConfig): Promise<{ success: boolean; error?: string }> {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: smtp.host,
+      port: smtp.port,
+      secure: smtp.secure,
+      auth: { user: smtp.user, pass: smtp.pass },
+    });
+    await transporter.verify();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
 }
