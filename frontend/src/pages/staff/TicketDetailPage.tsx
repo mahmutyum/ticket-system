@@ -28,9 +28,14 @@ export default function TicketDetailPage() {
     enabled: !!id,
   });
 
+  // Staff list filtered by ticket's company
   const { data: staffList } = useQuery({
-    queryKey: ['staff-list'],
-    queryFn: async () => (await api.get('/staff')).data.data,
+    queryKey: ['staff-list', ticket?.companyId],
+    queryFn: async () => {
+      const params = ticket?.companyId ? `?companyId=${ticket.companyId}` : '';
+      return (await api.get(`/staff${params}`)).data.data;
+    },
+    enabled: !!ticket,
   });
 
   const { data: cannedResponses } = useQuery({

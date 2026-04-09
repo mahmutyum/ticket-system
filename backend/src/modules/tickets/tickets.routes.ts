@@ -8,6 +8,7 @@ import { queueEmail, queueSms } from '../../jobs/queue.js';
 import { saveFile, isAllowedMimeType } from '../../services/storage.service.js';
 import { config } from '../../config/index.js';
 import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.js';
+import { getStaffCompanyScope, companyWhereClause } from '../../utils/staff-scope.js';
 
 const ticketCreateSchema = z.object({
   companyId: z.string().cuid(),
@@ -60,7 +61,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
     // Validate company access
     const company = await app.prisma.company.findUnique({
       where: { id: body.companyId },
-      select: { allowedDomains: true, portalDomains: true },
+      select: { allowedDomains: true, portalDomains: true, notificationEmail: true },
     });
 
     if (!company) {
@@ -220,6 +221,23 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       });
     }
 
+    // Notify company's IT group email
+    if (company!.notificationEmail) {
+      await queueEmail({
+        to: company!.notificationEmail,
+        templateSlug: 'ticket_created',
+        variables: {
+          ticketNumber,
+          userName: body.fullName,
+          subject: body.subject,
+          priority: body.priority,
+          trackingUrl,
+        },
+        ticketId: ticket.id,
+        companyId: body.companyId,
+      });
+    }
+
     // Broadcast to staff
     broadcastToStaff('ticket_created', {
       id: ticket.id,
@@ -248,8 +266,13 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
   }, async (request, reply) => {
     const query = ticketFilterSchema.parse(request.query);
     const { skip, take } = paginate(query);
+    const staffUser = request.staffUser!;
 
-    const where: any = {};
+    // Company scope restriction
+    const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
+    const scopeWhere = companyWhereClause(scopeCompanyIds);
+
+    const where: any = { ...scopeWhere };
     if (query.status) where.status = query.status;
     if (query.priority) where.priority = query.priority;
     if (query.companyId) where.companyId = query.companyId;
@@ -319,6 +342,12 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
 
     if (!ticket) {
       return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
+    }
+
+    // Company scope check
+    const scopeIds = await getStaffCompanyScope(app.prisma, request.staffUser!.id, request.staffUser!.role);
+    if (scopeIds && !scopeIds.includes(ticket.companyId)) {
+      return reply.status(403).send({ success: false, error: 'Bu talebe erişim yetkiniz yok' });
     }
 
     reply.send({ success: true, data: ticket });

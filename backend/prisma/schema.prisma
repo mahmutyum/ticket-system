@@ -15,18 +15,20 @@ model Company {
   groupType      String   @map("group_type") // "call_center", "corporate", "warehouse"
   logo           String?
   allowedDomains Json     @default("[]") @map("allowed_domains") // ["company.com","abc.com.tr"] — email domain kısıtı
-  portalDomains  Json     @default("[]") @map("portal_domains")  // ["ticket.abc.com.tr"] — erişim domain kilidi
-  isActive       Boolean  @default(true) @map("is_active")
+  portalDomains     Json     @default("[]") @map("portal_domains")  // ["ticket.abc.com.tr"] — erişim domain kilidi
+  notificationEmail String?  @map("notification_email") // IT grup maili: it-destek@abc.com.tr
+  isActive          Boolean  @default(true) @map("is_active")
   settings       Json     @default("{}")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  locations    Location[]
-  categories   Category[]
-  customFields CustomField[]
-  tickets      Ticket[]
-  users        User[]
-  smtpConfig   CompanySmtp?
+  locations      Location[]
+  categories     Category[]
+  customFields   CustomField[]
+  tickets        Ticket[]
+  users          User[]
+  smtpConfig     CompanySmtp?
+  assignedStaff  StaffCompany[]
 
   @@map("companies")
 }
@@ -149,11 +151,23 @@ model Staff {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  assignedTickets Ticket[]        @relation("TicketAssignee")
-  ticketNotes     TicketNote[]
-  ticketHistory   TicketHistory[]
+  assignedTickets   Ticket[]            @relation("TicketAssignee")
+  ticketNotes       TicketNote[]
+  ticketHistory     TicketHistory[]
+  assignedCompanies StaffCompany[]
 
   @@map("staff")
+}
+
+model StaffCompany {
+  staffId   String @map("staff_id")
+  companyId String @map("company_id")
+
+  staff   Staff   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([staffId, companyId])
+  @@map("staff_companies")
 }
 
 // ==================== TİCKET SİSTEMİ ====================

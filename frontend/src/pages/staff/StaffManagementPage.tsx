@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit2, UserX, UserCheck } from 'lucide-react';
+import { Plus, Edit2, UserX, UserCheck, Building2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
 
@@ -27,9 +27,20 @@ export default function StaffManagementPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<StaffForm>(emptyForm);
 
+  // Company assignment
+  const [showCompanyModal, setShowCompanyModal] = useState(false);
+  const [companyStaffId, setCompanyStaffId] = useState('');
+  const [companyStaffName, setCompanyStaffName] = useState('');
+  const [selectedCompanyIds, setSelectedCompanyIds] = useState<string[]>([]);
+
   const { data: staffList } = useQuery({
     queryKey: ['staff'],
     queryFn: async () => (await api.get('/staff')).data.data,
+  });
+
+  const { data: allCompanies } = useQuery({
+    queryKey: ['companies'],
+    queryFn: async () => (await api.get('/companies')).data.data,
   });
 
   const update = (fields: Partial<StaffForm>) => setForm(prev => ({ ...prev, ...fields }));
@@ -84,6 +95,32 @@ export default function StaffManagementPage() {
     }
   };
 
+  const openCompanyModal = (staff: any) => {
+    setCompanyStaffId(staff.id);
+    setCompanyStaffName(staff.fullName);
+    setSelectedCompanyIds(
+      (staff.assignedCompanies || []).map((ac: any) => ac.companyId)
+    );
+    setShowCompanyModal(true);
+  };
+
+  const handleSaveCompanies = async () => {
+    try {
+      await api.put(`/staff/${companyStaffId}/companies`, { companyIds: selectedCompanyIds });
+      queryClient.invalidateQueries({ queryKey: ['staff'] });
+      setShowCompanyModal(false);
+      toast.success('Şirket atamaları güncellendi');
+    } catch {
+      toast.error('Güncelleme başarısız');
+    }
+  };
+
+  const toggleCompany = (id: string) => {
+    setSelectedCompanyIds(prev =>
+      prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+    );
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -96,7 +133,7 @@ export default function StaffManagementPage() {
         </button>
       </div>
 
-      {/* Form Modal */}
+      {/* Staff Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-md">
@@ -113,7 +150,7 @@ export default function StaffManagementPage() {
                 <input type="text" className="input-field" value={form.fullName} onChange={e => update({ fullName: e.target.value })} required />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">{editId ? 'Yeni Şifre (boş bırakılırsa değişmez)' : 'Şifre *'}</label>
+                <label className="block text-sm font-medium mb-1">{editId ? 'Yeni Şifre (boş = değişmez)' : 'Şifre *'}</label>
                 <input type="password" className="input-field" value={form.password} onChange={e => update({ password: e.target.value })} required={!editId} minLength={8} />
               </div>
               <div>
@@ -141,6 +178,48 @@ export default function StaffManagementPage() {
         </div>
       )}
 
+      {/* Company Assignment Modal */}
+      {showCompanyModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <h2 className="text-lg font-bold mb-2">Şirket Ataması</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              <strong>{companyStaffName}</strong> hangi şirketlerin taleplerini görebilir?
+            </p>
+            <p className="text-xs text-gray-400 mb-3">
+              Hiçbiri seçilmezse tüm şirketlere erişir. Admin ve IT Yöneticisi her zaman hepsini görür.
+            </p>
+
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {allCompanies?.map((c: any) => (
+                <label
+                  key={c.id}
+                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    selectedCompanyIds.includes(c.id) ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedCompanyIds.includes(c.id)}
+                    onChange={() => toggleCompany(c.id)}
+                    className="rounded text-primary-600"
+                  />
+                  <div>
+                    <span className="font-medium text-sm">{c.name}</span>
+                    <span className="text-xs text-gray-400 ml-2">{c.groupType}</span>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex gap-3 pt-4 mt-4 border-t">
+              <button onClick={handleSaveCompanies} className="btn-primary flex-1">Kaydet</button>
+              <button onClick={() => setShowCompanyModal(false)} className="btn-secondary flex-1">İptal</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Staff table */}
       <div className="card p-0 overflow-hidden">
         <table className="w-full text-sm">
@@ -149,37 +228,55 @@ export default function StaffManagementPage() {
               <th className="px-4 py-3 font-medium">Ad Soyad</th>
               <th className="px-4 py-3 font-medium">Email</th>
               <th className="px-4 py-3 font-medium">Rol</th>
-              <th className="px-4 py-3 font-medium">Departman</th>
+              <th className="px-4 py-3 font-medium">Şirketler</th>
               <th className="px-4 py-3 font-medium">Ticket</th>
               <th className="px-4 py-3 font-medium">Durum</th>
               <th className="px-4 py-3 font-medium">İşlem</th>
             </tr>
           </thead>
           <tbody>
-            {staffList?.map((staff: any) => (
-              <tr key={staff.id} className="border-t hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium">{staff.fullName}</td>
-                <td className="px-4 py-3 text-gray-500">{staff.email}</td>
-                <td className="px-4 py-3">{ROLES.find(r => r.value === staff.role)?.label}</td>
-                <td className="px-4 py-3 text-gray-500">{staff.department || '-'}</td>
-                <td className="px-4 py-3">{staff._count?.assignedTickets || 0}</td>
-                <td className="px-4 py-3">
-                  <span className={`px-2 py-0.5 rounded-full text-xs ${staff.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {staff.isActive ? 'Aktif' : 'Pasif'}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <button onClick={() => handleEdit(staff)} className="p-1 hover:bg-gray-200 rounded">
-                      <Edit2 className="w-4 h-4 text-gray-500" />
-                    </button>
-                    <button onClick={() => handleToggleActive(staff.id, staff.isActive)} className="p-1 hover:bg-gray-200 rounded">
-                      {staff.isActive ? <UserX className="w-4 h-4 text-red-500" /> : <UserCheck className="w-4 h-4 text-green-500" />}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {staffList?.map((staff: any) => {
+              const companyNames = (staff.assignedCompanies || []).map((ac: any) => ac.company?.name).filter(Boolean);
+              return (
+                <tr key={staff.id} className="border-t hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium">{staff.fullName}</td>
+                  <td className="px-4 py-3 text-gray-500">{staff.email}</td>
+                  <td className="px-4 py-3 text-xs">{ROLES.find(r => r.value === staff.role)?.label}</td>
+                  <td className="px-4 py-3">
+                    {staff.role === 'admin' || staff.role === 'it_manager' ? (
+                      <span className="text-xs text-gray-400">Tümü</span>
+                    ) : companyNames.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {companyNames.map((name: string) => (
+                          <span key={name} className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">{name}</span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">Tümü (kısıtsız)</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">{staff._count?.assignedTickets || 0}</td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${staff.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {staff.isActive ? 'Aktif' : 'Pasif'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1">
+                      <button onClick={() => openCompanyModal(staff)} className="p-1 hover:bg-purple-100 rounded" title="Şirket ataması">
+                        <Building2 className="w-4 h-4 text-purple-500" />
+                      </button>
+                      <button onClick={() => handleEdit(staff)} className="p-1 hover:bg-gray-200 rounded" title="Düzenle">
+                        <Edit2 className="w-4 h-4 text-gray-500" />
+                      </button>
+                      <button onClick={() => handleToggleActive(staff.id, staff.isActive)} className="p-1 hover:bg-gray-200 rounded" title={staff.isActive ? 'Deaktif et' : 'Aktif et'}>
+                        {staff.isActive ? <UserX className="w-4 h-4 text-red-500" /> : <UserCheck className="w-4 h-4 text-green-500" />}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

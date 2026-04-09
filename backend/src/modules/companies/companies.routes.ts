@@ -20,6 +20,7 @@ const companyCreateSchema = z.object({
   logo: z.string().optional(),
   allowedDomains: z.array(z.string()).default([]),
   portalDomains: z.array(z.string()).default([]),
+  notificationEmail: z.string().email().nullable().optional(),
   settings: z.record(z.unknown()).optional(),
 });
 

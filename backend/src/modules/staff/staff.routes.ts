@@ -22,11 +22,25 @@ const staffUpdateSchema = z.object({
 });
 
 export const staffRoutes: FastifyPluginAsync = async (app) => {
-  // List staff
+  // List staff (optionally filtered by company assignment)
   app.get('/', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preHandler: [app.authenticate],
   }, async (request, reply) => {
+    const { companyId } = request.query as { companyId?: string };
+
+    const where: any = {};
+    if (companyId) {
+      // Staff assigned to this company OR admins/managers (who see all)
+      where.OR = [
+        { assignedCompanies: { some: { companyId } } },
+        { role: { in: ['admin', 'it_manager'] } },
+        // Staff with no assignments (unrestricted)
+        { assignedCompanies: { none: {} }, role: 'it_staff' },
+      ];
+    }
+
     const staff = await app.prisma.staff.findMany({
+      where: { ...where, isActive: true },
       orderBy: { fullName: 'asc' },
       select: {
         id: true,
@@ -39,6 +53,9 @@ export const staffRoutes: FastifyPluginAsync = async (app) => {
         avatarUrl: true,
         createdAt: true,
         _count: { select: { assignedTickets: true } },
+        assignedCompanies: {
+          select: { companyId: true, company: { select: { name: true } } },
+        },
       },
     });
     reply.send({ success: true, data: staff });
@@ -132,6 +149,36 @@ export const staffRoutes: FastifyPluginAsync = async (app) => {
     await createAuditLog({ entityType: 'staff', entityId: id, action: 'deactivate', performedBy: request.staffUser!.email, ipAddress: request.headers['x-real-ip'] as string });
 
     await app.redis.del(`refresh:${id}`);
+
+    reply.send({ success: true });
+  });
+
+  // Update staff company assignments
+  app.put('/:id/companies', {
+    preHandler: [app.requireRole('admin', 'it_manager')],
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = z.object({
+      companyIds: z.array(z.string().cuid()),
+    }).parse(request.body);
+
+    // Delete existing assignments and recreate
+    await app.prisma.staffCompany.deleteMany({ where: { staffId: id } });
+
+    if (body.companyIds.length > 0) {
+      await app.prisma.staffCompany.createMany({
+        data: body.companyIds.map(companyId => ({ staffId: id, companyId })),
+      });
+    }
+
+    await createAuditLog({
+      entityType: 'staff',
+      entityId: id,
+      action: 'company_assignment',
+      changes: { companyIds: body.companyIds },
+      performedBy: request.staffUser!.email,
+      ipAddress: request.headers['x-real-ip'] as string,
+    });
 
     reply.send({ success: true });
   });

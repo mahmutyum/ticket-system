@@ -17,7 +17,7 @@ export default function CompanyManagementPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', groupType: 'corporate', allowedDomains: '', portalDomains: '' });
+  const [form, setForm] = useState({ name: '', groupType: 'corporate', allowedDomains: '', portalDomains: '', notificationEmail: '' });
 
   // Location form
   const [showLocForm, setShowLocForm] = useState(false);
@@ -47,6 +47,7 @@ export default function CompanyManagementPage() {
         portalDomains: form.portalDomains
           ? form.portalDomains.split(',').map(d => d.trim().toLowerCase()).filter(Boolean)
           : [],
+        notificationEmail: form.notificationEmail || null,
       };
       if (editId) {
         await api.put(`/companies/${editId}`, payload);
@@ -58,7 +59,7 @@ export default function CompanyManagementPage() {
       queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
       setShowForm(false);
       setEditId(null);
-      setForm({ name: '', groupType: 'corporate', allowedDomains: '', portalDomains: '' });
+      setForm({ name: '', groupType: 'corporate', allowedDomains: '', portalDomains: '', notificationEmail: '' });
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Hata');
     }
@@ -142,7 +143,7 @@ export default function CompanyManagementPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Şirket & Lokasyon Yönetimi</h1>
-        <button onClick={() => { setShowForm(true); setEditId(null); setForm({ name: '', groupType: 'corporate', allowedDomains: '', portalDomains: '' }); }} className="btn-primary flex items-center gap-2">
+        <button onClick={() => { setShowForm(true); setEditId(null); setForm({ name: '', groupType: 'corporate', allowedDomains: '', portalDomains: '', notificationEmail: '' }); }} className="btn-primary flex items-center gap-2">
           <Plus className="w-4 h-4" /> Yeni Şirket
         </button>
       </div>
@@ -172,6 +173,11 @@ export default function CompanyManagementPage() {
                 <label className="block text-sm font-medium mb-1">Portal Domain Kilidi</label>
                 <input type="text" className="input-field" value={form.portalDomains} onChange={e => setForm({ ...form, portalDomains: e.target.value })} placeholder="ticket.abc.com.tr" />
                 <p className="text-xs text-gray-400 mt-1">Bu domainlerden erişildiğinde sadece bu şirket için ticket açılabilir. Boş bırakırsanız genel portaldan erişilir.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">IT Grup Email (Bildirim)</label>
+                <input type="email" className="input-field" value={form.notificationEmail} onChange={e => setForm({ ...form, notificationEmail: e.target.value })} placeholder="it-destek@company.com" />
+                <p className="text-xs text-gray-400 mt-1">Yeni ticket açıldığında bu adrese bildirim gönderilir.</p>
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="submit" className="btn-primary flex-1">Kaydet</button>
@@ -336,7 +342,7 @@ export default function CompanyManagementPage() {
                   <MapPin className="w-3 h-3" /> Lokasyon Ekle
                 </button>
                 <button
-                  onClick={() => { setEditId(company.id); setForm({ name: company.name, groupType: company.groupType, allowedDomains: (company.allowedDomains as string[] || []).join(', '), portalDomains: (company.portalDomains as string[] || []).join(', ') }); setShowForm(true); }}
+                  onClick={() => { setEditId(company.id); setForm({ name: company.name, groupType: company.groupType, allowedDomains: (company.allowedDomains as string[] || []).join(', '), portalDomains: (company.portalDomains as string[] || []).join(', '), notificationEmail: company.notificationEmail || '' }); setShowForm(true); }}
                   className="p-1.5 hover:bg-gray-100 rounded"
                 >
                   <Edit2 className="w-4 h-4 text-gray-500" />
@@ -353,6 +359,12 @@ export default function CompanyManagementPage() {
             {company.portalDomains && (company.portalDomains as string[]).length > 0 && (
               <div className="mb-2 text-xs bg-purple-50 text-purple-700 px-3 py-1.5 rounded-lg">
                 Portal kilidi: {(company.portalDomains as string[]).join(', ')}
+              </div>
+            )}
+
+            {company.notificationEmail && (
+              <div className="mb-2 text-xs bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg">
+                IT Grup Email: {company.notificationEmail}
               </div>
             )}
 

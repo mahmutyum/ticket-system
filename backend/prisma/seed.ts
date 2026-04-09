@@ -58,6 +58,7 @@ async function main() {
       groupType: 'call_center',
       allowedDomains: ['abc.com.tr', 'abccagri.com'],
       portalDomains: ['ticket.abc.com.tr'],
+      notificationEmail: 'it-destek@abc.com.tr',
     },
   });
 
@@ -69,6 +70,7 @@ async function main() {
       groupType: 'corporate',
       allowedDomains: ['xyz.com', 'xyz.com.tr'],
       portalDomains: ['ticket.xyz.com'],
+      notificationEmail: 'it@xyz.com',
     },
   });
 
