@@ -6,7 +6,6 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor: attach JWT
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().accessToken;
   if (token) {
@@ -15,7 +14,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor: handle 401 with refresh
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -39,5 +37,29 @@ api.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+export async function initializeAuth(): Promise<boolean> {
+  const { setAccessToken, setUser, logout, setHydrated } = useAuthStore.getState();
+
+  try {
+    const res = await axios.post('/api/auth/staff/refresh', {}, { withCredentials: true });
+    const { accessToken, user } = res.data.data || {};
+    if (!accessToken) {
+      logout();
+      return false;
+    }
+    setAccessToken(accessToken);
+    if (user) {
+      setUser(user);
+    }
+    useAuthStore.setState({ isAuthenticated: true });
+    return true;
+  } catch {
+    logout();
+    return false;
+  } finally {
+    setHydrated(true);
+  }
+}
 
 export default api;

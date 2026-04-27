@@ -74,23 +74,24 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
     try { originHostname = new URL(origin as string).hostname.toLowerCase(); } catch { /* ignore */ }
 
     if (originHostname) {
-      // Check if this origin is locked to another company
-      const allCompanies = await app.prisma.company.findMany({
-        where: { isActive: true },
+      const portalLockedCompanies = await app.prisma.company.findMany({
+        where: {
+          isActive: true,
+          id: { not: body.companyId },
+        },
         select: { id: true, portalDomains: true },
       });
 
-      for (const c of allCompanies) {
+      const blocked = portalLockedCompanies.some(c => {
         const portals = c.portalDomains as string[];
-        if (portals && portals.length > 0) {
-          const match = portals.some(d => d.toLowerCase() === originHostname);
-          if (match && c.id !== body.companyId) {
-            return reply.status(403).send({
-              success: false,
-              error: 'Bu portal üzerinden yalnızca ilgili şirket için talep oluşturabilirsiniz.',
-            });
-          }
-        }
+        return portals?.some(d => d.toLowerCase() === originHostname);
+      });
+
+      if (blocked) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Bu portal üzerinden yalnızca ilgili şirket için talep oluşturabilirsiniz.',
+        });
       }
     }
 
@@ -137,7 +138,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       });
     }
 
-    const ticketNumber = await generateTicketNumber(app.prisma);
+    const ticketNumber = await generateTicketNumber();
     const accessToken = nanoid(32);
 
     // Calculate SLA if category has SLA settings
@@ -473,22 +474,35 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
   }, async (request, reply) => {
     const body = z.object({
       ticketIds: z.array(z.string().cuid()),
-      status: z.string().optional(),
+      status: z.enum(VALID_STATUSES).optional(),
       assignedToId: z.string().cuid().nullable().optional(),
       priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
     }).parse(request.body);
+
+    const staffUser = request.staffUser!;
 
     const updateData: any = {};
     if (body.status) updateData.status = body.status;
     if (body.assignedToId !== undefined) updateData.assignedToId = body.assignedToId;
     if (body.priority) updateData.priority = body.priority;
 
+    // Company scope restriction
+    const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
+    const scopeWhere = scopeCompanyIds ? { companyId: { in: scopeCompanyIds } } : {};
+
     const result = await app.prisma.ticket.updateMany({
-      where: { id: { in: body.ticketIds } },
+      where: { id: { in: body.ticketIds }, ...scopeWhere },
       data: updateData,
     });
 
-    reply.send({ success: true, data: { updatedCount: result.count } });
+    reply.send({
+      success: true,
+      data: {
+        updated: result.count,
+        requested: body.ticketIds.length,
+        skipped: body.ticketIds.length - result.count,
+      },
+    });
   });
 
   // STAFF: Upload attachment
@@ -546,8 +560,13 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       return reply.send({ success: true, data: [] });
     }
 
+    const staffUser = request.staffUser!;
+    const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
+    const scopeWhere = scopeCompanyIds ? { companyId: { in: scopeCompanyIds } } : {};
+
     const tickets = await app.prisma.ticket.findMany({
       where: {
+        ...scopeWhere,
         OR: [
           { subject: { contains: q, mode: 'insensitive' } },
           { description: { contains: q, mode: 'insensitive' } },

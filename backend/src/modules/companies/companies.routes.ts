@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import { testSmtpConnection, invalidateCompanyTransporter } from '../../services/email.service.js';
 import { createAuditLog } from '../../middleware/audit.js';
 
@@ -41,6 +42,31 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
         logo: true,
         allowedDomains: true,
         portalDomains: true,
+      },
+    });
+    reply.send({ success: true, data: companies });
+  });
+
+  // Admin: List all companies (including inactive) — MUST be before /:id
+  app.get('/admin/all', {
+    preHandler: [app.requireRole('admin', 'it_manager')],
+  }, async (request, reply) => {
+    const companies = await app.prisma.company.findMany({
+      orderBy: { name: 'asc' },
+      include: {
+        _count: { select: { locations: true, tickets: true } },
+        smtpConfig: {
+          select: {
+            id: true,
+            host: true,
+            port: true,
+            secure: true,
+            user: true,
+            fromName: true,
+            fromEmail: true,
+            isActive: true,
+          },
+        },
       },
     });
     reply.send({ success: true, data: companies });
@@ -105,7 +131,15 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
     preHandler: [app.requireRole('admin')],
   }, async (request, reply) => {
     const body = companyCreateSchema.parse(request.body);
-    const company = await app.prisma.company.create({ data: body });
+    const { settings, allowedDomains, portalDomains, ...rest } = body;
+    const company = await app.prisma.company.create({
+      data: {
+        ...rest,
+        allowedDomains: allowedDomains as Prisma.InputJsonValue,
+        portalDomains: portalDomains as Prisma.InputJsonValue,
+        ...(settings !== undefined ? { settings: settings as Prisma.InputJsonValue } : {}),
+      },
+    });
     await createAuditLog({ entityType: 'company', entityId: company.id, action: 'create', changes: { name: body.name, groupType: body.groupType }, performedBy: request.staffUser!.email, ipAddress: request.headers['x-real-ip'] as string });
     reply.status(201).send({ success: true, data: company });
   });
@@ -116,38 +150,18 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = companyUpdateSchema.parse(request.body);
+    const { settings, allowedDomains, portalDomains, ...rest } = body;
     const company = await app.prisma.company.update({
       where: { id },
-      data: body,
+      data: {
+        ...rest,
+        ...(allowedDomains !== undefined ? { allowedDomains: allowedDomains as Prisma.InputJsonValue } : {}),
+        ...(portalDomains !== undefined ? { portalDomains: portalDomains as Prisma.InputJsonValue } : {}),
+        ...(settings !== undefined ? { settings: settings as Prisma.InputJsonValue } : {}),
+      },
     });
     await createAuditLog({ entityType: 'company', entityId: id, action: 'update', changes: body, performedBy: request.staffUser!.email, ipAddress: request.headers['x-real-ip'] as string });
     reply.send({ success: true, data: company });
-  });
-
-  // Admin: List all companies (including inactive)
-  app.get('/admin/all', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
-  }, async (request, reply) => {
-    const companies = await app.prisma.company.findMany({
-      orderBy: { name: 'asc' },
-      include: {
-        _count: { select: { locations: true, tickets: true } },
-        smtpConfig: {
-          select: {
-            id: true,
-            host: true,
-            port: true,
-            secure: true,
-            user: true,
-            // pass deliberately excluded from list response
-            fromName: true,
-            fromEmail: true,
-            isActive: true,
-          },
-        },
-      },
-    });
-    reply.send({ success: true, data: companies });
   });
 
   // ==================== COMPANY SMTP CONFIG ====================

@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import type { FastifyError } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import cookie from '@fastify/cookie';
@@ -97,7 +98,7 @@ export async function buildApp() {
   await app.register(reportRoutes, { prefix: '/reports' });
 
   // Global error handler
-  app.setErrorHandler((error, request, reply) => {
+  app.setErrorHandler((error: FastifyError, request, reply) => {
     const statusCode = error.statusCode || 500;
     const message = statusCode === 500 ? 'Sunucu hatası' : error.message;
 

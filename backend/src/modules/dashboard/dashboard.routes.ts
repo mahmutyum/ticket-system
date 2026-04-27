@@ -141,12 +141,16 @@ export const dashboardRoutes: FastifyPluginAsync = async (app) => {
   app.get('/sla', {
     preHandler: [app.requireRole('admin', 'it_manager')],
   }, async (request, reply) => {
+    const staffUser = request.staffUser!;
+    const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
+    const scopeWhere = scopeCompanyIds ? { companyId: { in: scopeCompanyIds } } : {};
+
     const [totalWithSla, responseMet, responseViolated, resolveMet, resolveViolated] = await Promise.all([
-      app.prisma.ticket.count({ where: { slaResponseDue: { not: null } } }),
-      app.prisma.ticket.count({ where: { slaResponseMet: true } }),
-      app.prisma.ticket.count({ where: { slaResponseMet: false } }),
-      app.prisma.ticket.count({ where: { slaResolveMet: true } }),
-      app.prisma.ticket.count({ where: { slaResolveMet: false } }),
+      app.prisma.ticket.count({ where: { ...scopeWhere, slaResponseDue: { not: null } } }),
+      app.prisma.ticket.count({ where: { ...scopeWhere, slaResponseMet: true } }),
+      app.prisma.ticket.count({ where: { ...scopeWhere, slaResponseMet: false } }),
+      app.prisma.ticket.count({ where: { ...scopeWhere, slaResolveMet: true } }),
+      app.prisma.ticket.count({ where: { ...scopeWhere, slaResolveMet: false } }),
     ]);
 
     reply.send({
@@ -176,9 +180,12 @@ export const dashboardRoutes: FastifyPluginAsync = async (app) => {
     preHandler: [app.authenticate],
   }, async (request, reply) => {
     const staffUser = request.staffUser!;
+    const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
+    const scopeWhere = scopeCompanyIds ? { companyId: { in: scopeCompanyIds } } : {};
 
     const tickets = await app.prisma.ticket.findMany({
       where: {
+        ...scopeWhere,
         assignedToId: staffUser.id,
         status: { notIn: ['resolved', 'closed'] },
       },

@@ -59,7 +59,7 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
 
   // Public: Reply to ticket — with IT notification
   app.post('/ticket/:accessToken/reply', {
-    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+    config: { rateLimit: { max: 20, timeWindow: '10 minutes' } },
   }, async (request, reply) => {
     const { accessToken } = request.params as { accessToken: string };
     const body = z.object({
@@ -83,24 +83,25 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
     }
 
-    // Create a history entry for user reply
-    await app.prisma.ticketHistory.create({
-      data: {
-        ticketId: ticket.id,
-        action: 'user_reply',
-        newValue: body.content,
-        createdByEmail: ticket.createdByEmail,
-      },
-    });
-
-    // If waiting for user response, move to open
+    // Create history + update status atomically
     const wasWaiting = ticket.status === 'waiting_user_response';
-    if (wasWaiting) {
-      await app.prisma.ticket.update({
-        where: { id: ticket.id },
-        data: { status: 'open' },
+    await app.prisma.$transaction(async (tx) => {
+      await tx.ticketHistory.create({
+        data: {
+          ticketId: ticket.id,
+          action: 'user_reply',
+          newValue: body.content,
+          createdByEmail: ticket.createdByEmail,
+        },
       });
-    }
+
+      if (wasWaiting) {
+        await tx.ticket.update({
+          where: { id: ticket.id },
+          data: { status: 'open' },
+        });
+      }
+    });
 
     // SSE broadcast to staff
     broadcastToStaff('user_reply', {
@@ -174,33 +175,31 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
     reply.status(201).send({ success: true, data: attachment });
   });
 
-  // Public: List tickets by email
-  app.get('/tickets', {
+  // Public: Track single ticket by ticketNumber + email
+  app.post('/track', {
     config: { rateLimit: { max: 10, timeWindow: '5 minutes' } },
   }, async (request, reply) => {
-    const { email } = request.query as { email: string };
+    const parsed = z.object({
+      ticketNumber: z.string().min(1),
+      email: z.string().email(),
+    }).safeParse(request.body);
 
-    if (!email) {
-      return reply.status(400).send({ success: false, error: 'Email gerekli' });
+    if (!parsed.success) {
+      return reply.status(404).send({ success: false, error: 'Talep bulunamadı veya email eşleşmiyor' });
     }
 
-    const tickets = await app.prisma.ticket.findMany({
-      where: { createdByEmail: email },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        ticketNumber: true,
-        subject: true,
-        status: true,
-        priority: true,
-        accessToken: true,
-        createdAt: true,
-        updatedAt: true,
-        company: { select: { name: true } },
-        category: { select: { name: true } },
+    const ticket = await app.prisma.ticket.findFirst({
+      where: {
+        ticketNumber: parsed.data.ticketNumber,
+        createdByEmail: { equals: parsed.data.email, mode: 'insensitive' },
       },
+      select: { accessToken: true },
     });
 
-    reply.send({ success: true, data: tickets });
+    if (!ticket) {
+      return reply.status(404).send({ success: false, error: 'Talep bulunamadı veya email eşleşmiyor' });
+    }
+
+    reply.send({ success: true, data: { accessToken: ticket.accessToken } });
   });
 };

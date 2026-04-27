@@ -16,8 +16,8 @@ const redisPluginFn: FastifyPluginAsync = async (app) => {
     app.log.info('Redis connected');
   });
 
-  redis.on('error', (err) => {
-    app.log.error('Redis error:', err);
+  redis.on('error', (err: Error) => {
+    app.log.error({ err }, 'Redis error');
   });
 
   app.decorate('redis', redis);

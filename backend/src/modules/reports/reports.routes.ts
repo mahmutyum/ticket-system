@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { paginationSchema, paginate, paginatedResponse } from '../../utils/pagination.js';
+import { getStaffCompanyScope, companyWhereClause } from '../../utils/staff-scope.js';
 
 const reportFilterSchema = paginationSchema.extend({
   dateFrom: z.string().optional(),
@@ -12,6 +13,15 @@ const reportFilterSchema = paginationSchema.extend({
   priority: z.string().optional(),
 });
 
+function csvEscape(value: string | null | undefined): string {
+  if (value == null) return '';
+  const str = String(value);
+  if (str.includes('"') || str.includes(';') || str.includes('\n') || /^[=+\-@]/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
 export const reportRoutes: FastifyPluginAsync = async (app) => {
   // Ticket report with date filtering and aggregation
   app.get('/tickets', {
@@ -19,8 +29,12 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
   }, async (request, reply) => {
     const query = reportFilterSchema.parse(request.query);
     const { skip, take } = paginate(query);
+    const staffUser = request.staffUser!;
 
-    const where: any = {};
+    const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
+    const scopeWhere = companyWhereClause(scopeCompanyIds);
+
+    const where: any = { ...scopeWhere };
     if (query.dateFrom || query.dateTo) {
       where.createdAt = {};
       if (query.dateFrom) where.createdAt.gte = new Date(query.dateFrom);
@@ -56,12 +70,18 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     preHandler: [app.requireRole('admin', 'it_manager')],
   }, async (request, reply) => {
     const query = request.query as { dateFrom?: string; dateTo?: string };
+    const staffUser = request.staffUser!;
+
+    const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
 
     const dateFilter: any = {};
     if (query.dateFrom || query.dateTo) {
       dateFilter.createdAt = {};
       if (query.dateFrom) dateFilter.createdAt.gte = new Date(query.dateFrom);
       if (query.dateTo) dateFilter.createdAt.lte = new Date(query.dateTo + 'T23:59:59Z');
+    }
+    if (scopeCompanyIds) {
+      dateFilter.companyId = { in: scopeCompanyIds };
     }
 
     const staff = await app.prisma.staff.findMany({
@@ -94,7 +114,6 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
       const slaResolveMet = s.assignedTickets.filter(t => t.slaResolveMet === true).length;
       const slaResolveTotal = s.assignedTickets.filter(t => t.slaResolveMet !== null).length;
 
-      // Average resolution time (hours)
       const resolvedTickets = s.assignedTickets.filter(t => t.resolvedAt);
       const avgResolutionHours = resolvedTickets.length > 0
         ? resolvedTickets.reduce((sum, t) => {
@@ -124,17 +143,23 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     preHandler: [app.requireRole('admin', 'it_manager')],
   }, async (request, reply) => {
     const query = request.query as { dateFrom?: string; dateTo?: string };
+    const staffUser = request.staffUser!;
 
-    const dateFilter: any = {};
+    const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
+
+    const where: any = {};
     if (query.dateFrom || query.dateTo) {
-      dateFilter.createdAt = {};
-      if (query.dateFrom) dateFilter.createdAt.gte = new Date(query.dateFrom);
-      if (query.dateTo) dateFilter.createdAt.lte = new Date(query.dateTo + 'T23:59:59Z');
+      where.createdAt = {};
+      if (query.dateFrom) where.createdAt.gte = new Date(query.dateFrom);
+      if (query.dateTo) where.createdAt.lte = new Date(query.dateTo + 'T23:59:59Z');
+    }
+    if (scopeCompanyIds) {
+      where.companyId = { in: scopeCompanyIds };
     }
 
     const categories = await app.prisma.ticket.groupBy({
       by: ['categoryId'],
-      where: dateFilter,
+      where,
       _count: true,
     });
 
@@ -161,8 +186,14 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     preHandler: [app.requireRole('admin', 'it_manager')],
   }, async (request, reply) => {
     const query = request.query as { dateFrom?: string; dateTo?: string; companyId?: string };
+    const staffUser = request.staffUser!;
+
+    const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
 
     const where: any = {};
+    if (scopeCompanyIds) {
+      where.companyId = { in: scopeCompanyIds };
+    }
     if (query.dateFrom || query.dateTo) {
       where.createdAt = {};
       if (query.dateFrom) where.createdAt.gte = new Date(query.dateFrom);
@@ -173,6 +204,7 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     const tickets = await app.prisma.ticket.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      take: 10000,
       include: {
         company: { select: { name: true } },
         location: { select: { name: true } },
@@ -184,17 +216,17 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     const BOM = '\ufeff';
     const headers = ['Talep No', 'Konu', 'Şirket', 'Lokasyon', 'Kategori', 'Durum', 'Öncelik', 'Atanan', 'Oluşturan Email', 'Oluşturma Tarihi', 'Çözüm Tarihi'];
     const rows = tickets.map(t => [
-      t.ticketNumber,
-      `"${t.subject.replace(/"/g, '""')}"`,
-      t.company.name,
-      t.location.name,
-      t.category.name,
-      t.status,
-      t.priority,
-      t.assignedTo?.fullName || '',
-      t.createdByEmail,
-      new Date(t.createdAt).toLocaleString('tr-TR'),
-      t.resolvedAt ? new Date(t.resolvedAt).toLocaleString('tr-TR') : '',
+      csvEscape(t.ticketNumber),
+      csvEscape(t.subject),
+      csvEscape(t.company.name),
+      csvEscape(t.location?.name),
+      csvEscape(t.category.name),
+      csvEscape(t.status),
+      csvEscape(t.priority),
+      csvEscape(t.assignedTo?.fullName),
+      csvEscape(t.createdByEmail),
+      csvEscape(new Date(t.createdAt).toLocaleString('tr-TR')),
+      csvEscape(t.resolvedAt ? new Date(t.resolvedAt).toLocaleString('tr-TR') : ''),
     ]);
 
     const csv = BOM + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');

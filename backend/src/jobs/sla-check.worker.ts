@@ -1,18 +1,13 @@
 import { Worker } from 'bullmq';
-import IORedis from 'ioredis';
-import { PrismaClient } from '@prisma/client';
 import { queueEmail } from './queue.js';
-import { config } from '../config/index.js';
-
-const connection = new IORedis(config.REDIS_URL, { maxRetriesPerRequest: null });
-const prisma = new PrismaClient();
+import { redisConnection } from './queue.js';
+import { prisma } from '../db.js';
 
 const slaCheckWorker = new Worker(
   'sla-check',
   async () => {
     const now = new Date();
 
-    // Find tickets with SLA response violations
     const responseViolations = await prisma.ticket.findMany({
       where: {
         slaResponseDue: { lt: now },
@@ -27,13 +22,11 @@ const slaCheckWorker = new Worker(
     });
 
     for (const ticket of responseViolations) {
-      // Mark as violated
       await prisma.ticket.update({
         where: { id: ticket.id },
         data: { slaResponseMet: false },
       });
 
-      // Notify assigned staff or all managers
       if (ticket.assignedTo?.email) {
         await queueEmail({
           to: ticket.assignedTo.email,
@@ -46,10 +39,10 @@ const slaCheckWorker = new Worker(
             staffName: ticket.assignedTo.fullName,
           },
           ticketId: ticket.id,
+          companyId: ticket.companyId,
         });
       }
 
-      // Add history
       await prisma.ticketHistory.create({
         data: {
           ticketId: ticket.id,
@@ -62,7 +55,6 @@ const slaCheckWorker = new Worker(
       console.log(`[SLA Check] Response SLA violated: ${ticket.ticketNumber}`);
     }
 
-    // Find tickets with SLA resolution violations
     const resolveViolations = await prisma.ticket.findMany({
       where: {
         slaResolveDue: { lt: now },
@@ -94,6 +86,7 @@ const slaCheckWorker = new Worker(
             staffName: ticket.assignedTo.fullName,
           },
           ticketId: ticket.id,
+          companyId: ticket.companyId,
         });
       }
 
@@ -111,7 +104,7 @@ const slaCheckWorker = new Worker(
 
     console.log(`[SLA Check] Checked: ${responseViolations.length} response, ${resolveViolations.length} resolution violations`);
   },
-  { connection },
+  { connection: redisConnection },
 );
 
 export default slaCheckWorker;

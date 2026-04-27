@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { queueEmail } from '../../jobs/queue.js';
 import { config } from '../../config/index.js';
 import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.js';
+import { getStaffCompanyScope } from '../../utils/staff-scope.js';
 
 const noteCreateSchema = z.object({
   content: z.string().min(1),
@@ -24,6 +25,11 @@ export const noteRoutes: FastifyPluginAsync = async (app) => {
     });
     if (!ticket) {
       return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
+    }
+
+    const scopeIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
+    if (scopeIds && !scopeIds.includes(ticket.companyId)) {
+      return reply.status(403).send({ success: false, error: 'Bu talebe erişim yetkiniz yok' });
     }
 
     const note = await app.prisma.ticketNote.create({
@@ -86,6 +92,20 @@ export const noteRoutes: FastifyPluginAsync = async (app) => {
     preHandler: [app.authenticate],
   }, async (request, reply) => {
     const { ticketId } = request.params as { ticketId: string };
+    const staffUser = request.staffUser!;
+
+    const ticket = await app.prisma.ticket.findUnique({
+      where: { id: ticketId },
+      select: { companyId: true },
+    });
+    if (!ticket) {
+      return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
+    }
+
+    const scopeIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
+    if (scopeIds && !scopeIds.includes(ticket.companyId)) {
+      return reply.status(403).send({ success: false, error: 'Bu talebe erişim yetkiniz yok' });
+    }
 
     const notes = await app.prisma.ticketNote.findMany({
       where: { ticketId },

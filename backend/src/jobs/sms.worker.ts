@@ -1,19 +1,14 @@
 import { Worker } from 'bullmq';
-import IORedis from 'ioredis';
-import { PrismaClient } from '@prisma/client';
 import { sendSms } from '../services/sms.service.js';
-import { config } from '../config/index.js';
+import { prisma } from '../db.js';
+import { redisConnection } from './queue.js';
 import type { SmsJobData } from './queue.js';
-
-const connection = new IORedis(config.REDIS_URL, { maxRetriesPerRequest: null });
-const prisma = new PrismaClient();
 
 const smsWorker = new Worker<SmsJobData>(
   'sms',
   async (job) => {
     const { to, templateSlug, variables, ticketId } = job.data;
 
-    // Fetch SMS template
     const template = await prisma.smsTemplate.findUnique({
       where: { slug: templateSlug },
     });
@@ -22,7 +17,6 @@ const smsWorker = new Worker<SmsJobData>(
       throw new Error(`SMS template not found: ${templateSlug}`);
     }
 
-    // Render template
     let body = template.body;
     for (const [key, value] of Object.entries(variables)) {
       body = body.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value ?? '');
@@ -30,7 +24,6 @@ const smsWorker = new Worker<SmsJobData>(
 
     await sendSms({ to, body });
 
-    // Record notification
     await prisma.notification.create({
       data: {
         ticketId: ticketId || null,
@@ -46,7 +39,7 @@ const smsWorker = new Worker<SmsJobData>(
     console.log(`[SMS Worker] Sent "${templateSlug}" to ${to}`);
   },
   {
-    connection,
+    connection: redisConnection,
     concurrency: 3,
   },
 );

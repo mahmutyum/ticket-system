@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { createAuditLog } from '../../middleware/audit.js';
 
 const categoryCreateSchema = z.object({
   companyId: z.string().cuid().nullable().optional(),
@@ -17,6 +18,36 @@ const categoryUpdateSchema = categoryCreateSchema.partial().extend({
 });
 
 export const categoryRoutes: FastifyPluginAsync = async (app) => {
+  // Admin: Reorder — MUST be before /:id
+  app.put('/reorder', {
+    preHandler: [app.requireRole('admin', 'it_manager')],
+  }, async (request, reply) => {
+    const body = z.array(z.object({
+      id: z.string().cuid(),
+      sortOrder: z.number().int(),
+    })).parse(request.body);
+
+    await app.prisma.$transaction(
+      body.map(item =>
+        app.prisma.category.update({
+          where: { id: item.id },
+          data: { sortOrder: item.sortOrder },
+        })
+      )
+    );
+
+    await createAuditLog({
+      entityType: 'category',
+      entityId: 'bulk',
+      action: 'reorder',
+      changes: { count: body.length },
+      performedBy: request.staffUser!.email,
+      ipAddress: request.headers['x-real-ip'] as string,
+    });
+
+    reply.send({ success: true });
+  });
+
   // Admin: Create category
   app.post('/', {
     preHandler: [app.requireRole('admin', 'it_manager')],
@@ -50,27 +81,6 @@ export const categoryRoutes: FastifyPluginAsync = async (app) => {
       where: { id },
       data: { isActive: false },
     });
-    reply.send({ success: true });
-  });
-
-  // Admin: Reorder
-  app.put('/reorder', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
-  }, async (request, reply) => {
-    const body = z.array(z.object({
-      id: z.string().cuid(),
-      sortOrder: z.number().int(),
-    })).parse(request.body);
-
-    await app.prisma.$transaction(
-      body.map(item =>
-        app.prisma.category.update({
-          where: { id: item.id },
-          data: { sortOrder: item.sortOrder },
-        })
-      )
-    );
-
     reply.send({ success: true });
   });
 };

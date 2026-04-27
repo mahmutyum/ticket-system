@@ -1,19 +1,14 @@
 import { Worker } from 'bullmq';
-import IORedis from 'ioredis';
-import { PrismaClient } from '@prisma/client';
 import { sendEmailForCompany, renderTemplate } from '../services/email.service.js';
-import { config } from '../config/index.js';
+import { prisma } from '../db.js';
+import { redisConnection } from './queue.js';
 import type { EmailJobData } from './queue.js';
-
-const connection = new IORedis(config.REDIS_URL, { maxRetriesPerRequest: null });
-const prisma = new PrismaClient();
 
 const emailWorker = new Worker<EmailJobData>(
   'email',
   async (job) => {
     const { to, templateSlug, variables, ticketId, companyId } = job.data;
 
-    // Fetch email template from DB
     const template = await prisma.emailTemplate.findUnique({
       where: { slug: templateSlug },
     });
@@ -26,7 +21,6 @@ const emailWorker = new Worker<EmailJobData>(
     const html = renderTemplate(template.bodyHtml, variables);
     const text = renderTemplate(template.bodyText, variables);
 
-    // Resolve company SMTP config (if companyId provided)
     let companySmtp = null;
     if (companyId) {
       const smtpRecord = await prisma.companySmtp.findUnique({
@@ -45,10 +39,8 @@ const emailWorker = new Worker<EmailJobData>(
       }
     }
 
-    // Send using company SMTP or fallback to global
     await sendEmailForCompany({ to, subject, html, text }, companyId || null, companySmtp);
 
-    // Record notification
     await prisma.notification.create({
       data: {
         ticketId: ticketId || null,
@@ -66,7 +58,7 @@ const emailWorker = new Worker<EmailJobData>(
     console.log(`[Email Worker] Sent "${templateSlug}" to ${to} via ${smtpSource}`);
   },
   {
-    connection,
+    connection: redisConnection,
     concurrency: 5,
   },
 );

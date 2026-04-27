@@ -2,11 +2,11 @@ import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { config } from '../config/index.js';
 
-const connection = new IORedis(config.REDIS_URL, { maxRetriesPerRequest: null });
+export const redisConnection = new IORedis(config.REDIS_URL, { maxRetriesPerRequest: null });
 
-export const emailQueue = new Queue('email', { connection });
-export const smsQueue = new Queue('sms', { connection });
-export const slaCheckQueue = new Queue('sla-check', { connection });
+export const emailQueue = new Queue('email', { connection: redisConnection });
+export const smsQueue = new Queue('sms', { connection: redisConnection });
+export const slaCheckQueue = new Queue('sla-check', { connection: redisConnection });
 
 export interface EmailJobData {
   to: string;

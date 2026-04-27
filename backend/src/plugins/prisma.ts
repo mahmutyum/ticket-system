@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import fp from 'fastify-plugin';
 import { PrismaClient } from '@prisma/client';
+import { prisma as sharedPrisma } from '../db.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -9,19 +10,13 @@ declare module 'fastify' {
 }
 
 const prismaPluginFn: FastifyPluginAsync = async (app) => {
-  const prisma = new PrismaClient({
-    log: app.log.level === 'debug'
-      ? ['query', 'info', 'warn', 'error']
-      : ['error'],
-  });
-
-  await prisma.$connect();
+  await sharedPrisma.$connect();
   app.log.info('Database connected');
 
-  app.decorate('prisma', prisma);
+  app.decorate('prisma', sharedPrisma);
 
   app.addHook('onClose', async () => {
-    await prisma.$disconnect();
+    await sharedPrisma.$disconnect();
   });
 };
 

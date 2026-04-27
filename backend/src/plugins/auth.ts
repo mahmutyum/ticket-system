@@ -1,6 +1,7 @@
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import fp from 'fastify-plugin';
 import jwt from 'jsonwebtoken';
+import type { StringValue } from 'ms';
 import { config } from '../config/index.js';
 
 export interface JwtPayload {
@@ -79,10 +80,10 @@ export const authPlugin = fp(authPluginFn, {
 // Helper to generate tokens
 export function generateTokens(payload: JwtPayload) {
   const accessToken = jwt.sign(payload, config.JWT_SECRET, {
-    expiresIn: config.ACCESS_TOKEN_EXPIRY,
+    expiresIn: config.ACCESS_TOKEN_EXPIRY as StringValue,
   });
   const refreshToken = jwt.sign(payload, config.JWT_REFRESH_SECRET, {
-    expiresIn: config.REFRESH_TOKEN_EXPIRY,
+    expiresIn: config.REFRESH_TOKEN_EXPIRY as StringValue,
   });
   return { accessToken, refreshToken };
 }

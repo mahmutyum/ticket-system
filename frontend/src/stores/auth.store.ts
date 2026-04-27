@@ -14,9 +14,12 @@ interface AuthState {
   accessToken: string | null;
   user: StaffUser | null;
   isAuthenticated: boolean;
+  isHydrated: boolean;
   setAuth: (token: string, user: StaffUser) => void;
   setAccessToken: (token: string) => void;
+  setUser: (user: StaffUser) => void;
   logout: () => void;
+  setHydrated: (val: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -25,17 +28,21 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       user: null,
       isAuthenticated: false,
+      isHydrated: false,
       setAuth: (accessToken, user) =>
         set({ accessToken, user, isAuthenticated: true }),
       setAccessToken: (accessToken) =>
         set({ accessToken }),
+      setUser: (user) =>
+        set({ user }),
       logout: () =>
         set({ accessToken: null, user: null, isAuthenticated: false }),
+      setHydrated: (isHydrated) =>
+        set({ isHydrated }),
     }),
     {
       name: 'auth-storage',
       partialize: (state) => ({
-        accessToken: state.accessToken,
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),

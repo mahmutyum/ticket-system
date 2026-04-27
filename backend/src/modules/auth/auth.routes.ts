@@ -113,7 +113,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // Email lookup for public users
-  app.post('/lookup', async (request, reply) => {
+  app.post('/lookup', {
+    config: { rateLimit: { max: 10, timeWindow: '5 minutes' } },
+  }, async (request, reply) => {
     const body = emailLookupSchema.parse(request.body);
 
     const user = await app.prisma.user.findUnique({
@@ -122,17 +124,13 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         id: true,
         email: true,
         fullName: true,
-        phone: true,
         companyId: true,
-        locationId: true,
-        department: true,
-        extraInfo: true,
       },
     });
 
     reply.send({
       success: true,
-      data: user, // null if not found
+      data: user,
     });
   });
 };
