@@ -70,7 +70,7 @@ export const noteRoutes: FastifyPluginAsync = async (app) => {
         createdAt: note.createdAt,
       });
 
-      const trackingUrl = `${config.APP_URL}/ticket/${ticket.accessToken}`;
+      const trackingUrl = `${config.CANONICAL_URL}/ticket/${ticket.accessToken}`;
       await queueEmail({
         to: ticket.createdByEmail,
         templateSlug: 'note_added',

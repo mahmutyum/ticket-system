@@ -1,0 +1,22 @@
+# Local-only override: yerel araçlarla (DBeaver, RedisInsight, vs.) bağlanmak
+# için DB ve Redis port'larını 127.0.0.1'e expose eder.
+#
+# Kullanım:
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up
+#
+# UYARI: Production / Coolify ortamında bu dosyayı KULLANMA.
+# 127.0.0.1 binding'i sayesinde port sadece yerel makineden erişilebilir,
+# ama yine de gereksiz attack surface yaratır.
+
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+
+  redis:
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+
+  backend:
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-4000}:4000"

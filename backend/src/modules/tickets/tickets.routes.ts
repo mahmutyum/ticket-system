@@ -197,7 +197,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
     });
 
     // Queue email notification
-    const trackingUrl = `${config.APP_URL}/ticket/${accessToken}`;
+    const trackingUrl = `${config.CANONICAL_URL}/ticket/${accessToken}`;
     await queueEmail({
       to: body.email,
       templateSlug: 'ticket_created',
@@ -254,7 +254,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       data: {
         ticketNumber: ticket.ticketNumber,
         accessToken: ticket.accessToken,
-        trackingUrl: `${config.APP_URL}/ticket/${ticket.accessToken}`,
+        trackingUrl: `${config.CANONICAL_URL}/ticket/${ticket.accessToken}`,
         status: ticket.status,
         subject: ticket.subject,
       },
@@ -449,7 +449,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
 
     // Queue notification for status change
     if (body.status && body.status !== currentTicket.status) {
-      const trackingUrl = `${config.APP_URL}/ticket/${currentTicket.accessToken}`;
+      const trackingUrl = `${config.CANONICAL_URL}/ticket/${currentTicket.accessToken}`;
       await queueEmail({
         to: currentTicket.createdByEmail,
         templateSlug: 'status_changed',

@@ -29,6 +29,9 @@ import { reportRoutes } from './modules/reports/reports.routes.js';
 
 export async function buildApp() {
   const app = Fastify({
+    // NPM/Coolify reverse proxy arkasında: X-Forwarded-For/Proto/Host
+    // header'larına güven. Rate-limit ve audit log gerçek client IP'yi alsın.
+    trustProxy: true,
     logger: {
       level: config.NODE_ENV === 'production' ? 'info' : 'debug',
       transport: config.NODE_ENV === 'development'
@@ -46,8 +49,13 @@ export async function buildApp() {
 
   await app.register(cors, {
     origin: config.NODE_ENV === 'development'
-      ? ['http://localhost:3000', 'http://localhost:4000']
-      : config.APP_URL,
+      ? [
+          'http://localhost:1111',
+          'http://localhost:3000',
+          'http://localhost:4000',
+          ...config.APP_ORIGINS,
+        ]
+      : config.APP_ORIGINS,
     credentials: true,
   });
 

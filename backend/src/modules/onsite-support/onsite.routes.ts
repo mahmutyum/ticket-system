@@ -72,7 +72,7 @@ export const onsiteRoutes: FastifyPluginAsync = async (app) => {
     });
 
     // Notify employee
-    const trackingUrl = `${config.APP_URL}/ticket/${ticket.accessToken}`;
+    const trackingUrl = `${config.CANONICAL_URL}/ticket/${ticket.accessToken}`;
     const scheduledDate = new Date(body.scheduledAt).toLocaleString('tr-TR');
     const supportType = ONSITE_TYPE_LABELS[body.type] || body.type;
     const locationInfo = body.roomInfo

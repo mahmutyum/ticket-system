@@ -19,6 +19,9 @@ const envSchema = z.object({
   SMS_GATEWAY_URL: z.string().optional(),
   SMS_GATEWAY_API_KEY: z.string().optional(),
   SMS_SENDER: z.string().optional(),
+  // Primary canonical URL (tracking link e-postalarında, vs. kullanılır).
+  // Birden fazla FQDN destekliyorsan virgülle ayır; ilk değer canonical sayılır,
+  // tamamı CORS whitelist'ine eklenir.
   APP_URL: z.string(),
   APP_NAME: z.string().default('IT Destek Sistemi'),
   MAX_FILE_SIZE: z.coerce.number().default(26214400),
@@ -27,13 +30,32 @@ const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
-function loadConfig(): Env {
+export type AppConfig = Env & {
+  /** Tüm kabul edilen FQDN origin'leri (CORS whitelist için). */
+  APP_ORIGINS: string[];
+  /** Canonical URL — e-posta tracking link'lerinde kullanılır. */
+  CANONICAL_URL: string;
+};
+
+function loadConfig(): AppConfig {
   const result = envSchema.safeParse(process.env);
   if (!result.success) {
     console.error('Invalid environment variables:', result.error.format());
     process.exit(1);
   }
-  return result.data;
+  const origins = result.data.APP_URL
+    .split(',')
+    .map((s) => s.trim().replace(/\/$/, ''))
+    .filter(Boolean);
+  if (origins.length === 0) {
+    console.error('APP_URL must contain at least one URL');
+    process.exit(1);
+  }
+  return {
+    ...result.data,
+    APP_ORIGINS: origins,
+    CANONICAL_URL: origins[0],
+  };
 }
 
 export const config = loadConfig();
