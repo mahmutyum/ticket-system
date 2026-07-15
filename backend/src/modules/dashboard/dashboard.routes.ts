@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { getStaffCompanyScope, companyWhereClause } from '../../utils/staff-scope.js';
+import { getStaffCompanyScope, companyWhereClause , resolveCompanyFilter } from '../../utils/staff-scope.js';
 
 const dashboardFilterSchema = z.object({
   companyId: z.string().optional(),
@@ -20,13 +20,13 @@ export const dashboardRoutes: FastifyPluginAsync = async (app) => {
     const staffUser = request.staffUser!;
     const query = dashboardFilterSchema.parse(request.query);
 
-    // Resolve company scope for this staff
+    // Resolve company scope for this staff — companyId filtresi kapsamla
+    // kesiştirilir, üzerine yazılmaz.
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     const scopeWhere = companyWhereClause(scopeCompanyIds);
 
     // Build filter where clause
-    const filterWhere: any = { ...scopeWhere };
-    if (query.companyId) filterWhere.companyId = query.companyId;
+    const filterWhere: any = { ...resolveCompanyFilter(scopeCompanyIds, query.companyId) };
     if (query.status) filterWhere.status = query.status;
     if (query.priority) filterWhere.priority = query.priority;
     if (query.assignedToId) filterWhere.assignedToId = query.assignedToId;

@@ -4,6 +4,8 @@ import { Prisma } from '@prisma/client';
 import { testSmtpConnection, invalidateCompanyTransporter } from '../../services/email.service.js';
 import { createAuditLog } from '../../middleware/audit.js';
 import { saveLogo, isAllowedLogoMimeType } from '../../services/storage.service.js';
+import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
+import { encrypt } from '../../utils/crypto.js';
 
 const smtpConfigSchema = z.object({
   host: z.string().min(1),
@@ -71,7 +73,13 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
   app.get('/admin/all', {
     preHandler: [app.requireRole('admin', 'it_manager')],
   }, async (request, reply) => {
+    // it_manager yalnızca atandığı şirketleri görür. Bu uç nokta SMTP host/user
+    // bilgisi de döndürdüğü için kapsamsız bırakılırsa çapraz şirket sızıntısı olur.
+    const staffUser = request.staffUser!;
+    const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
+
     const companies = await app.prisma.company.findMany({
+      where: scope ? { id: { in: scope } } : {},
       orderBy: { name: 'asc' },
       include: {
         _count: { select: { locations: true, tickets: true } },
@@ -261,10 +269,14 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(404).send({ success: false, error: 'Şirket bulunamadı' });
     }
 
+    // SMTP şifresi veritabanına ŞİFRELİ yazılır (AES-256-GCM, CREDENTIALS_ENC_KEY).
+    // Önceden düz metin tutuluyordu; okuma tarafı eski kayıtları formatından tanır.
+    const data = { ...body, pass: encrypt(body.pass) };
+
     const smtp = await app.prisma.companySmtp.upsert({
       where: { companyId: id },
-      create: { companyId: id, ...body },
-      update: body,
+      create: { companyId: id, ...data },
+      update: data,
     });
 
     invalidateCompanyTransporter(id);
@@ -324,6 +336,13 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
     const { id } = request.params as { id: string };
     const exists = await app.prisma.company.findUnique({ where: { id }, select: { id: true } });
     if (!exists) return reply.status(404).send({ success: false, error: 'Şirket bulunamadı' });
+
+    // it_manager yalnızca kendi şirketlerinin logosunu değiştirebilir.
+    const staffUser = request.staffUser!;
+    const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
+    if (!isCompanyInScope(scope, id)) {
+      return reply.status(403).send({ success: false, error: 'Bu şirket için yetkiniz yok' });
+    }
 
     const file = await request.file();
     if (!file) return reply.status(400).send({ success: false, error: 'Dosya bulunamadı' });

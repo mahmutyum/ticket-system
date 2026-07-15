@@ -154,8 +154,14 @@ export const staffRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // Update staff company assignments
+  //
+  // YALNIZCA admin. Daha önce it_manager'a da açıktı ve handler hedefin
+  // çağıranın kendisi olup olmadığına bakmıyordu: kapsamlı bir it_manager
+  // PUT /staff/<kendi-id>/companies ile tüm şirketleri kendine atayıp
+  // sınırsız erişim kazanabiliyordu (kapsam her istekte DB'den okunduğu için
+  // anında etkili olurdu). Şirket ataması bir yetki kararıdır — admin'de kalır.
   app.put('/:id/companies', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preHandler: [app.requireRole('admin')],
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = z.object({

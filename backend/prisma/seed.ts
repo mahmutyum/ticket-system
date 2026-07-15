@@ -3,11 +3,51 @@ import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
+const isProd = process.env.NODE_ENV === 'production';
+const force = process.argv.includes('--force');
+
+/**
+ * Seed demo verisi üretir ve bilinen şifrelerle hesap açar. Production'a karşı
+ * çalıştırılması neredeyse her zaman kazadır — bu yüzden varsayılan olarak reddedilir.
+ *
+ * Bilinçli olarak gerekiyorsa: NODE_ENV=production ... --force, ancak o durumda
+ * şifreler ortam değişkeninden gelmek ZORUNDA (demo şifreleri kullanılamaz).
+ */
+function resolvePassword(envVar: string, devDefault: string): string {
+  const fromEnv = process.env[envVar];
+  if (fromEnv) {
+    if (fromEnv.length < 12) {
+      console.error(`${envVar} en az 12 karakter olmalı.`);
+      process.exit(1);
+    }
+    return fromEnv;
+  }
+  if (isProd) {
+    console.error(
+      `Production'da seed çalıştırıyorsan ${envVar} tanımlanmalı — demo şifresi kullanılamaz.`,
+    );
+    process.exit(1);
+  }
+  return devDefault;
+}
+
 async function main() {
+  if (isProd && !force) {
+    console.error(
+      'Seed production ortamında çalıştırılamaz.\n' +
+        'Bu script bilinen şifrelerle admin hesabı açar ve demo verisi yazar.\n' +
+        'Gerçekten istiyorsan: --force ekle ve SEED_ADMIN_PASSWORD / SEED_STAFF_PASSWORD tanımla.',
+    );
+    process.exit(1);
+  }
+  if (isProd && force) {
+    console.warn('UYARI: production veritabanına seed çalıştırılıyor (--force).');
+  }
+
   console.log('Seeding database...');
 
   // Create admin staff
-  const adminPassword = await bcrypt.hash('admin123', 12);
+  const adminPassword = await bcrypt.hash(resolvePassword('SEED_ADMIN_PASSWORD', 'admin123'), 12);
   const admin = await prisma.staff.upsert({
     where: { email: 'admin@company.com' },
     update: {},
@@ -22,7 +62,7 @@ async function main() {
   console.log('Admin created:', admin.email);
 
   // Create IT staff
-  const staffPassword = await bcrypt.hash('staff123', 12);
+  const staffPassword = await bcrypt.hash(resolvePassword('SEED_STAFF_PASSWORD', 'staff123'), 12);
   const itStaff = await prisma.staff.upsert({
     where: { email: 'it@company.com' },
     update: {},
@@ -84,6 +124,30 @@ async function main() {
     },
   });
   console.log('Companies created');
+
+  // Şirket atamaları (StaffCompany)
+  //
+  // Kapsam fail-closed'dır: admin dışındaki roller YALNIZCA atandıkları şirketleri
+  // görür, atama yoksa hiçbir şey göremez. Bu yüzden atamalar zorunludur.
+  //
+  // Demo, kapsamı görünür kılacak şekilde kurulur:
+  //   admin   → atama yok, zaten tüm şirketleri görür (rolü gereği sınırsız)
+  //   manager → ABC + XYZ  (DEF Lojistik'i GÖREMEZ — kapsam burada gözlenir)
+  //   staff   → ABC        (yalnızca tek şirket)
+  const staffCompanyAssignments = [
+    { staffId: itManager.id, companyId: company1.id },
+    { staffId: itManager.id, companyId: company2.id },
+    { staffId: itStaff.id, companyId: company1.id },
+  ];
+
+  for (const assignment of staffCompanyAssignments) {
+    await prisma.staffCompany.upsert({
+      where: { staffId_companyId: assignment },
+      update: {},
+      create: assignment,
+    });
+  }
+  console.log('Staff company assignments created');
 
   // Create locations
   const locations = [
@@ -301,9 +365,20 @@ async function main() {
   console.log('Canned responses created');
 
   console.log('\nSeed completed successfully!');
-  console.log('Admin login: admin@company.com / admin123');
-  console.log('Staff login: it@company.com / staff123');
-  console.log('Manager login: manager@company.com / staff123');
+
+  if (process.env.SEED_ADMIN_PASSWORD || process.env.SEED_STAFF_PASSWORD) {
+    console.log('Şifreler ortam değişkenlerinden alındı — burada yazdırılmıyor.');
+  } else {
+    console.log('Admin login:   admin@company.com   / admin123    (tüm şirketler)');
+    console.log('Manager login: manager@company.com / staff123    (ABC + XYZ)');
+    console.log('Staff login:   it@company.com      / staff123    (yalnızca ABC)');
+    console.log('\nBu şifreler yalnızca geliştirme içindir — production\'da kullanma.');
+  }
+
+  console.log(
+    '\nNot: admin dışındaki roller yalnızca atandıkları şirketleri görür.\n' +
+      'Manager DEF Lojistik\'i göremez — şirket kapsamı böyle gözlenir.',
+  );
 }
 
 main()

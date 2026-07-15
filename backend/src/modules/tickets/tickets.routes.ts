@@ -8,7 +8,7 @@ import { queueEmail, queueSms } from '../../jobs/queue.js';
 import { saveFile, isAllowedMimeType } from '../../services/storage.service.js';
 import { config } from '../../config/index.js';
 import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.js';
-import { getStaffCompanyScope, companyWhereClause } from '../../utils/staff-scope.js';
+import { getStaffCompanyScope, companyWhereClause , resolveCompanyFilter } from '../../utils/staff-scope.js';
 
 const ticketCreateSchema = z.object({
   companyId: z.string().cuid(),
@@ -273,14 +273,13 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
     const { skip, take } = paginate(query);
     const staffUser = request.staffUser!;
 
-    // Company scope restriction
+    // Company scope restriction — istemciden gelen companyId filtresi kapsamla
+    // kesiştirilir; doğrudan atanırsa kapsamı ezer ve yetki aşımına yol açar.
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
-    const scopeWhere = companyWhereClause(scopeCompanyIds);
 
-    const where: any = { ...scopeWhere };
+    const where: any = { ...resolveCompanyFilter(scopeCompanyIds, query.companyId) };
     if (query.status) where.status = query.status;
     if (query.priority) where.priority = query.priority;
-    if (query.companyId) where.companyId = query.companyId;
     if (query.categoryId) where.categoryId = query.categoryId;
     if (query.assignedToId) where.assignedToId = query.assignedToId;
     if (query.dateFrom || query.dateTo) {

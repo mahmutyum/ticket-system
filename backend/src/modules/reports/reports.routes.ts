@@ -1,7 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { paginationSchema, paginate, paginatedResponse } from '../../utils/pagination.js';
-import { getStaffCompanyScope, companyWhereClause } from '../../utils/staff-scope.js';
+import { getStaffCompanyScope, resolveCompanyFilter } from '../../utils/staff-scope.js';
 
 const reportFilterSchema = paginationSchema.extend({
   dateFrom: z.string().optional(),
@@ -24,14 +24,14 @@ type CommonFilters = {
 };
 
 function buildTicketWhere(filters: CommonFilters, scopeCompanyIds: string[] | null): any {
-  const where: any = {};
-  if (scopeCompanyIds) where.companyId = { in: scopeCompanyIds };
+  // companyId filtresi kapsamla kesiştirilir — doğrudan atanırsa kapsamı ezer
+  // ve ?companyId=<başka-şirket> ile yetki aşımına açık hale gelir.
+  const where: any = { ...resolveCompanyFilter(scopeCompanyIds, filters.companyId) };
   if (filters.dateFrom || filters.dateTo) {
     where.createdAt = {};
     if (filters.dateFrom) where.createdAt.gte = new Date(filters.dateFrom);
     if (filters.dateTo) where.createdAt.lte = new Date(filters.dateTo + 'T23:59:59Z');
   }
-  if (filters.companyId) where.companyId = filters.companyId;
   if (filters.categoryId) where.categoryId = filters.categoryId;
   if (filters.assignedToId) where.assignedToId = filters.assignedToId;
   if (filters.priority) where.priority = filters.priority;
@@ -58,15 +58,13 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     const staffUser = request.staffUser!;
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
-    const scopeWhere = companyWhereClause(scopeCompanyIds);
 
-    const where: any = { ...scopeWhere };
+    const where: any = { ...resolveCompanyFilter(scopeCompanyIds, query.companyId) };
     if (query.dateFrom || query.dateTo) {
       where.createdAt = {};
       if (query.dateFrom) where.createdAt.gte = new Date(query.dateFrom);
       if (query.dateTo) where.createdAt.lte = new Date(query.dateTo + 'T23:59:59Z');
     }
-    if (query.companyId) where.companyId = query.companyId;
     if (query.categoryId) where.categoryId = query.categoryId;
     if (query.assignedToId) where.assignedToId = query.assignedToId;
     if (query.status) where.status = query.status;

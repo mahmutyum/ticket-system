@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { createAuditLog } from '../../middleware/audit.js';
+import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
 
 const categoryCreateSchema = z.object({
   companyId: z.string().cuid().nullable().optional(),
@@ -39,6 +40,24 @@ export const categoryRoutes: FastifyPluginAsync = async (app) => {
       sortOrder: z.number().int(),
     })).parse(request.body);
 
+    // Sıralanan kategorilerin TAMAMI kapsam içinde olmalı — id listesi
+    // istemciden geliyor ve şirket bilgisi taşımıyor.
+    const staffUser = request.staffUser!;
+    const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
+    if (scope !== null) {
+      const targets = await app.prisma.category.findMany({
+        where: { id: { in: body.map((i) => i.id) } },
+        select: { id: true, companyId: true },
+      });
+      const denied = targets.some((c) => !isCompanyInScope(scope, c.companyId));
+      if (denied || targets.length !== body.length) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Yetkili olmadığınız kategorileri sıralayamazsınız',
+        });
+      }
+    }
+
     await app.prisma.$transaction(
       body.map(item =>
         app.prisma.category.update({
@@ -65,6 +84,14 @@ export const categoryRoutes: FastifyPluginAsync = async (app) => {
     preHandler: [app.requireRole('admin', 'it_manager')],
   }, async (request, reply) => {
     const body = categoryCreateSchema.parse(request.body);
+    const staffUser = request.staffUser!;
+
+    // companyId null ise "global" kategori (tüm şirketlere açık) — yalnızca admin.
+    const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
+    if (!isCompanyInScope(scope, body.companyId)) {
+      return reply.status(403).send({ success: false, error: 'Bu şirket için yetkiniz yok' });
+    }
+
     const category = await app.prisma.category.create({
       data: body,
     });
@@ -77,6 +104,25 @@ export const categoryRoutes: FastifyPluginAsync = async (app) => {
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = categoryUpdateSchema.parse(request.body);
+    const staffUser = request.staffUser!;
+
+    const existing = await app.prisma.category.findUnique({
+      where: { id },
+      select: { id: true, companyId: true },
+    });
+    if (!existing) return reply.status(404).send({ success: false, error: 'Kategori bulunamadı' });
+
+    const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
+    if (!isCompanyInScope(scope, existing.companyId)) {
+      return reply.status(403).send({ success: false, error: 'Bu kategori için yetkiniz yok' });
+    }
+    if (body.companyId !== undefined && !isCompanyInScope(scope, body.companyId)) {
+      return reply.status(403).send({
+        success: false,
+        error: 'Kategoriyi yetkili olmadığınız bir şirkete taşıyamazsınız',
+      });
+    }
+
     const category = await app.prisma.category.update({
       where: { id },
       data: body,
