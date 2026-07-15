@@ -15,68 +15,51 @@ Durum: 2026-07-15 itibarıyla.
 | Kurulum / deploy | 🟢 Docker Compose ile tek komut; Coolify + NPM için belgelenmiş |
 | Veritabanı şema yönetimi | 🟢 Versiyonlanmış migration'lar |
 | Dokümantasyon | 🟢 Kurulum, kullanım, mimari |
-| **Test** | 🔴 **Neredeyse yok — 3 test, yalnızca crypto util** |
+| **Test** | 🟡 Kritik yollar korunuyor (kapsam + crypto, 29 test); route/worker kapsaması yok |
 | **CI** | 🔴 **Yok** |
 | **Lint / format** | 🔴 **Yok** |
 | API dokümantasyonu | 🟡 Endpoint listesi var, request/response gövdeleri yok |
-| Güvenlik | 🟡 Temeller sağlam, [bilinen sınırlar](../SECURITY.md) var |
+| Güvenlik | 🟡 Yetkilendirme sertleştirildi, [bilinen sınırlar](../SECURITY.md) sürüyor |
 
 ---
 
 ## Öncelik 1 — Güvenlik
 
-### 1.1 Şirket SMTP şifrelerini şifrele
+### 1.1 SSE token'ı query parametresinde
 
-`CompanySmtp.pass` düz metin saklanıyor; şemadaki `// encrypted in production` yorumu
-gerçeği yansıtmıyor (`companies.routes.ts` `body.pass`'i ham yazıyor).
+`EventSource` özel header gönderemediği için staff canlı bildirim akışı JWT'yi query
+parametresinde alır ve token proxy log'larına düşer. Access token'lar 15 dk ömürlü olduğu
+için etki sınırlı. Kalıcı çözüm: kısa ömürlü tek kullanımlık SSE bileti üretmek.
 
-**Yapılacak:** `utils/crypto.ts` zaten var ve AES-256-GCM sunuyor — şifre kasası için
-kullanılıyor. Aynı `encrypt`/`decrypt` fonksiyonlarını `CompanySmtp.pass` için de kullan.
-Mevcut düz metin kayıtları için bir migration script'i gerekir. Şema yorumu düzeltilmeli.
+### 1.2 `/docs` koşulsuz açık
 
-### 1.2 `it_staff` kapsamını fail-closed yap
-
-`utils/staff-scope.ts`: şirket ataması olmayan `it_staff` şu an **tüm** şirketleri görüyor.
-
-**Yapılacak:** Varsayılanı tersine çevir — atama yoksa **hiçbir şey** görmesin. Geriye dönük
-uyumluluk için mevcut atamasız hesapları tespit edip bilinçli olarak tüm şirketlere ata veya
-`admin`/`it_manager`'a yükselt. Bu değişiklik veri geçişi gerektirir, dikkatli planla.
-
-> Bu madde planlanan rol sistemi güncellemesiyle birlikte ele alınacak.
-
-### 1.3 Seed'i production'a karşı kilitle
-
-`prisma/seed.ts` `NODE_ENV` kontrolü yapmıyor ve `admin123` ile bir `admin` hesabı açıyor.
-
-**Yapılacak:** Başına `NODE_ENV === 'production'` ise hata verip çıkan bir guard ekle
-(`--force` bayrağıyla bilinçli olarak aşılabilsin).
-
-### 1.4 CSP'yi aç
-
-`app.ts` — `contentSecurityPolicy: false`. Vite build'inin ürettiği asset'lere uygun bir
-politika yazılmalı.
+Swagger UI tüm endpoint listesini gösterir. İç ağda kabul edilebilir; internete açık bir
+kurulumda proxy seviyesinde kapatılmalı ya da env bayrağına bağlanmalı.
 
 ---
 
 ## Öncelik 2 — Test altyapısı
 
-**Bugün:** `backend/tests/utils/crypto.test.ts` — 3 test. Başka hiçbir şey. Route'lar, auth,
-RBAC, şirket kapsamı, SLA hesabı ve worker'lar **tamamen test edilmemiş**. Frontend'de test
-runner bile yok.
+**Bugün:** 29 test, iki dosyada — `tests/utils/staff-scope.test.ts` (şirket kapsamı,
+fail-closed, filtre kesiştirme) ve `tests/utils/crypto.test.ts` (AES-256-GCM,
+`looksEncrypted`). `vitest.config.ts` ve `tsconfig.test.json` mevcut (`npm test`,
+`npm run typecheck:tests`).
 
-Ayrıca: `vitest.config.ts` yok ve `backend/tsconfig.json` `tests` dizinini `exclude`
-ediyor — yani test dosyaları `tsc` ile tip kontrolünden geçmiyor.
+Bunlar birim testleridir ve yalnızca **saf mantığı** korur. **Route seviyesinde hiçbir test
+yok**: `requireRole`'ün gerçekten engellediği, handler'lardaki kapsam kontrollerinin
+çağrıldığı, iç notların public uçtan sızmadığı otomatik olarak doğrulanmıyor. Frontend'de
+test runner yok.
 
 **Yapılacak (öncelik sırasıyla):**
 
-1. `vitest.config.ts` ekle; `tsconfig.json`'ın `exclude`'undan `tests`'i çıkar.
-2. **Auth ve RBAC testleri** — en yüksek değerli alan. `requireRole` gerçekten engelliyor mu,
-   `it_staff` kendi kapsamı dışını görebiliyor mu, refresh token iptali çalışıyor mu.
-3. **Public erişim testleri** — iç notlar public endpoint'ten sızıyor mu (regresyon riski
+1. **Route seviyesinde auth/RBAC testleri** — en yüksek değerli boşluk. `app.inject()` ile
+   Fastify'ı ayağa kaldırıp: it_manager kapsam dışı ticket'a erişebiliyor mu, kasa
+   `reveal`'i 403 veriyor mu, `PUT /staff/:id/companies` it_manager'a kapalı mı.
+2. **Public erişim testleri** — iç notlar public endpoint'ten sızıyor mu (regresyon riski
    yüksek), `accessToken` doğrulaması.
-4. **Ticket akışı** — oluşturma, durum geçişleri, ticket numarası üretiminde yarış durumu.
-5. **SLA hesabı** — kategori bazlı süre hesapları.
-6. Testcontainers veya compose ile gerçek Postgres/Redis'e karşı entegrasyon testleri.
+3. **Ticket akışı** — oluşturma, durum geçişleri, ticket numarası üretiminde yarış durumu.
+4. **SLA hesabı** — kategori bazlı süre hesapları.
+5. Testcontainers veya compose ile gerçek Postgres/Redis'e karşı entegrasyon testleri.
 
 ### Öncelik 3 — CI
 
@@ -115,16 +98,11 @@ seviyesinde hiçbir koruma yok.
 **Yapılacak:** Ticket durumu, öncelik ve staff rolü için Prisma enum'larına geç. Veri
 geçişi gerektirir.
 
-> Rol sistemi güncellemesi bu maddeyi de kapsayabilir.
+Ayrıca `config/constants.ts` rol/durum sabitlerini tanımlar ama **hiçbir yer import etmez** —
+her kontrol ham string literal. Enum'a geçerken bu da bağlanmalı; derleyici desteği
+olmadığı için rol değişiklikleri gereğinden riskli.
 
-### 5.3 Ticket ve görev öncelikleri tutarsız
-
-Ticket öncelikleri: `low`/`medium`/`high`/**`critical`**.
-Görev öncelikleri: `low`/`medium`/`high`/**`urgent`**.
-
-Aynı kavram, iki farklı sözcük. Kafa karıştırıcı; birleştirilmeli.
-
-### 5.4 Ölü konfigürasyon
+### 5.3 Ölü konfigürasyon
 
 `config/index.ts` `REDIS_PASSWORD`'ü zorunlu tutuyor ama backend kodu bunu **hiç okumuyor** —
 Redis kimlik doğrulaması `REDIS_URL` içinde taşınıyor. Değişken yine de gerekli, çünkü
@@ -134,7 +112,7 @@ zararsız ama okuyanı yanıltıyor.
 **Yapılacak:** Zod şemasından çıkar (compose'un kullanımı etkilenmez) veya neden orada
 olduğunu yorumla açıkla.
 
-### 5.5 `PGADMIN_PASSWORD` zayıf varsayılan
+### 5.4 `PGADMIN_PASSWORD` zayıf varsayılan
 
 `docker-compose.yml`: `${PGADMIN_PASSWORD:-changeme}`. Komşusu `DB_PASSWORD` ve
 `REDIS_PASSWORD` doğru şekilde `${VAR:?}` ile fail-fast yaparken bu sessizce `changeme`'e

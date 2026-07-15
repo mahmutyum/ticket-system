@@ -23,15 +23,32 @@ Sistemde iki tür kullanıcı var: **talep edenler** (şifresiz, kayıt yok) ve 
 | Dashboard, ticket yönetimi, takvim, görevler | — | ✅ | ✅ | ✅ |
 | Şirket / lokasyon / kategori / özel alan yönetimi | — | — | ✅ | ✅ |
 | Raporlar, şablonlar | — | — | ✅ | ✅ |
-| Personel yönetimi | — | — | — | ✅ |
-| Şifre kasası | — | — | — | ✅ |
+| Şifre kasası | — | — | ✅ | ✅ |
+| Personel yönetimi ve şirket atama | — | — | — | ✅ |
 
 Roller: `admin` (Sistem Yöneticisi), `it_manager` (IT Yöneticisi), `it_staff` (IT Personeli).
 
-> **Şirket kapsamı:** Staff kullanıcıları belirli şirketlere atanabilir; atandıklarında
-> yalnızca o şirketlerin ticket'larını görürler. **Hiçbir şirkete atanmamış bir `it_staff`
-> tüm şirketleri görür** — geriye dönük uyumluluk için bırakılmış bir davranış. Kısıt
-> istiyorsan personeli en az bir şirkete ata. Bkz. [SECURITY.md](../SECURITY.md).
+### Şirket kapsamı — en önemli kavram
+
+| Rol | Ne görür |
+|---|---|
+| `admin` | **Her şey.** Tüm şirketler, şirkete bağlı olmayan ("global") kayıtlar dahil. |
+| `it_manager` | **Yalnızca atandığı şirketler.** Şirkete özel yöneticidir. |
+| `it_staff` | **Yalnızca atandığı şirketler.** |
+
+Personel `Personel Yönetimi` ekranından şirketlere atanır. Bu yalnızca **`admin`**
+tarafından yapılabilir — şirket ataması bir yetki kararıdır.
+
+> ⚠️ **Kapsam fail-closed'dır:** Hiçbir şirkete atanmamış bir `it_manager` veya `it_staff`
+> **hiçbir şey göremez** — boş dashboard, boş ticket listesi. Bu bir hata değil, bilinçli
+> tercihtir: atama yapmayı unutursan hesap sınırsız erişim kazanmaz.
+>
+> **Yeni personel eklerken şirket atamasını unutma.** Kullanıcı "hiçbir şey görmüyorum"
+> diyorsa ilk bakılacak yer burasıdır.
+
+`it_manager` kendi şirketleri içinde şunları yapar: ticket yönetimi, lokasyon/kategori/özel
+alan tanımları, raporlar ve şifre kasası. Yetkili olmadığı bir şirketin verisine hiçbir
+yoldan erişemez — kayıtları o şirkete taşıyamaz, kendine şirket atayamaz.
 
 ---
 
@@ -122,10 +139,12 @@ Ticket'tan bağımsız iç görevler. Birden fazla kişiye atanabilir, yorumlana
 verilebilir.
 
 Görev durumları: `open`, `in_progress`, `done`, `cancelled`.
-Görev öncelikleri: `low`, `medium`, `high`, `urgent`.
+Görev öncelikleri: `low`, `medium`, `high`, `critical` — **ticket öncelikleriyle aynıdır**.
 
-> Görev öncelikleri ticket önceliklerinden **farklıdır**: ticket'ta `critical` varken
-> görevde `urgent` kullanılır.
+Liste ekranında görevler atanana, önceliğe, duruma ve metne göre filtrelenebilir; bitiş
+tarihi, öncelik, oluşturma veya başlığa göre sıralanabilir. Üstteki sayaç kutucukları
+tıklanabilir filtre kısayollarıdır (ör. "Süresi Geçen"). Durum, listeden doğrudan
+değiştirilebilir.
 
 ---
 
@@ -170,7 +189,14 @@ audit log'a yazılır.
 
 ## Şifre kasası
 
-`/staff/passwords` — **yalnızca `admin`**.
+`/staff/passwords` — **`admin` ve `it_manager`**.
+
+- **`admin`** tüm kayıtları görür.
+- **`it_manager`** yalnızca **atandığı şirketlerin** kayıtlarını görür ve yalnızca o
+  şirketler için yeni kayıt ekleyebilir.
+- **Şirkete bağlı olmayan ("global") kayıtlar yalnızca `admin`'e görünür.** Global kayıtlar
+  (domain admin, root şifreleri gibi) çapraz şirket sırları olma eğilimindedir; bu yüzden
+  `it_manager` bunları ne görebilir ne oluşturabilir.
 
 Kurumsal şifreleri (sunucu, lisans, servis hesapları) saklamak için. Hash'lenmez, çünkü
 şifrelerin tekrar görüntülenebilmesi gerekir; bunun yerine **AES-256-GCM** ile şifrelenir.

@@ -26,30 +26,19 @@ varsayıma dayanır ve sistemi doğrudan internete açarsan **geçerliliğini yi
 
 Bunlar bilinen ve kabul edilmiş sınırlardır. Kurmadan önce oku.
 
-### Şirket SMTP şifreleri düz metin saklanıyor
+### Eski kurulumlarda SMTP şifreleri düz metin kalmış olabilir
 
-`CompanySmtp.pass` veritabanında **şifrelenmeden** tutulur. Şema dosyasındaki
-`// encrypted in production` yorumu **doğru değildir** — kod bu şifrelemeyi hiçbir yerde
-yapmaz. Okuma yolunda panelde maskelenir, ama veritabanına erişen herkes şifreleri düz
-görür.
+`CompanySmtp.pass` artık AES-256-GCM ile şifrelenir. Ancak şifreleme sonradan eklendi:
+**bu sürümden önce kaydedilmiş şirket SMTP şifreleri veritabanında düz metin durur.**
+Okuma yolu bunları formatından tanıyıp çalışmaya devam eder ve log'a uyarı basar.
 
-**Etkisi:** DB yedeğine veya `pgadmin`/`psql` erişimine sahip biri tüm şirket SMTP
-kimlik bilgilerini okuyabilir.
+**Yapman gereken (tek seferlik):**
 
-**Geçici önlem:** Veritabanı erişimini kısıtla, yedekleri şifrele. Şirket bazlı SMTP yerine
-global SMTP kullanmayı değerlendir.
+```bash
+docker compose exec backend npm run db:encrypt-smtp
+```
 
-Kalıcı çözüm için: `docs/yol-haritasi.md`.
-
-### `it_staff` şirket kapsamı fail-open
-
-`backend/src/utils/staff-scope.ts` — **hiçbir şirkete atanmamış** bir `it_staff`
-kullanıcısı **tüm şirketlerin** ticket'larını görür. Bu, geriye dönük uyumluluk için
-bilinçli bırakılmış bir varsayılandır, ama güvenli tarafa değil **açık tarafa** düşer:
-yeni bir personel eklerken şirket ataması yapmayı unutursan, kısıtlı olmasını beklediğin
-hesap sınırsız erişime sahip olur.
-
-**Geçici önlem:** Her `it_staff` hesabına en az bir şirket ata.
+Idempotent'tir, tekrar çalıştırılabilir. Öncesinde veritabanı yedeği al.
 
 ### SSE token'ı query parametresinde
 
@@ -63,20 +52,17 @@ biri kısa süreli oturum ele geçirebilir.
 
 **Geçici önlem:** Proxy log'larına erişimi kısıtla, log rotasyonunu ve saklama süresini sıkı tut.
 
-### CSP kapalı
+### Seed demo şifreleri
 
-`backend/src/app.ts` — helmet kayıtlı ama `contentSecurityPolicy: false`. XSS'e karşı
-derinlemesine savunma katmanı yok.
+`backend/prisma/seed.ts` geliştirme ortamında `admin@company.com` / `admin123` hesabını
+`admin` rolüyle oluşturur (ayrıca `staff123` ile iki hesap daha).
 
-### Seed varsayılan şifreleri
+Seed artık production'a karşı çalışmayı **reddeder**: `NODE_ENV=production` ise hata verip
+çıkar. Bilinçli olarak gerekiyorsa `--force` gerekir ve o durumda şifreler
+`SEED_ADMIN_PASSWORD` / `SEED_STAFF_PASSWORD` ortam değişkenlerinden gelmek zorundadır
+(en az 12 karakter) — demo şifreleri kullanılamaz.
 
-`backend/prisma/seed.ts`, `admin@company.com` / `admin123` hesabını **`admin` rolüyle**
-oluşturur (ayrıca `staff123` ile iki hesap daha) ve üçünü de stdout'a yazar. Seed
-`NODE_ENV` kontrolü yapmaz — production veritabanına karşı çalıştırılmasını **hiçbir şey
-engellemez**.
-
-**Önlem:** `prisma/seed.ts`'i asla production'a karşı çalıştırma. Çalıştırdıysan üç şifreyi
-de derhal değiştir.
+**Yine de:** Bu sürümden önce production'a seed çalıştırdıysan üç şifreyi de derhal değiştir.
 
 ### `/docs` endpoint'i açık
 
@@ -93,6 +79,22 @@ Bunlar bilinçli tercihlerdir, bozma:
 - **Fail-closed config:** `backend/src/config/index.ts` eksik/geçersiz env'de fallback'e
   düşmez, `process.exit(1)` yapar. Kodda hiçbir yerde hardcoded secret veya
   `process.env.X || 'default'` deseni yoktur.
+- **Fail-closed şirket kapsamı:** `admin` dışındaki roller yalnızca `StaffCompany` ile
+  atandıkları şirketleri görür; atama yoksa **hiçbir şey**. Kapsam mantığı
+  `utils/staff-scope.ts`'te tek merkezdedir ve istemciden gelen `companyId` filtresi
+  daima `resolveCompanyFilter` ile **kesiştirilir** — asla üzerine yazılmaz. Bu deseni
+  bozma: `where.companyId = query.companyId` tek parametrelik bir yetki aşımıdır.
+- **Şirket ataması yalnızca `admin`:** `PUT /staff/:id/companies` bir yetki kararıdır.
+  `it_manager`'a açılırsa kendine tüm şirketleri atayıp kapsamı anlamsız kılabilir
+  (kapsam her istekte DB'den okunur, token yenilemeye gerek yoktur).
+- **Global kayıt politikası:** `companyId = null` olan kayıtlar (`CredentialEntry`,
+  `Category`, `CustomField`) yalnızca `admin`'e açıktır. Bu `isCompanyInScope` içinde
+  **açıkça** uygulanır — Postgres'in `IN (...)` semantiği NULL'ları zaten dışlar ama bu
+  tesadüfi bir korumadır, ona güvenme.
+- **CSP:** SPA'yı frontend nginx servis eder ve `script-src 'self'` uygular —
+  `unsafe-inline`/`eval` **yok** (Vite build'i inline script üretmez). `/uploads`
+  `default-src 'none'; sandbox` ile servis edilir: yüklenen dosya origin içinde kod
+  çalıştıramaz.
 - **Refresh token gerçekten iptal edilir:** Redis'te `refresh:<staffId>` altında tutulur ve
   yenilemede karşılaştırılır — çıkış yapmak oturumu sunucu tarafında sonlandırır.
 - **Access token belleğe alınır:** Frontend Zustand store'u `partialize` ile yalnızca `user`
@@ -118,5 +120,7 @@ Bunlar bilinçli tercihlerdir, bozma:
 - [ ] `APP_URL` yalnızca gerçek FQDN'lerini içeriyor (CORS whitelist'i bu listedir)
 - [ ] Sistem VPN/iç ağ arkasında veya proxy seviyesinde erişim kontrolü var
 - [ ] Postgres/Redis host'a expose **edilmiyor** (`docker-compose.local.yml` production'da kullanılmıyor)
-- [ ] Her `it_staff` hesabına en az bir şirket atandı
+- [ ] Her `it_manager` ve `it_staff` hesabına en az bir şirket atandı — **atama yoksa
+      kullanıcı hiçbir şey göremez** (fail-closed)
+- [ ] Eski kurulumdan güncelliyorsan `npm run db:encrypt-smtp` çalıştırıldı
 - [ ] Veritabanı yedeği alınıyor ve yedekler şifreleniyor

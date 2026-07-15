@@ -28,8 +28,9 @@ Bu proje henüz CI'sız. **Kontroller senin sorumluluğunda:**
 ```bash
 # Backend
 cd backend
-npx tsc --noEmit          # tip kontrolü
-npx vitest run            # testler
+npm run typecheck         # kaynak tip kontrolü
+npm run typecheck:tests   # test dosyaları (ayrı tsconfig — ana build rootDir:src)
+npm test                  # testler
 
 # Frontend
 cd ../frontend
@@ -106,12 +107,12 @@ Güvenlik açığı bulduysan **issue açma** — [SECURITY.md](SECURITY.md)'dek
 
 [Yol haritasındaki](docs/yol-haritasi.md) yüksek değerli ve nispeten bağımsız işler:
 
-- **Test altyapısı** — `vitest.config.ts` eklemek ve auth/RBAC testleri yazmak en yüksek
-  etkili katkı. Şu an 3 test var, hepsi crypto util'inde.
+- **Route seviyesinde auth/RBAC testleri** — en yüksek etkili katkı. Birim testleri var
+  (kapsam + crypto, 29 test) ama endpoint'lerin gerçekten engellediğini doğrulayan hiçbir
+  test yok. `app.inject()` ile başlanabilir.
 - **CI** — `tsc --noEmit` + `vitest run` + `docker compose build` çalıştıran bir GitHub
   Actions workflow'u.
 - **ESLint + Prettier** kurulumu.
 - **Zod → fastify şema entegrasyonu** (`fastify-type-provider-zod`) — şemalar zaten yazılı;
   bağlanınca `/docs` tam OpenAPI dokümanına dönüşür.
-- **Ticket/görev önceliği tutarsızlığı** (`critical` vs `urgent`).
 - **Ekran görüntüleri** — README'yi ciddi biçimde iyileştirir.

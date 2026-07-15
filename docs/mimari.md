@@ -80,9 +80,15 @@ Container'da bundan önce `prisma migrate deploy` çalışır (bkz. `backend/Doc
 ### `app.ts` sırası
 
 `trustProxy: true` → rate limit (global 100/dk) → CORS (`config.APP_ORIGINS`) → helmet
-(**CSP kapalı**) → cookie (`JWT_SECRET` ile imzalı) → multipart → prisma/redis/auth
+(CSP dahil) → cookie (`JWT_SECRET` ile imzalı) → multipart → prisma/redis/auth
 plugin'leri → static `/uploads/` → **swagger `/docs`** → `/health` → modül route'ları →
 global error handler (Türkçe; production'da 500 detaylarını gizler).
+
+**CSP hakkında:** Backend'in CSP'si yalnızca kendi yanıtlarını etkiler. SPA'yı frontend
+container'ındaki nginx servis ettiği için arayüzün asıl politikası `frontend/nginx.conf`
+içindedir (`script-src 'self'`, unsafe-inline/eval yok — Vite build'i inline script
+üretmez). Backend'de politika Swagger UI'ın çalışabileceği en sıkı hâldir; asıl kazanç
+`/uploads`'a uygulanan `default-src 'none'; sandbox`'tır.
 
 ### Modüller
 
@@ -101,7 +107,7 @@ global error handler (Türkçe; production'da 500 detaylarını gizler).
 | `/templates` | E-posta / SMS şablonları, hazır yanıtlar |
 | `/reports` | Ticket, personel performansı, kategori, SLA trendi, CSV export |
 | `/tasks` | Görev CRUD + yorumlar |
-| `/credentials` | Şifre kasası — **tamamı `admin`** |
+| `/credentials` | Şifre kasası — `admin` + `it_manager` (şirket kapsamlı; global kayıtlar yalnızca admin) |
 
 ### API sözleşmesi
 
@@ -134,11 +140,38 @@ Link'i olan erişir.
 **Decorator'lar** (`plugins/auth.ts`): `authenticate`, `authenticateOptional`,
 `requireRole(...roles)`.
 
-**Roller:** `admin`, `it_manager`, `it_staff`.
+**Roller:** `admin`, `it_manager`, `it_staff`. Hiyerarşi yoktur — `requireRole` düz liste
+kontrolü yapar, admin'e örtük geçiş hakkı tanımaz.
 
-**Şirket kapsamı** (`utils/staff-scope.ts`): Staff belirli şirketlere atanabilir
-(`StaffCompany` M:N). ⚠️ Atanmamış `it_staff` **tüm** şirketleri görür — fail-open
-varsayılan, bkz. [SECURITY.md](../SECURITY.md).
+**Şirket kapsamı** (`utils/staff-scope.ts`) — çok şirketli izolasyonun tek dayanağı:
+
+| Rol | `getStaffCompanyScope` döner |
+|---|---|
+| `admin` | `null` — kısıt yok |
+| `it_manager`, `it_staff` | atandığı şirket id'leri (`StaffCompany` M:N) |
+| atama yok | **boş dizi** — hiçbir şey görmez (fail-closed) |
+
+Kapsam **JWT'de taşınmaz**, her istekte DB'den okunur — atama değişiklikleri anında etkili
+olur, token yenilemeye gerek kalmaz.
+
+Dört yardımcı vardır ve rol kontrolü bu dosyanın dışına **dağıtılmamalıdır**:
+
+- `getStaffCompanyScope(prisma, staffId, role)` — kapsamı çözer.
+- `companyWhereClause(scope)` — `where` fragment'i (`{}` veya `{ companyId: { in } }`).
+- `isCompanyInScope(scope, companyId)` — tekil kontrol. **`companyId = null` ("global"
+  kayıt) yalnızca admin'e açıktır** ve bu açıkça uygulanır; Postgres'in `IN` semantiğinin
+  NULL'ları dışlamasına güvenilmez.
+- `resolveCompanyFilter(scope, requested)` — istemciden gelen `companyId` filtresini
+  kapsamla **kesiştirir**. Kapsam `where`'e yazılıp sonra parametreyle üzerine yazılırsa
+  tek parametrelik yetki aşımı doğar (`?companyId=<başka-şirket>`); bu yüzden istemci
+  filtresi daima buradan geçmelidir.
+
+`Task`'ta `companyId` yoktur — kapsam `location → company` üzerinden iki adımda kurulur ve
+`locationId` null olabilir; atanan/oluşturan erişimi ayrıca korunur ki kişi kendi
+görevinden kilitlenmesin.
+
+⚠️ **Şirket ataması (`PUT /staff/:id/companies`) yalnızca `admin`'dir.** Bu bir yetki
+kararıdır: `it_manager`'a açılırsa kendine tüm şirketleri atayıp kapsamı anlamsız kılar.
 
 ---
 
