@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit2, MapPin, Building2, Mail, Trash2, CheckCircle2, XCircle, Settings } from 'lucide-react';
+import { Plus, Edit2, MapPin, Building2, Mail, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
 

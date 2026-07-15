@@ -48,4 +48,6 @@ async function start() {
   }
 }
 
-start();
+// start() kendi try/catch'i içinde process.exit(1) yapar; void ile "bilinçli
+// olarak beklemiyorum" işaretlenir — aksi halde floating promise uyarısı verir.
+void start();

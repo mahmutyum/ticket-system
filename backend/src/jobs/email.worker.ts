@@ -63,23 +63,28 @@ const emailWorker = new Worker<EmailJobData>(
   },
 );
 
-emailWorker.on('failed', async (job, err) => {
-  console.error(`[Email Worker] Job ${job?.id} failed:`, err.message);
+// EventEmitter async handler'ın döndürdüğü promise'i beklemez ve reddini
+// yakalamaz — reddederse unhandled rejection olur. Bu yüzden gövde bir IIFE'ye
+// alınıp catch'leniyor.
+emailWorker.on('failed', (job, err) => {
+  void (async () => {
+    console.error(`[Email Worker] Job ${job?.id} failed:`, err.message);
 
-  if (job && job.attemptsMade >= (job.opts.attempts || 3)) {
-    await prisma.notification.create({
-      data: {
-        ticketId: job.data.ticketId || null,
-        type: 'email',
-        channel: job.data.templateSlug,
-        recipient: job.data.to,
-        subject: job.data.templateSlug,
-        body: '',
-        status: 'failed',
-        errorMsg: err.message,
-      },
-    });
-  }
+    if (job && job.attemptsMade >= (job.opts.attempts || 3)) {
+      await prisma.notification.create({
+        data: {
+          ticketId: job.data.ticketId || null,
+          type: 'email',
+          channel: job.data.templateSlug,
+          recipient: job.data.to,
+          subject: job.data.templateSlug,
+          body: '',
+          status: 'failed',
+          errorMsg: err.message,
+        },
+      });
+    }
+  })().catch((e: unknown) => console.error('[Email Worker] failed-handler hatası:', e));
 });
 
 emailWorker.on('completed', (job) => {

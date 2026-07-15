@@ -44,22 +44,25 @@ const smsWorker = new Worker<SmsJobData>(
   },
 );
 
-smsWorker.on('failed', async (job, err) => {
-  console.error(`[SMS Worker] Job ${job?.id} failed:`, err.message);
+// EventEmitter async handler'ın reddini yakalamaz — bkz. email.worker.ts.
+smsWorker.on('failed', (job, err) => {
+  void (async () => {
+    console.error(`[SMS Worker] Job ${job?.id} failed:`, err.message);
 
-  if (job && job.attemptsMade >= (job.opts.attempts || 3)) {
-    await prisma.notification.create({
-      data: {
-        ticketId: job.data.ticketId || null,
-        type: 'sms',
-        channel: job.data.templateSlug,
-        recipient: job.data.to,
-        body: '',
-        status: 'failed',
-        errorMsg: err.message,
-      },
-    });
-  }
+    if (job && job.attemptsMade >= (job.opts.attempts || 3)) {
+      await prisma.notification.create({
+        data: {
+          ticketId: job.data.ticketId || null,
+          type: 'sms',
+          channel: job.data.templateSlug,
+          recipient: job.data.to,
+          body: '',
+          status: 'failed',
+          errorMsg: err.message,
+        },
+      });
+    }
+  })().catch((e: unknown) => console.error('[SMS Worker] failed-handler hatası:', e));
 });
 
 export default smsWorker;

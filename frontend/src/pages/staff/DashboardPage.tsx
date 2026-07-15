@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
-  AlertCircle, Clock, CheckCircle2, TrendingUp, User, Filter, X,
+  AlertCircle, Clock, TrendingUp, User, Filter, X,
 } from 'lucide-react';
 import api from '../../api/client';
 import { STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS } from '../../types';

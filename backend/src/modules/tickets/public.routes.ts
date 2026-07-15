@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { broadcastToStaff } from '../../services/sse.service.js';
 import { queueEmail } from '../../jobs/queue.js';
 import { saveFile, isAllowedMimeType } from '../../services/storage.service.js';
-import { config } from '../../config/index.js';
 
 export const publicRoutes: FastifyPluginAsync = async (app) => {
   // Public: View ticket by access token

@@ -167,8 +167,8 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
     const company = await app.prisma.company.create({
       data: {
         ...rest,
-        allowedDomains: allowedDomains as Prisma.InputJsonValue,
-        portalDomains: portalDomains as Prisma.InputJsonValue,
+        allowedDomains: allowedDomains,
+        portalDomains: portalDomains,
         ...(settings !== undefined ? { settings: settings as Prisma.InputJsonValue } : {}),
       },
     });
@@ -187,8 +187,8 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
       where: { id },
       data: {
         ...rest,
-        ...(allowedDomains !== undefined ? { allowedDomains: allowedDomains as Prisma.InputJsonValue } : {}),
-        ...(portalDomains !== undefined ? { portalDomains: portalDomains as Prisma.InputJsonValue } : {}),
+        ...(allowedDomains !== undefined ? { allowedDomains: allowedDomains } : {}),
+        ...(portalDomains !== undefined ? { portalDomains: portalDomains } : {}),
         ...(settings !== undefined ? { settings: settings as Prisma.InputJsonValue } : {}),
       },
     });

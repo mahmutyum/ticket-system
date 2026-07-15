@@ -204,7 +204,7 @@ export default function TicketDetailPage() {
           <div className="card">
             <h3 className="text-sm font-semibold text-gray-500 mb-4">Zaman Çizelgesi</h3>
             <div className="space-y-4">
-              {timeline.map((item: any, i: number) => {
+              {timeline.map((item: any, _i: number) => {
                 if (item._type === 'note') {
                   return (
                     <div key={`note-${item.id}`} className={`rounded-lg p-4 ${item.isInternal ? 'bg-yellow-50 border border-yellow-200' : 'bg-primary-50 border border-primary-200'}`}>

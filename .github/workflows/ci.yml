@@ -1,0 +1,143 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Aynı dal için eski koşuları iptal et — art arda push'ta kuyruk birikmesin.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend — tip kontrolü, lint, test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+
+      # Prisma client üretilmeden tip kontrolü yapılamaz: enum'lar ve model
+      # tipleri @prisma/client'tan gelir.
+      - name: Prisma client üret
+        run: npx prisma generate
+
+      - name: Tip kontrolü (kaynak)
+        run: npm run typecheck
+
+      # Testler ana tsconfig'in dışındadır (rootDir: src) — ayrı kontrol edilir.
+      - name: Tip kontrolü (testler)
+        run: npm run typecheck:tests
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Testler
+        run: npm test
+
+  frontend:
+    name: Frontend — tip kontrolü, lint, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: Tip kontrolü
+        run: npx tsc -b
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npx vite build
+
+  migrations:
+    name: Migration'lar — gerçek Postgres'e uygulanıyor mu
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    # Migration'lar elle yazılmış SQL içeriyor (enum dönüşümleri dahil).
+    # Sıfırdan bir Postgres'e uygulanabildiklerini doğrulamak, yeni kurulumların
+    # çalışacağının tek gerçek kanıtıdır.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ticketdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:ci@localhost:5432/ticketdb
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+
+      - name: migrate deploy (sıfırdan kurulum)
+        run: npx prisma migrate deploy
+
+      # Şema ile veritabanı birebir örtüşmeli. Örtüşmüyorsa birileri şemayı
+      # değiştirip migration üretmeyi unutmuştur — CI burada yakalar.
+      - name: Şema veritabanıyla örtüşüyor mu
+        run: |
+          DIFF=$(npx prisma migrate diff \
+            --from-url "$DATABASE_URL" \
+            --to-schema-datamodel prisma/schema.prisma \
+            --script)
+          echo "$DIFF"
+          if ! echo "$DIFF" | grep -q "This is an empty migration"; then
+            echo "::error::Şema ile migration'lar örtüşmüyor — eksik migration var."
+            exit 1
+          fi
+
+      - name: Seed çalışıyor mu
+        env:
+          CREDENTIALS_ENC_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
+        run: npx tsx prisma/seed.ts
+
+  docker:
+    name: Docker imajları derleniyor mu
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Backend imajı
+        run: docker build -f backend/Dockerfile backend
+      - name: Frontend imajı
+        run: docker build -f frontend/Dockerfile frontend
