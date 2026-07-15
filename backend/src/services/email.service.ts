@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { decrypt, looksEncrypted } from '../utils/crypto.js';
 import type { Transporter } from 'nodemailer';
 import { config } from '../config/index.js';
 
@@ -35,9 +36,34 @@ export interface SmtpConfig {
   port: number;
   secure: boolean;
   user: string;
+  /**
+   * Şifrenin biçimi çağrı yerine göre değişir:
+   *  - `getCompanyTransporter`: veritabanından gelir, ŞİFRELİ (eski kayıtlar düz metin).
+   *  - `testSmtpConnection`:    admin formundan gelir, DÜZ METİN (henüz kaydedilmemiş).
+   */
   pass: string;
   fromName: string;
   fromEmail: string;
+}
+
+/**
+ * `CompanySmtp.pass` alanını kullanılabilir düz metne çevirir.
+ *
+ * Şifreleme bu alana sonradan eklendi: veritabanında hem yeni (şifreli) hem eski
+ * (düz metin) kayıtlar bulunabilir. Formatına göre ayrılır — eski kayıtlar
+ * olduğu gibi kullanılır ki e-posta gönderimi bozulmasın.
+ *
+ * Eski kayıtları toplu şifrelemek için: npm run db:encrypt-smtp
+ */
+function resolveSmtpPass(pass: string, companyId: string): string {
+  if (!looksEncrypted(pass)) {
+    console.warn(
+      `[email] Şirket ${companyId} SMTP şifresi veritabanında DÜZ METİN. ` +
+        'Şifrelemek için: npm run db:encrypt-smtp',
+    );
+    return pass;
+  }
+  return decrypt(pass);
 }
 
 /**
@@ -56,7 +82,7 @@ function getCompanyTransporter(companyId: string, smtp: SmtpConfig): { transport
     secure: smtp.secure,
     auth: {
       user: smtp.user,
-      pass: smtp.pass,
+      pass: resolveSmtpPass(smtp.pass, companyId),
     },
   });
 
@@ -135,6 +161,9 @@ export function renderTemplate(template: string, variables: Record<string, strin
 
 /**
  * Test an SMTP connection (used from admin UI)
+ *
+ * `smtp.pass` burada DÜZ METİN beklenir — admin formundan gelir, henüz
+ * veritabanına yazılmamıştır. Çözme yapılmaz.
  */
 export async function testSmtpConnection(smtp: SmtpConfig): Promise<{ success: boolean; error?: string }> {
   try {

@@ -20,6 +20,32 @@ export function encrypt(plain: string): string {
   return [iv.toString('base64'), tag.toString('base64'), ciphertext.toString('base64')].join(':');
 }
 
+/**
+ * Bir değerin `encrypt()` çıktısı formatında olup olmadığını söyler.
+ *
+ * Şifrelemenin sonradan eklendiği alanlarda (ör. `CompanySmtp.pass`) veritabanında
+ * hem eski düz metin hem yeni şifreli kayıtlar bulunabilir; bu ayrım gerekir.
+ *
+ * Format kontrolü yapısaldır, tahmin değil: tam 3 parça, IV 12 byte, authTag 16 byte
+ * (AES-256-GCM sabitleri). İçinde ':' geçen bir düz metin şifrenin kazara bu testi
+ * geçme olasılığı yok denecek kadar azdır.
+ */
+export function looksEncrypted(value: string): boolean {
+  const parts = value.split(':');
+  if (parts.length !== 3) return false;
+  const [ivB64, tagB64, dataB64] = parts;
+  if (!ivB64 || !tagB64 || !dataB64) return false;
+  try {
+    const iv = Buffer.from(ivB64, 'base64');
+    const tag = Buffer.from(tagB64, 'base64');
+    // base64 çözümü sessizce kısalmasın diye tur-tekrar kontrolü
+    if (iv.toString('base64') !== ivB64 || tag.toString('base64') !== tagB64) return false;
+    return iv.length === 12 && tag.length === 16;
+  } catch {
+    return false;
+  }
+}
+
 /** "iv:authTag:ciphertext" formatındaki payload'ı çözer. Bozuksa hata fırlatır. */
 export function decrypt(payload: string): string {
   const [ivB64, tagB64, dataB64] = payload.split(':');

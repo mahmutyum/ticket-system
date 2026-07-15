@@ -12,7 +12,10 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "typecheck:tests": "tsc -p tsconfig.test.json",
+    "db:encrypt-smtp": "tsx prisma/scripts/encrypt-smtp-passwords.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^10.0.1",

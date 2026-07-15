@@ -63,8 +63,27 @@ export async function buildApp() {
     credentials: true,
   });
 
+  // Backend'in CSP'si YALNIZCA kendi yanıtlarını etkiler (/api/*, /uploads/*, /docs).
+  // SPA'yı frontend container'ındaki nginx servis eder — kullanıcı arayüzünün asıl
+  // CSP'si orada tanımlıdır (frontend/nginx.conf).
+  //
+  // Buradaki politika Swagger UI'ın çalışabileceği en sıkı hâldir: swagger-ui
+  // kendi başlatma script'ini ve stillerini satır içi enjekte eder, bu yüzden
+  // 'unsafe-inline' zorunludur. JSON API yanıtları için CSP zaten işlevsizdir;
+  // asıl kazanç aşağıda /uploads'a uygulanan çok daha sıkı politikadır.
   await app.register(helmet, {
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'self'"],
+        baseUri: ["'self'"],
+      },
+    },
   });
 
   await app.register(cookie, {
@@ -83,10 +102,20 @@ export async function buildApp() {
   await app.register(authPlugin);
 
   // Static file serving (uploads)
+  //
+  // Yüklenen dosyalar kullanıcı içeriğidir ve uygulamayla AYNI origin'den servis
+  // edilir. MIME allowlist (storage.service.ts) SVG ve HTML'i dışlar, ama burada
+  // ayrıca en sıkı CSP uygulanır: hiçbir kaynak yüklenemez ve sandbox script
+  // çalıştırmayı engeller. Böylece allowlist bir gün gevşetilse bile yüklenen
+  // bir dosya origin içinde kod çalıştıramaz.
   await app.register(fastifyStatic, {
     root: config.UPLOAD_DIR,
     prefix: '/uploads/',
     decorateReply: false,
+    setHeaders: (res) => {
+      res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+    },
   });
 
   // API dokümantasyonu — /docs
