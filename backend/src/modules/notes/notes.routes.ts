@@ -1,12 +1,13 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { requiredText, LIMITS } from '../../utils/validation.js';
 import { queueEmail } from '../../jobs/queue.js';
 import { config } from '../../config/index.js';
 import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.js';
 import { getStaffCompanyScope } from '../../utils/staff-scope.js';
 
 const noteCreateSchema = z.object({
-  content: z.string().min(1),
+  content: requiredText({ ...LIMITS.noteContent, label: 'Not' }),
   isInternal: z.boolean().default(false),
 });
 
@@ -45,11 +46,17 @@ export const noteRoutes: FastifyPluginAsync = async (app) => {
     });
 
     // Add history entry
+    //
+    // İÇ notların METNİ history'ye YAZILMAZ. Yazılıyordu ve public ticket
+    // uç noktası history'yi döndürdüğü için `notes: { where: { isInternal: false } }`
+    // filtresi anlamsız hale geliyordu: link'i olan herkes her iç notun ilk 100
+    // karakterini okuyabiliyordu. History bir eylem kaydıdır; notun içeriği
+    // TicketNote'ta yaşar ve erişimi orada denetlenir.
     await app.prisma.ticketHistory.create({
       data: {
         ticketId,
         action: body.isInternal ? 'internal_note_added' : 'note_added',
-        newValue: body.content.substring(0, 100),
+        newValue: body.isInternal ? null : body.content.substring(0, 100),
         createdById: staffUser.id,
       },
     });
@@ -60,7 +67,7 @@ export const noteRoutes: FastifyPluginAsync = async (app) => {
       ticketNumber: ticket.ticketNumber,
       isInternal: body.isInternal,
       staffName: note.createdBy.fullName,
-    });
+    }, ticket.companyId);
 
     // If not internal, notify user and broadcast to public
     if (!body.isInternal) {

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { generateTicketNumber } from '../../utils/ticket-number.js';
 import { paginationSchema, paginate, paginatedResponse } from '../../utils/pagination.js';
+import { requiredText, optionalText, phoneSchema, emailSchema, LIMITS } from '../../utils/validation.js';
 import { TicketStatus, Priority } from '@prisma/client';
 import { queueEmail, queueSms } from '../../jobs/queue.js';
 import { saveFile, isAllowedMimeType } from '../../services/storage.service.js';
@@ -10,21 +11,38 @@ import { config } from '../../config/index.js';
 import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.js';
 import { getStaffCompanyScope, resolveCompanyFilter } from '../../utils/staff-scope.js';
 
+/**
+ * Ticket oluşturma — KİMLİK DOĞRULAMASI YOK, yalnızca rate limit var.
+ *
+ * Bu yüzden buradaki her alan hem kırpılır hem sınırlanır:
+ * - `min(1)` yeterli değildi: `"   "` ve `"\n"` geçiyordu, yani "zorunlu" alanlar
+ *   boşlukla doldurulabiliyordu. `trim()` önce gelir.
+ * - Üst sınır yoktu: `description` ve özel alan değerleri istek başına ~1 MB'a
+ *   (Fastify gövde limiti) kadar yazılabiliyor, DB tarafında `TEXT` hiçbir şey
+ *   zorlamıyordu.
+ */
 const ticketCreateSchema = z.object({
   companyId: z.string().cuid(),
   locationId: z.string().cuid(),
   categoryId: z.string().cuid(),
-  email: z.string().email(),
-  fullName: z.string().min(1),
-  phone: z.string().optional(),
-  department: z.string().optional(),
-  subject: z.string().min(1).max(200),
-  description: z.string().min(1),
+  email: emailSchema,
+  fullName: requiredText({ ...LIMITS.fullName, label: 'Ad soyad' }),
+  phone: phoneSchema,
+  department: optionalText({ ...LIMITS.shortLabel, label: 'Departman' }),
+  subject: requiredText({ ...LIMITS.ticketSubject, label: 'Konu' }),
+  description: requiredText({ ...LIMITS.ticketDescription, label: 'Açıklama' }),
   priority: z.nativeEnum(Priority).default(Priority.medium),
-  customFields: z.array(z.object({
-    fieldId: z.string().cuid(),
-    value: z.string(),
-  })).optional(),
+  customFields: z
+    .array(
+      z.object({
+        fieldId: z.string().cuid(),
+        value: z.string().trim().max(LIMITS.customFieldValue.max, 'Alan değeri çok uzun'),
+      }),
+    )
+    // Form alanı sayısı şirket başına tanımlı; makul bir üst sınır koymak
+    // binlerce sahte alanla istek şişirmeyi engeller.
+    .max(50, 'Çok fazla özel alan')
+    .optional(),
 });
 
 const ticketUpdateSchema = z.object({
@@ -246,7 +264,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       status: ticket.status,
       priority: body.priority,
       company: ticket.company.name,
-    });
+    }, ticket.companyId);
 
     reply.status(201).send({
       success: true,
@@ -296,8 +314,29 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
         where,
         skip,
         take,
-        orderBy: { [query.sortBy || 'createdAt']: query.sortOrder },
-        include: {
+        orderBy: { [query.sortBy]: query.sortOrder },
+        // AÇIK `select` — `include` kullanılırsa Ticket'ın TÜM skalerleri döner,
+        // `accessToken` dahil. O token public takip linkinin bearer sırrıdır,
+        // süresizdir ve iptal edilemez: listede dönerse listeleyebilen herkes her
+        // ticket için kalıcı bir public erişim anahtarı almış olur ve token
+        // tarayıcı cache'ine, proxy loglarına düşer.
+        select: {
+          id: true,
+          ticketNumber: true,
+          subject: true,
+          status: true,
+          priority: true,
+          createdByEmail: true,
+          createdAt: true,
+          updatedAt: true,
+          slaResponseDue: true,
+          slaResolveDue: true,
+          slaResponseMet: true,
+          slaResolveMet: true,
+          firstRespondedAt: true,
+          resolvedAt: true,
+          companyId: true,
+          assignedToId: true,
           company: { select: { name: true } },
           location: { select: { name: true } },
           category: { select: { name: true } },
@@ -439,7 +478,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       status: ticket.status,
       priority: ticket.priority,
       assignedTo: ticket.assignedTo?.fullName,
-    });
+    }, ticket.companyId);
     broadcastToTicket(currentTicket.accessToken, 'ticket_updated', {
       status: ticket.status,
       priority: ticket.priority,
@@ -506,7 +545,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const buffer = await file.toBuffer();
-    const saved = await saveFile(buffer, file.filename, id);
+    const saved = await saveFile(buffer, file.filename, id, file.mimetype);
 
     const attachment = await app.prisma.attachment.create({
       data: {

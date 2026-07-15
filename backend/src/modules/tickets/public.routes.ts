@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { broadcastToStaff } from '../../services/sse.service.js';
 import { queueEmail } from '../../jobs/queue.js';
 import { saveFile, isAllowedMimeType } from '../../services/storage.service.js';
+import { requiredText, emailSchema, LIMITS } from '../../utils/validation.js';
 
 export const publicRoutes: FastifyPluginAsync = async (app) => {
   // Public: View ticket by access token
@@ -22,7 +23,15 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
           include: { createdBy: { select: { fullName: true } } },
           orderBy: { createdAt: 'asc' },
         },
+        // İç not kayıtları public geçmişte GÖSTERİLMEZ. Yukarıdaki
+        // `notes: { where: { isInternal: false } }` filtresi tek başına yetmez:
+        // her not için history'ye de bir satır yazılır ve bu ilişki
+        // filtrelenmezse iç notların varlığı (ve eskiden metni) sızar.
+        //
+        // İkinci savunma katmanı notes.routes.ts'tedir: iç notların metni artık
+        // history'ye hiç yazılmıyor.
         history: {
+          where: { action: { not: 'internal_note_added' } },
           orderBy: { createdAt: 'asc' },
           select: {
             id: true,
@@ -61,8 +70,9 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
     config: { rateLimit: { max: 20, timeWindow: '10 minutes' } },
   }, async (request, reply) => {
     const { accessToken } = request.params as { accessToken: string };
+    // Kimliksiz uç — kırpma ve üst sınır zorunlu.
     const body = z.object({
-      content: z.string().min(1),
+      content: requiredText({ ...LIMITS.noteContent, label: 'Yanıt' }),
     }).parse(request.body);
 
     const ticket = await app.prisma.ticket.findUnique({
@@ -108,7 +118,7 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
       ticketNumber: ticket.ticketNumber,
       email: ticket.createdByEmail,
       content: body.content.substring(0, 100),
-    });
+    }, ticket.companyId);
 
     // Notify assigned staff via email
     if (ticket.assignedTo?.email) {
@@ -158,7 +168,7 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const buffer = await file.toBuffer();
-    const saved = await saveFile(buffer, file.filename, ticket.id);
+    const saved = await saveFile(buffer, file.filename, ticket.id, file.mimetype);
 
     const attachment = await app.prisma.attachment.create({
       data: {
@@ -179,8 +189,8 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
     config: { rateLimit: { max: 10, timeWindow: '5 minutes' } },
   }, async (request, reply) => {
     const parsed = z.object({
-      ticketNumber: z.string().min(1),
-      email: z.string().email(),
+      ticketNumber: z.string().trim().min(1).max(50),
+      email: emailSchema,
     }).safeParse(request.body);
 
     if (!parsed.success) {

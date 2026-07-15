@@ -6,6 +6,7 @@ import { config } from '../../config/index.js';
 import { broadcastToStaff } from '../../services/sse.service.js';
 import { createAuditLog } from '../../middleware/audit.js';
 import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
+import { requiredText, LIMITS } from '../../utils/validation.js';
 
 /**
  * Görev kapsamı — `Task`'ta `companyId` yoktur, şirkete `location → company`
@@ -31,8 +32,8 @@ function taskScopeWhere(scope: string[] | null, staffId: string): Record<string,
 }
 
 const taskCreateSchema = z.object({
-  title: z.string().min(1).max(300),
-  description: z.string().min(1),
+  title: requiredText({ ...LIMITS.taskTitle, label: 'Başlık' }),
+  description: requiredText({ ...LIMITS.taskDescription, label: 'Açıklama' }),
   priority: z.nativeEnum(Priority).default(Priority.medium),
   dueDate: z.string().datetime().optional().nullable(),
   assigneeIds: z.array(z.string().cuid()).min(1),
@@ -40,8 +41,8 @@ const taskCreateSchema = z.object({
 });
 
 const taskUpdateSchema = z.object({
-  title: z.string().min(1).max(300).optional(),
-  description: z.string().min(1).optional(),
+  title: requiredText({ ...LIMITS.taskTitle, label: 'Başlık' }).optional(),
+  description: requiredText({ ...LIMITS.taskDescription, label: 'Açıklama' }).optional(),
   priority: z.nativeEnum(Priority).optional(),
   status: z.nativeEnum(TaskStatus).optional(),
   dueDate: z.string().datetime().optional().nullable(),
@@ -50,7 +51,7 @@ const taskUpdateSchema = z.object({
 });
 
 const commentSchema = z.object({
-  content: z.string().min(1),
+  content: requiredText({ ...LIMITS.taskComment, label: 'Yorum' }),
 });
 
 const TASK_SELECT = {
@@ -210,11 +211,12 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
     });
 
     // SSE
+    // Task'ta companyId yok — şirket location üzerinden bulunur.
     broadcastToStaff('task_created', {
       taskId: task.id,
       title: task.title,
       assigneeIds: body.assigneeIds,
-    });
+    }, task.location?.company.id ?? null);
 
     // Email assignees
     const taskUrl = `${config.CANONICAL_URL}/staff/tasks/${task.id}`;
@@ -260,6 +262,10 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
     if (body.description !== undefined) updateData.description = body.description;
     if (body.priority !== undefined) updateData.priority = body.priority;
     if (body.dueDate !== undefined) updateData.dueDate = body.dueDate ? new Date(body.dueDate) : null;
+    // Görev başka bir lokasyona taşınabilir; SSE yayını görevin GÜNCEL şirketine
+    // gitmeli, eskisine değil.
+    let effectiveCompanyId: string | null = existing.location?.companyId ?? null;
+
     if (body.locationId !== undefined) {
       if (body.locationId) {
         const loc = await app.prisma.location.findFirst({
@@ -277,12 +283,16 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
             error: 'Görevi yetkili olmadığınız bir şirkete taşıyamazsınız',
           });
         }
+        effectiveCompanyId = loc.companyId;
       } else if (scope !== null) {
         // Lokasyonu null'lamak görevi kapsam dışına çıkarır — yalnızca admin.
         return reply.status(403).send({
           success: false,
           error: 'Görevin lokasyonunu kaldıramazsınız',
         });
+      } else {
+        // admin lokasyonu kaldırdı → görev artık şirkete bağlı değil.
+        effectiveCompanyId = null;
       }
       updateData.locationId = body.locationId;
     }
@@ -327,7 +337,7 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
       ipAddress: request.headers['x-real-ip'] as string,
     });
 
-    broadcastToStaff('task_updated', { taskId: id, status: task.status });
+    broadcastToStaff('task_updated', { taskId: id, status: task.status }, effectiveCompanyId);
 
     // Notify creator if status → done
     if (body.status === 'done' && existing.status !== 'done' && existing.createdBy.email) {
@@ -395,7 +405,7 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
       ipAddress: request.headers['x-real-ip'] as string,
     });
 
-    broadcastToStaff('task_status_changed', { taskId: id, status: body.status });
+    broadcastToStaff('task_status_changed', { taskId: id, status: body.status }, task.location?.companyId ?? null);
 
     if (body.status === 'done' && task.status !== 'done' && task.createdBy.email && task.createdBy.id !== staffUser.id) {
       const taskUrl = `${config.CANONICAL_URL}/staff/tasks/${id}`;
@@ -439,7 +449,7 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
       ipAddress: request.headers['x-real-ip'] as string,
     });
 
-    broadcastToStaff('task_deleted', { taskId: id });
+    broadcastToStaff('task_deleted', { taskId: id }, exists.location?.companyId ?? null);
 
     reply.send({ success: true });
   });
@@ -485,7 +495,7 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
       },
     });
 
-    broadcastToStaff('task_comment_added', { taskId: id, commentId: comment.id });
+    broadcastToStaff('task_comment_added', { taskId: id, commentId: comment.id }, task.location?.companyId ?? null);
 
     reply.status(201).send({ success: true, data: comment });
   });
