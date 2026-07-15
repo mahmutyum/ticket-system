@@ -1,47 +1,71 @@
 import { FastifyPluginAsync } from 'fastify';
-import jwt from 'jsonwebtoken';
+import { nanoid } from 'nanoid';
 import { addClient, getClientCount } from '../../services/sse.service.js';
-import { config } from '../../config/index.js';
-import type { JwtPayload } from '../../plugins/auth.js';
 import { getStaffCompanyScope } from '../../utils/staff-scope.js';
 
-export const eventRoutes: FastifyPluginAsync = async (app) => {
-  // SSE: Staff live updates
-  // EventSource can't send custom headers, so we use query param token
-  app.get('/staff', async (request, reply) => {
-    const { token } = request.query as { token?: string };
+/**
+ * SSE bileti — kısa ömürlü, TEK KULLANIMLIK.
+ *
+ * Tarayıcının `EventSource` API'si özel header gönderemez, bu yüzden staff akışı
+ * kimliği URL'den almak zorunda. Önceden URL'e doğrudan JWT konuyordu ve o token
+ * 15 dakika geçerliydi: nginx `access_log` `$request`'i (yani tam yolu) kaydettiği
+ * için her SSE bağlantısı 15 dakikalık bir oturumu düz metin olarak log'a yazıyordu.
+ *
+ * Artık istemci önce Authorization header'ıyla bir BİLET alır; bilet Redis'te
+ * 30 saniye yaşar ve okunduğu anda silinir. Log'a düşen değer, kullanıldığı anda
+ * ölmüş tek kullanımlık bir dizedir.
+ */
+const TICKET_TTL_SECONDS = 30;
+const sseTicketKey = (ticket: string) => `sse:ticket:${ticket}`;
 
-    if (!token) {
-      return reply.status(401).send({ success: false, error: 'Token gerekli' });
+export const eventRoutes: FastifyPluginAsync = async (app) => {
+  /**
+   * Bilet üret — Authorization header'ı ile (normal auth).
+   *
+   * Bilet YALNIZCA bir SSE bağlantısı açmaya yarar; başka hiçbir uçta geçerli
+   * değildir ve tek kullanımlıktır.
+   */
+  app.post('/ticket-grant', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const staffUser = request.staffUser!;
+    const ticket = nanoid(32);
+    await app.redis.set(sseTicketKey(ticket), staffUser.id, 'EX', TICKET_TTL_SECONDS);
+    reply.send({ success: true, data: { ticket, expiresIn: TICKET_TTL_SECONDS } });
+  });
+
+  // SSE: Staff live updates
+  app.get('/staff', async (request, reply) => {
+    const { ticket } = request.query as { ticket?: string };
+
+    if (!ticket) {
+      return reply.status(401).send({ success: false, error: 'Bilet gerekli' });
     }
 
-    let payload: JwtPayload;
-    try {
-      payload = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] }) as JwtPayload;
+    // TEK KULLANIMLIK: oku ve hemen sil. Log'a düşen bilet tekrar kullanılamaz.
+    const staffId = await app.redis.get(sseTicketKey(ticket));
+    await app.redis.del(sseTicketKey(ticket));
 
-      // Verify staff is active — rolü de DB'den oku, JWT'deki claim bayat olabilir
-      // (rol değişikliği token'ı geçersiz kılmıyor).
-      const staff = await app.prisma.staff.findUnique({
-        where: { id: payload.id },
-        select: { id: true, isActive: true, role: true },
-      });
+    if (!staffId) {
+      return reply.status(401).send({ success: false, error: 'Bilet geçersiz veya süresi dolmuş' });
+    }
 
-      if (!staff || !staff.isActive) {
-        return reply.status(401).send({ success: false, error: 'Geçersiz oturum' });
-      }
-      payload.role = staff.role;
-    } catch {
-      return reply.status(401).send({ success: false, error: 'Geçersiz token' });
+    // Rol ve aktiflik DB'den okunur — bilet yalnızca "kim" bilgisini taşır.
+    const staff = await app.prisma.staff.findUnique({
+      where: { id: staffId },
+      select: { id: true, isActive: true, role: true },
+    });
+
+    if (!staff || !staff.isActive) {
+      return reply.status(401).send({ success: false, error: 'Geçersiz oturum' });
     }
 
     // Şirket kapsamı bağlantı anında çözülür ve keep-alive turunda tazelenir.
     // Bu olmadan broadcastToStaff kime ne göndereceğini bilemez ve REST
     // katmanındaki kapsam denetimi bu kanalda tamamen baypas edilir.
-    const resolveScope = () => getStaffCompanyScope(app.prisma, payload.id, payload.role);
+    const resolveScope = () => getStaffCompanyScope(app.prisma, staff.id, staff.role);
     const companyScope = await resolveScope();
 
     const clientId = addClient(reply, 'staff', {
-      staff: { staffId: payload.id, companyScope, resolveScope },
+      staff: { staffId: staff.id, companyScope, resolveScope },
     });
     app.log.info(`SSE staff client connected: ${clientId}`);
 
@@ -58,10 +82,10 @@ export const eventRoutes: FastifyPluginAsync = async (app) => {
 
     const ticket = await app.prisma.ticket.findUnique({
       where: { accessToken },
-      select: { id: true },
+      select: { id: true, accessTokenExpiresAt: true },
     });
 
-    if (!ticket) {
+    if (!ticket || (ticket.accessTokenExpiresAt && ticket.accessTokenExpiresAt < new Date())) {
       return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
     }
 

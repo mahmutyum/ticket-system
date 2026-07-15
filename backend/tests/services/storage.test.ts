@@ -132,7 +132,7 @@ describe('saveLogo', () => {
   it('png logoyu branding altına yazar', async () => {
     const { saveLogo } = await storage();
     const saved = await saveLogo(Buffer.from('x'), 'logo.png', 'co1', 'image/png');
-    expect(saved.url.startsWith('/uploads/branding/co1/')).toBe(true);
+    expect(saved.url.startsWith('/branding/co1/')).toBe(true);
     expect(saved.url.endsWith('.png')).toBe(true);
   });
 });

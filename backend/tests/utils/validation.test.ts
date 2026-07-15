@@ -129,3 +129,46 @@ describe('httpUrlSchema', () => {
     if (r.success) expect(r.data).toBeUndefined();
   });
 });
+
+describe('strongPassword', () => {
+  it('eski min(8) ile geçen zayıf şifreleri REDDEDER', async () => {
+    const { strongPassword } = await import('../../src/utils/validation.js');
+    // Bunların hepsi z.string().min(8) ile bir ADMIN hesabı için kabul ediliyordu.
+    for (const v of ['password', '12345678', 'admin123', 'Sifre123']) {
+      expect(strongPassword.safeParse(v).success).toBe(false);
+    }
+  });
+
+  it('12 karakterden kısa olanı reddeder', async () => {
+    const { strongPassword } = await import('../../src/utils/validation.js');
+    expect(strongPassword.safeParse('Ab1!efghijk').success).toBe(false); // 11
+    expect(strongPassword.safeParse('Ab1!efghijkl').success).toBe(true); // 12
+  });
+
+  it('tek karakter sınıfı yetmez', async () => {
+    const { strongPassword } = await import('../../src/utils/validation.js');
+    expect(strongPassword.safeParse('abcdefghijklmnop').success).toBe(false);
+    expect(strongPassword.safeParse('123456789012345').success).toBe(false);
+  });
+
+  it('dört sınıftan üçü yeterli — sembol ZORUNLU değil', async () => {
+    // Zorunlu sembol kullanıcıyı 'Sifre123!' gibi kalıplara iter.
+    const { strongPassword } = await import('../../src/utils/validation.js');
+    expect(strongPassword.safeParse('MerhabaDunya42').success).toBe(true);
+  });
+
+  it('yaygın şifreyi kural sağlasa bile reddeder', async () => {
+    const { strongPassword } = await import('../../src/utils/validation.js');
+    expect(strongPassword.safeParse('p@ssw0rd1234').success).toBe(false);
+  });
+
+  it('tek karakter tekrarını reddeder', async () => {
+    const { strongPassword } = await import('../../src/utils/validation.js');
+    expect(strongPassword.safeParse('aaaaaaaaaaaaaaa').success).toBe(false);
+  });
+
+  it('Türkçe karakterli güçlü şifreyi kabul eder', async () => {
+    const { strongPassword } = await import('../../src/utils/validation.js');
+    expect(strongPassword.safeParse('ÇiğdemÖzgür2026').success).toBe(true);
+  });
+});

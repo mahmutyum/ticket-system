@@ -3,11 +3,13 @@ import { z } from 'zod';
 import { StaffRole } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { createAuditLog } from '../../middleware/audit.js';
+import { invalidateAccessTokens } from '../../plugins/auth.js';
+import { strongPassword } from '../../utils/validation.js';
 
 const staffCreateSchema = z.object({
   email: z.string().email(),
   fullName: z.string().min(1),
-  password: z.string().min(8),
+  password: strongPassword,
   role: z.nativeEnum(StaffRole),
   department: z.string().optional(),
   phone: z.string().optional(),
@@ -19,8 +21,23 @@ const staffUpdateSchema = z.object({
   department: z.string().optional(),
   phone: z.string().optional(),
   isActive: z.boolean().optional(),
-  password: z.string().min(8).optional(),
+  password: strongPassword.optional(),
 });
+
+/**
+ * Bir personelin TÜM oturumlarını kapatır.
+ *
+ * Oturumlar `refresh:<staffId>:<sid>` altında tutulur (çoklu cihaz), bu yüzden
+ * tek bir DEL yetmez — desen taranır. `scanStream` KEYS yerine kullanılır:
+ * KEYS tüm Redis'i bloklar.
+ */
+async function deleteAllSessions(app: any, staffId: string): Promise<void> {
+  const pattern = `refresh:${staffId}:*`;
+  const stream = app.redis.scanStream({ match: pattern, count: 100 });
+  for await (const keys of stream as AsyncIterable<string[]>) {
+    if (keys.length) await app.redis.del(...keys);
+  }
+}
 
 export const staffRoutes: FastifyPluginAsync = async (app) => {
   // List staff (optionally filtered by company assignment)
@@ -110,13 +127,19 @@ export const staffRoutes: FastifyPluginAsync = async (app) => {
     const { id } = request.params as { id: string };
     const body = staffUpdateSchema.parse(request.body);
 
+    const before = await app.prisma.staff.findUnique({
+      where: { id },
+      select: { role: true, isActive: true },
+    });
+    if (!before) return reply.status(404).send({ success: false, error: 'Personel bulunamadı' });
+
     const updateData: any = { ...body };
     if (body.password) {
       updateData.passwordHash = await bcrypt.hash(body.password, 12);
       delete updateData.password;
 
-      // Invalidate refresh tokens
-      await app.redis.del(`refresh:${id}`);
+      // Şifre değişti → TÜM oturumlar kapanır (hangi cihazlar olduğu bilinmez).
+      await deleteAllSessions(app, id);
     }
 
     const staff = await app.prisma.staff.update({
@@ -132,6 +155,24 @@ export const staffRoutes: FastifyPluginAsync = async (app) => {
         isActive: true,
       },
     });
+
+    // ROL veya AKTİFLİK değiştiyse mevcut access token'ları geçersiz kıl.
+    //
+    // authenticate JWT'yi DB'ye bakmadan kabul eder; bu olmadan rolü düşürülen
+    // biri access token'ı dolana kadar (15 dk) eski rolüyle çalışmaya devam
+    // ederdi. Geçersizleştirme kullanıcıyı DÜŞÜRMEZ: istemci 401 alır, otomatik
+    // refresh yapar, refresh rolü DB'den okur ve güncel rolle devam eder.
+    const roleChanged = body.role !== undefined && body.role !== before.role;
+    const deactivated = body.isActive === false && before.isActive;
+
+    if (roleChanged || deactivated) {
+      await invalidateAccessTokens(app.redis, id);
+    }
+    if (deactivated) {
+      // Pasife alındı → refresh de çalışmasın (zaten isActive kontrolü var,
+      // ama oturum kaydını da temizle).
+      await deleteAllSessions(app, id);
+    }
 
     const auditChanges: Record<string, any> = { ...body };
     delete auditChanges.password;
@@ -153,7 +194,9 @@ export const staffRoutes: FastifyPluginAsync = async (app) => {
 
     await createAuditLog({ entityType: 'staff', entityId: id, action: 'deactivate', performedBy: request.staffUser!.email, ipAddress: request.headers['x-real-ip'] as string });
 
-    await app.redis.del(`refresh:${id}`);
+    // Access token'ları anında öldür + tüm oturumları kapat.
+    await invalidateAccessTokens(app.redis, id);
+    await deleteAllSessions(app, id);
 
     reply.send({ success: true });
   });

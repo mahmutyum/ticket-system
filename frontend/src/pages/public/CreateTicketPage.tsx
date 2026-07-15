@@ -46,25 +46,6 @@ export default function CreateTicketPage() {
     return parts.length === 2 ? parts[1].toLowerCase() : '';
   }, [form.email]);
 
-  // Lookup user by email
-  const lookupUser = async () => {
-    if (!form.email) return;
-    try {
-      const res = await axios.post('/api/auth/lookup', { email: form.email });
-      if (res.data.data) {
-        const u = res.data.data;
-        update({
-          fullName: u.fullName || form.fullName,
-          phone: u.phone || form.phone,
-          department: u.department || form.department,
-          companyId: u.companyId || form.companyId,
-          locationId: u.locationId || form.locationId,
-        });
-        toast.success('Önceki bilgileriniz getirildi');
-      }
-    } catch { /* ignore */ }
-  };
-
   // Fetch all companies
   const { data: allCompanies } = useQuery<Company[]>({
     queryKey: ['companies'],
@@ -307,7 +288,6 @@ export default function CreateTicketPage() {
                 value={form.email}
                 onChange={e => update({ email: e.target.value })}
                 placeholder="email@company.com"
-                onBlur={lookupUser}
               />
               {/* Domain rejection — no detail about which domains are allowed */}
               {form.email && emailDomain && allCompanies && !hasAccessibleCompanies && (

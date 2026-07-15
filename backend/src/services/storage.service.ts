@@ -6,9 +6,9 @@ import { config } from '../config/index.js';
 /**
  * İzin verilen MIME tipleri → diske yazılacak KANONİK uzantı.
  *
- * Uzantı neden buradan geliyor: dosyalar `/uploads/` altından statik servis
- * edilir ve hem nginx hem `@fastify/static` yanıtın `Content-Type`'ını
- * **uzantıdan** türetir — veritabanındaki `mimeType` sütunundan değil.
+ * Uzantı neden buradan geliyor: yanıtın `Content-Type`'ı uzantıdan türetilir
+ * (hem eski statik servis hem yeni /branding ucu böyle çalışır), veritabanındaki
+ * `mimeType` sütunundan değil.
  *
  * Önceden uzantı istemcinin gönderdiği dosya adından olduğu gibi alınıyordu ve
  * hiç doğrulanmıyordu. Sonuç: `Content-Type: text/plain` (allowlist'te) +
@@ -44,7 +44,7 @@ export function isAllowedMimeType(mimeType: string): boolean {
  * Logo MIME'ları.
  *
  * `image/svg+xml` BİLEREK YOK. SVG aktif içerik formatıdır: `<img>` içinde
- * güvenlidir ama `/uploads/branding/...svg` adresine doğrudan gidildiğinde
+ * güvenlidir ama `/branding/...svg` adresine doğrudan gidildiğinde
  * üst seviye bir belge olur ve içindeki `<script>` çalışır. Logo URL'i public
  * uçlardan (`GET /companies/`) döndüğü için bu adres herkese açıktır.
  */
@@ -130,7 +130,8 @@ export async function saveLogo(
   await writeFile(filePath, buffer);
 
   return {
-    url: `/uploads/branding/${companyId}/${fileName}`,
+    // Logo public bir uçtan inline servis edilir (ekler gibi indirilmez).
+    url: `/branding/${companyId}/${fileName}`,
     filePath: `branding/${companyId}/${fileName}`,
   };
 }

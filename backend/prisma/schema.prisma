@@ -18,8 +18,9 @@ datasource db {
 // sonra etiketini `config/constants.ts`'e yaz. Zod şemaları `z.nativeEnum` ile
 // otomatik uyar.
 //
-// NOT: `Company.groupType` ve `Notification.channel` bilinçli olarak String
-// bırakıldı — bkz. docs/yol-haritasi.md.
+// NOT: `Notification.channel` bilinçli olarak String bırakıldı — e-posta/SMS
+// şablonlarının `slug`'ı ile eşleşir ve şablonlar veritabanından yönetilir;
+// yeni bir şablon eklemek migration gerektirmemeli.
 
 enum StaffRole {
   admin
@@ -80,6 +81,13 @@ enum NotificationStatus {
   failed
 }
 
+enum CompanyGroupType {
+  call_center
+  corporate
+  warehouse
+  retail
+}
+
 enum CustomFieldType {
   text
   number
@@ -93,18 +101,18 @@ enum CustomFieldType {
 // ==================== ŞİRKET & LOKASYON ====================
 
 model Company {
-  id                String   @id @default(cuid())
-  name              String   @unique
-  groupType         String   @map("group_type") // "call_center", "corporate", "warehouse"
+  id                String           @id @default(cuid())
+  name              String           @unique
+  groupType         CompanyGroupType @map("group_type")
   logo              String?
-  primaryColor      String?  @map("primary_color") // hex, örn "#2563eb"
-  allowedDomains    Json     @default("[]") @map("allowed_domains") // ["company.com","abc.com.tr"] — email domain kısıtı
-  portalDomains     Json     @default("[]") @map("portal_domains") // ["ticket.abc.com.tr"] — erişim domain kilidi
-  notificationEmail String?  @map("notification_email") // IT grup maili: it-destek@abc.com.tr
-  isActive          Boolean  @default(true) @map("is_active")
-  settings          Json     @default("{}")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  primaryColor      String?          @map("primary_color") // hex, örn "#2563eb"
+  allowedDomains    Json             @default("[]") @map("allowed_domains") // ["company.com","abc.com.tr"] — email domain kısıtı
+  portalDomains     Json             @default("[]") @map("portal_domains") // ["ticket.abc.com.tr"] — erişim domain kilidi
+  notificationEmail String?          @map("notification_email") // IT grup maili: it-destek@abc.com.tr
+  isActive          Boolean          @default(true) @map("is_active")
+  settings          Json             @default("{}")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
 
   locations         Location[]
   categories        Category[]
@@ -264,28 +272,33 @@ model StaffCompany {
 // ==================== TİCKET SİSTEMİ ====================
 
 model Ticket {
-  id               String       @id @default(cuid())
-  ticketNumber     String       @unique @map("ticket_number")
-  companyId        String       @map("company_id")
-  locationId       String       @map("location_id")
-  categoryId       String       @map("category_id")
-  createdByEmail   String       @map("created_by_email")
-  createdByUserId  String?      @map("created_by_user_id")
-  assignedToId     String?      @map("assigned_to_id")
-  subject          String
-  description      String
-  priority         Priority     @default(medium)
-  status           TicketStatus @default(open)
-  accessToken      String       @unique @map("access_token")
-  slaResponseDue   DateTime?    @map("sla_response_due")
-  slaResolveDue    DateTime?    @map("sla_resolve_due")
-  slaResponseMet   Boolean?     @map("sla_response_met")
-  slaResolveMet    Boolean?     @map("sla_resolve_met")
-  firstRespondedAt DateTime?    @map("first_responded_at")
-  resolvedAt       DateTime?    @map("resolved_at")
-  closedAt         DateTime?    @map("closed_at")
-  createdAt        DateTime     @default(now()) @map("created_at")
-  updatedAt        DateTime     @updatedAt @map("updated_at")
+  id                   String       @id @default(cuid())
+  ticketNumber         String       @unique @map("ticket_number")
+  companyId            String       @map("company_id")
+  locationId           String       @map("location_id")
+  categoryId           String       @map("category_id")
+  createdByEmail       String       @map("created_by_email")
+  createdByUserId      String?      @map("created_by_user_id")
+  assignedToId         String?      @map("assigned_to_id")
+  subject              String
+  description          String
+  priority             Priority     @default(medium)
+  status               TicketStatus @default(open)
+  accessToken          String       @unique @map("access_token")
+  /// Public takip linkinin geçerlilik sonu.
+  /// Ticket açıkken null (süresiz); resolved/closed olduğunda kapanış + saklama
+  /// süresi olarak set edilir. Link nginx access_log'una, e-postalara ve tarayıcı
+  /// geçmişine düştüğü için sonsuza dek geçerli kalmamalı.
+  accessTokenExpiresAt DateTime?    @map("access_token_expires_at")
+  slaResponseDue       DateTime?    @map("sla_response_due")
+  slaResolveDue        DateTime?    @map("sla_resolve_due")
+  slaResponseMet       Boolean?     @map("sla_response_met")
+  slaResolveMet        Boolean?     @map("sla_resolve_met")
+  firstRespondedAt     DateTime?    @map("first_responded_at")
+  resolvedAt           DateTime?    @map("resolved_at")
+  closedAt             DateTime?    @map("closed_at")
+  createdAt            DateTime     @default(now()) @map("created_at")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
 
   company       Company             @relation(fields: [companyId], references: [id])
   location      Location            @relation(fields: [locationId], references: [id])

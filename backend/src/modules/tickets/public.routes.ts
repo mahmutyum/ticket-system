@@ -5,6 +5,21 @@ import { queueEmail } from '../../jobs/queue.js';
 import { saveFile, isAllowedMimeType } from '../../services/storage.service.js';
 import { requiredText, emailSchema, LIMITS } from '../../utils/validation.js';
 
+/**
+ * Public takip linkinin süresi dolmuş mu?
+ *
+ * `null` = süresiz (ticket açık). Kapanışta uygulama katmanı bir son verir —
+ * link access_log'a, e-postalara ve tarayıcı geçmişine düştüğü için sonsuza dek
+ * geçerli kalmamalı.
+ *
+ * Süresi dolan bir link 404 döner; "süresi doldu" denmez, çünkü o bile geçerli
+ * bir ticket'ın varlığını doğrular. Talep eden /public/track (ticket no +
+ * e-posta) ile yeniden erişim alabilir.
+ */
+function isAccessExpired(expiresAt: Date | null): boolean {
+  return expiresAt !== null && expiresAt < new Date();
+}
+
 export const publicRoutes: FastifyPluginAsync = async (app) => {
   // Public: View ticket by access token
   app.get('/ticket/:accessToken', async (request, reply) => {
@@ -58,7 +73,9 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
       },
     });
 
-    if (!ticket) {
+    // Süresi dolmuş link 404 döner — "bulunamadı" ile "süresi doldu" ayrımı
+    // yapılmaz, aksi halde geçerli bir ticket numarasının varlığı doğrulanır.
+    if (!ticket || isAccessExpired(ticket.accessTokenExpiresAt)) {
       return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
     }
 
@@ -84,11 +101,12 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
         createdByEmail: true,
         assignedToId: true,
         status: true,
+        accessTokenExpiresAt: true,
         assignedTo: { select: { email: true, fullName: true } },
       },
     });
 
-    if (!ticket) {
+    if (!ticket || isAccessExpired(ticket.accessTokenExpiresAt)) {
       return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
     }
 
@@ -147,10 +165,10 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
 
     const ticket = await app.prisma.ticket.findUnique({
       where: { accessToken },
-      select: { id: true, createdByEmail: true, status: true },
+      select: { id: true, createdByEmail: true, status: true, accessTokenExpiresAt: true },
     });
 
-    if (!ticket) {
+    if (!ticket || isAccessExpired(ticket.accessTokenExpiresAt)) {
       return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
     }
 
@@ -202,11 +220,21 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
         ticketNumber: parsed.data.ticketNumber,
         createdByEmail: { equals: parsed.data.email, mode: 'insensitive' },
       },
-      select: { accessToken: true },
+      select: { id: true, accessToken: true, accessTokenExpiresAt: true },
     });
 
     if (!ticket) {
       return reply.status(404).send({ success: false, error: 'Talep bulunamadı veya email eşleşmiyor' });
+    }
+
+    // Süresi dolmuş linki YENİLE. Çağıran ticket numarasını VE e-postayı bildiğini
+    // kanıtladı; kapalı bir talebi tekrar görüntülemesi meşru. Yenileme olmasa
+    // süresi dolan link kalıcı olarak ölür ve kullanıcı sonucunu göremezdi.
+    if (isAccessExpired(ticket.accessTokenExpiresAt)) {
+      await app.prisma.ticket.update({
+        where: { id: ticket.id },
+        data: { accessTokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
+      });
     }
 
     reply.send({ success: true, data: { accessToken: ticket.accessToken } });

@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import { strongPassword } from '../src/utils/validation.js';
 
 const prisma = new PrismaClient();
 
@@ -16,8 +17,11 @@ const force = process.argv.includes('--force');
 function resolvePassword(envVar: string, devDefault: string): string {
   const fromEnv = process.env[envVar];
   if (fromEnv) {
-    if (fromEnv.length < 12) {
-      console.error(`${envVar} en az 12 karakter olmalı.`);
+    // Uygulamanın şifre politikası burada da uygulanır: API'den kurulamayacak
+    // bir şifreyi seed'in kurmasının anlamı yok.
+    const parsed = strongPassword.safeParse(fromEnv);
+    if (!parsed.success) {
+      console.error(`${envVar} politikayı sağlamıyor: ${parsed.error.issues[0].message}`);
       process.exit(1);
     }
     return fromEnv;
@@ -28,6 +32,9 @@ function resolvePassword(envVar: string, devDefault: string): string {
     );
     process.exit(1);
   }
+  // Dev demo şifresi (admin123) politikayı SAĞLAMAZ ve bu bilinçlidir: yazması
+  // kolay olsun diye. Production'da bu yola hiç girilmez — yukarıdaki guard
+  // NODE_ENV=production'da env değişkenini zorunlu kılar.
   return devDefault;
 }
 

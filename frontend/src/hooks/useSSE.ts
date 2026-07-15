@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuthStore } from '../stores/auth.store';
+import api from '../api/client';
 
 interface SSEOptions {
   onTicketCreated?: (data: any) => void;
@@ -17,11 +18,23 @@ export function useStaffSSE(options: SSEOptions) {
   const retriesRef = useRef(0);
   const token = useAuthStore((s) => s.accessToken);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (!token) return;
 
-    // Pass token as query param since EventSource can't send headers
-    const es = new EventSource(`/api/events/staff?token=${encodeURIComponent(token)}`);
+    // EventSource header gönderemez, bu yüzden kimlik URL'den geçmek zorunda.
+    // JWT'yi doğrudan koymak yerine tek kullanımlık, 30 sn ömürlü bir BİLET
+    // alınır: URL nginx access_log'una düşer ve oraya 15 dakikalık bir oturum
+    // token'ı yazmak istemiyoruz. Bilet sunucuda okunduğu anda silinir.
+    let ticket: string;
+    try {
+      ticket = (await api.post('/events/ticket-grant')).data.data.ticket;
+    } catch {
+      // Yetki yoksa/başarısızsa sessizce vazgeç — SSE bir kolaylıktır,
+      // sayfanın çalışması ona bağlı değil.
+      return;
+    }
+
+    const es = new EventSource(`/api/events/staff?ticket=${encodeURIComponent(ticket)}`);
     eventSourceRef.current = es;
 
     es.addEventListener('ticket_created', (e) => {
@@ -48,7 +61,7 @@ export function useStaffSSE(options: SSEOptions) {
       if (retriesRef.current < MAX_RETRIES) {
         const delay = BASE_DELAY * Math.pow(2, retriesRef.current);
         retriesRef.current++;
-        setTimeout(connect, delay);
+        setTimeout(() => void connect(), delay);
       }
     };
   }, [token, onTicketCreated, onTicketUpdated, onNoteAdded]);
@@ -56,7 +69,7 @@ export function useStaffSSE(options: SSEOptions) {
   useEffect(() => {
     if (!enabled || !token) return;
 
-    connect();
+    void connect();
 
     return () => {
       eventSourceRef.current?.close();

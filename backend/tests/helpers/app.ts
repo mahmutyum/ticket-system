@@ -17,14 +17,33 @@ export function buildTestApp(prismaStub: any, redisStub: any = {}): FastifyInsta
   const app = Fastify();
   app.register(cookie, { secret: config.JWT_SECRET });
   app.decorate('prisma', prismaStub);
-  app.decorate('redis', redisStub);
+  // `authenticate` her istekte `staff:invalidated:<id>` anahtarını okur (rol
+  // değişiminde access token'ları geçersizleştirmek için). Stub varsayılan olarak
+  // null döner = hiç geçersizleştirme yapılmamış.
+  app.decorate('redis', { get: async () => null, ...redisStub });
   app.register(authPlugin);
   return app;
 }
 
-/** Verilen rol için geçerli bir access token üretir. */
+/**
+ * Verilen rol için geçerli bir access token üretir.
+ *
+ * `type: 'access'` ZORUNLU: doğrulama artık türü kontrol ediyor, böylece bir
+ * refresh token access olarak kullanılamıyor. `sid` oturum kimliği (çoklu cihaz).
+ */
 export function tokenFor(role: StaffRole, id = 'staff-1', email = `${role}@test.local`): string {
-  return jwt.sign({ id, email, role }, config.JWT_SECRET, { expiresIn: '15m' });
+  return jwt.sign({ id, email, role, type: 'access', sid: 'test-session' }, config.JWT_SECRET, {
+    expiresIn: '15m',
+  });
+}
+
+/** Refresh token — access yerine kullanılamadığını doğrulamak için. */
+export function refreshTokenFor(role: StaffRole, id = 'staff-1'): string {
+  return jwt.sign(
+    { id, email: `${role}@test.local`, role, type: 'refresh', sid: 'test-session' },
+    config.JWT_REFRESH_SECRET,
+    { expiresIn: '7d' },
+  );
 }
 
 /** `Authorization: Bearer` başlığı. */

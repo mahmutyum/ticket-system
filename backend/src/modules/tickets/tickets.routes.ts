@@ -12,6 +12,16 @@ import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.
 import { getStaffCompanyScope, resolveCompanyFilter } from '../../utils/staff-scope.js';
 
 /**
+ * Ticket kapandıktan sonra public takip linkinin ne kadar geçerli kalacağı.
+ *
+ * Talep eden sonucu görebilmeli, ama link sonsuza dek çalışmamalı — access_log'a
+ * ve e-postalara düştüğü için tek bir sızıntı kalıcı erişim demek olurdu.
+ * Süresi dolan link için /public/track ile (ticket no + e-posta) yeniden erişim
+ * alınabilir.
+ */
+const PUBLIC_ACCESS_RETENTION_DAYS = 90;
+
+/**
  * Ticket oluşturma — KİMLİK DOĞRULAMASI YOK, yalnızca rate limit var.
  *
  * Bu yüzden buradaki her alan hem kırpılır hem sınırlanır:
@@ -432,6 +442,21 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       }
       if (body.status === TicketStatus.closed) {
         updateData.closedAt = new Date();
+      }
+
+      // Public takip linkine SON VER / geri aç.
+      //
+      // Link nginx access_log'una, e-postalara ve tarayıcı geçmişine düşer;
+      // süresiz kalırsa tek bir sızıntı o ticket'a kalıcı erişim demektir.
+      // Talep eden kapanıştan sonra da bir süre sonucu görebilmeli — bu yüzden
+      // iptal değil, saklama süreli sona erdirme.
+      if (body.status === TicketStatus.resolved || body.status === TicketStatus.closed) {
+        updateData.accessTokenExpiresAt = new Date(
+          Date.now() + PUBLIC_ACCESS_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+        );
+      } else {
+        // Yeniden açıldı → link tekrar süresiz.
+        updateData.accessTokenExpiresAt = null;
       }
     }
 

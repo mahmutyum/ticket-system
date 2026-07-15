@@ -10,6 +10,7 @@ import api from '../../api/client';
 import {
   STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS,
 } from '../../types';
+import { downloadAttachment } from '../../utils/download';
 
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -182,17 +183,22 @@ export default function TicketDetailPage() {
             {ticket.attachments?.length > 0 ? (
               <div className="space-y-2">
                 {ticket.attachments.map((att: any) => (
-                  <a
+                  <button
                     key={att.id}
-                    href={`/uploads/${att.filePath}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800/50 text-sm"
+                    type="button"
+                    // <a href> Authorization header'ı gönderemez; ek artık yetki
+                    // kontrollü bir uçtan geliyor, bu yüzden axios ile çekilir.
+                    onClick={() => {
+                      downloadAttachment(att.id, att.fileName).catch(() =>
+                        toast.error('Dosya indirilemedi'),
+                      );
+                    }}
+                    className="w-full text-left flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800/50 text-sm"
                   >
                     <FileText className="w-4 h-4 text-gray-400" />
                     <span className="flex-1 truncate">{att.fileName}</span>
                     <span className="text-xs text-gray-400">{(att.fileSize / 1024).toFixed(0)} KB</span>
-                  </a>
+                  </button>
                 ))}
               </div>
             ) : (

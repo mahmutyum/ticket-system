@@ -55,7 +55,19 @@ const envSchema = z.object({
    * güvenli tarafa, 1'e varsayılıyor.
    */
   TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(1),
-});
+})
+  /**
+   * Access ve refresh secret'ları FARKLI olmalı.
+   *
+   * Token türü artık JWT'de `type` claim'i ile zorlanıyor, ama secret ayrımı
+   * ikinci savunma katmanıdır ve şimdiye kadar yalnızca .env.example'da bir
+   * yorum olarak "isteniyordu". Tek bir kopyala-yapıştır ikisini eşitleyebilir
+   * ve bunu hiçbir şey uyarmazdı.
+   */
+  .refine((d) => d.JWT_SECRET !== d.JWT_REFRESH_SECRET, {
+    message: 'JWT_SECRET ve JWT_REFRESH_SECRET birbirinden FARKLI olmalı',
+    path: ['JWT_REFRESH_SECRET'],
+  });
 
 export type Env = z.infer<typeof envSchema>;
 

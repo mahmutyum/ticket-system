@@ -1,11 +1,12 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { Prisma } from '@prisma/client';
+import { Prisma, CompanyGroupType } from '@prisma/client';
 import { testSmtpConnection, invalidateCompanyTransporter } from '../../services/email.service.js';
 import { createAuditLog } from '../../middleware/audit.js';
 import { saveLogo, isAllowedLogoMimeType } from '../../services/storage.service.js';
 import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
 import { encrypt } from '../../utils/crypto.js';
+import { assertPublicHost, BlockedHostError } from '../../utils/net-guard.js';
 
 const smtpConfigSchema = z.object({
   host: z.string().min(1),
@@ -20,7 +21,7 @@ const smtpConfigSchema = z.object({
 
 const companyCreateSchema = z.object({
   name: z.string().min(1),
-  groupType: z.string().min(1),
+  groupType: z.nativeEnum(CompanyGroupType),
   logo: z.string().optional().nullable(),
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Geçerli hex renk değil').optional().nullable(),
   allowedDomains: z.array(z.string()).default([]),
@@ -269,6 +270,21 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(404).send({ success: false, error: 'Şirket bulunamadı' });
     }
 
+    // SSRF: host admin tarafından serbest yazılır ve sunucu ona bağlanır.
+    // Dahili ağa (postgres:5432, redis:6379) veya bulut metadata'sına
+    // yönlendirilmemeli. Kontrol DNS çözümlemesinden SONRA yapılır.
+    try {
+      await assertPublicHost(body.host);
+    } catch (err) {
+      if (err instanceof BlockedHostError) {
+        return reply.status(400).send({
+          success: false,
+          error: 'SMTP sunucusu olarak dahili veya ayrılmış bir adres kullanılamaz',
+        });
+      }
+      throw err;
+    }
+
     // SMTP şifresi veritabanına ŞİFRELİ yazılır (AES-256-GCM, CREDENTIALS_ENC_KEY).
     // Önceden düz metin tutuluyordu; okuma tarafı eski kayıtları formatından tanır.
     const data = { ...body, pass: encrypt(body.pass) };
@@ -312,6 +328,20 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
   }, async (request, reply) => {
     const body = smtpConfigSchema.parse(request.body);
 
+    // SSRF: bu uç gerçek bir TCP bağlantısı açar. Dahili ağa yönlendirilirse
+    // bir port tarayıcısına dönüşür.
+    try {
+      await assertPublicHost(body.host);
+    } catch (err) {
+      if (err instanceof BlockedHostError) {
+        return reply.status(400).send({
+          success: false,
+          error: 'SMTP sunucusu olarak dahili veya ayrılmış bir adres kullanılamaz',
+        });
+      }
+      throw err;
+    }
+
     const result = await testSmtpConnection({
       host: body.host,
       port: body.port,
@@ -325,7 +355,16 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
     if (result.success) {
       reply.send({ success: true, message: 'SMTP bağlantısı başarılı' });
     } else {
-      reply.status(400).send({ success: false, error: `SMTP bağlantısı başarısız: ${result.error}` });
+      // Ham hata metni DÖNDÜRÜLMEZ.
+      //
+      // `ECONNREFUSED` / `ETIMEDOUT` / SMTP protokol yanıtı ayrımı, engel aşılsa
+      // bile yarı-kör bir port tarayıcısı oracle'ı verir. Ayrıntı yalnızca sunucu
+      // log'una yazılır; yöneticinin ihtiyacı olan bilgi "bağlanamadı"dır.
+      app.log.warn({ host: body.host, port: body.port, err: result.error }, 'SMTP testi başarısız');
+      reply.status(400).send({
+        success: false,
+        error: 'SMTP bağlantısı başarısız. Sunucu adresi, port ve kimlik bilgilerini kontrol edin.',
+      });
     }
   });
 

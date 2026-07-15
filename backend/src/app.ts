@@ -7,7 +7,6 @@ import helmet from '@fastify/helmet';
 import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
-import fastifyStatic from '@fastify/static';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { config } from './config/index.js';
@@ -31,6 +30,7 @@ import { templateRoutes } from './modules/templates/templates.routes.js';
 import { reportRoutes } from './modules/reports/reports.routes.js';
 import { taskRoutes } from './modules/tasks/tasks.routes.js';
 import { credentialRoutes } from './modules/credentials/credentials.routes.js';
+import { attachmentRoutes, brandingRoutes } from './modules/attachments/attachments.routes.js';
 
 export async function buildApp() {
   const app = Fastify({
@@ -67,7 +67,7 @@ export async function buildApp() {
     credentials: true,
   });
 
-  // Backend'in CSP'si YALNIZCA kendi yanıtlarını etkiler (/api/*, /uploads/*, /docs).
+  // Backend'in CSP'si YALNIZCA kendi yanıtlarını etkiler (/api/*, /attachments, /docs).
   // SPA'yı frontend container'ındaki nginx servis eder — kullanıcı arayüzünün asıl
   // CSP'si orada tanımlıdır (frontend/nginx.conf).
   //
@@ -105,33 +105,17 @@ export async function buildApp() {
   await app.register(redisPlugin);
   await app.register(authPlugin);
 
-  // Static file serving (uploads)
+  // NOT: /uploads ARTIK STATİK SERVİS EDİLMİYOR.
   //
-  // Yüklenen dosyalar kullanıcı içeriğidir ve uygulamayla AYNI origin'den servis
-  // edilir. Üç katman birlikte korur:
+  // @fastify/static ile servis edilirken ekler KİMLİKSİZ erişilebiliyordu: API
+  // şirket kapsamını doğru uyguluyor ama dosyanın kendisi için hiçbir kontrol
+  // yoktu. Yol tahmin edilemezdi, o kadar — yani yetkilendirme değil, "URL'i bilen
+  // girer". O URL ise nginx access_log'una, tarayıcı geçmişine ve e-postalara
+  // düşüyor, ticket kapandıktan sonra bile çalışıyordu.
   //
-  // 1. Uzantı, doğrulanmış MIME'dan türetilir (storage.service.ts). Servis edilen
-  //    Content-Type uzantıdan geldiği için asıl denetim oradadır — allowlist'in
-  //    kendisi istemcinin gönderdiği başlığa bakar ve tek başına yeterli DEĞİLDİR.
-  // 2. `nosniff` — içerik başka bir tip olarak yorumlanamaz.
-  // 3. `default-src 'none'; sandbox` — dosya bir şekilde belge olarak açılsa bile
-  //    script çalıştıramaz.
-  //
-  // UYARI: `--profile proxy` kurulumunda istekler buraya HİÇ ulaşmaz; nginx
-  // `alias` ile doğrudan diskten servis eder. O yüzden aynı başlıklar
-  // nginx/conf.d/default.conf içinde de TANIMLIDIR — orada silinirse bu blok
-  // devreye girmez.
-  await app.register(fastifyStatic, {
-    root: config.UPLOAD_DIR,
-    prefix: '/uploads/',
-    decorateReply: false,
-    // Nokta ile başlayan dosyalar servis edilmesin (varsayılan 'allow').
-    dotfiles: 'deny',
-    setHeaders: (res) => {
-      res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
-      res.setHeader('X-Content-Type-Options', 'nosniff');
-    },
-  });
+  // Ekler /attachments/:id (kapsam veya geçerli accessToken kontrollü),
+  // logolar /branding/:companyId/:file (public, inline) üzerinden gider.
+  // Bkz. modules/attachments/attachments.routes.ts
 
   // API dokümantasyonu — /docs
   //
@@ -235,6 +219,8 @@ export async function buildApp() {
   await app.register(reportRoutes, { prefix: '/reports' });
   await app.register(taskRoutes, { prefix: '/tasks' });
   await app.register(credentialRoutes, { prefix: '/credentials' });
+  await app.register(attachmentRoutes, { prefix: '/attachments' });
+  await app.register(brandingRoutes, { prefix: '/branding' });
 
 
   return app;

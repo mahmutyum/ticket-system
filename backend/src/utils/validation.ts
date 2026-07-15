@@ -129,3 +129,52 @@ export const LIMITS = {
   /** Serbest not alanları (randevu notu vb.). */
   notes: { max: 2000 },
 } as const;
+
+/**
+ * En yaygın kötü şifreler.
+ *
+ * Tam bir breach listesi (HIBP) ağ çağrısı gerektirir ve iç ağda çalışan bir
+ * kurulumda dışarı çıkmak istenmeyebilir. Bu kısa liste asıl hedefi tutar:
+ * "kolay olsun" diye seçilen klasikler. Karmaşıklık kuralı bunların çoğunu zaten
+ * eler; liste, kuralı teknik olarak geçen ama tahmin edilebilir olanlar içindir.
+ */
+const COMMON_PASSWORDS = new Set([
+  'password', 'password1', 'password123', 'password1234',
+  'qwerty123456', 'qwertyuiop123', '123456789012', '1234567890123',
+  'admin1234567', 'administrator', 'letmein12345', 'welcome123456',
+  'iloveyou1234', 'sifre1234567', 'parola123456', 'qwerty1234567',
+  'abcd12345678', 'passw0rd1234', 'p@ssw0rd1234', 'changeme1234',
+]);
+
+/**
+ * Personel şifresi.
+ *
+ * Önceden `z.string().min(8)` idi: `"password"` ve `"12345678"` bir ADMIN hesabı
+ * için kabul ediliyordu. bcrypt cost 12 bir politika değildir — saldırganın
+ * deneme sayısı sınırlıysa yavaşlatır, sınırsızsa yalnızca geciktirir. Bu yüzden
+ * politika + hesap kilitleme (auth.routes.ts) birlikte gelir.
+ *
+ * Kurallar bilinçli olarak "uzunluk ağırlıklı": 12 karakter alt sınır, dört
+ * karakter sınıfından en az üçü. Sembol ZORUNLU değil — zorunlu sembol
+ * kullanıcıyı `Sifre123!` gibi tahmin edilebilir kalıplara iter.
+ */
+export const strongPassword = z
+  .string()
+  .min(12, 'Şifre en az 12 karakter olmalı')
+  .max(200, 'Şifre çok uzun')
+  .refine(
+    (v) => {
+      const classes = [/[a-zçğıöşü]/, /[A-ZÇĞİÖŞÜ]/, /\d/, /[^a-zA-Z0-9çğıöşüÇĞİÖŞÜ]/];
+      return classes.filter((re) => re.test(v)).length >= 3;
+    },
+    {
+      message:
+        'Şifre şu dördünden en az üçünü içermeli: küçük harf, büyük harf, rakam, sembol',
+    },
+  )
+  .refine((v) => !COMMON_PASSWORDS.has(v.toLowerCase()), {
+    message: 'Bu şifre çok yaygın, başka bir şifre seçin',
+  })
+  .refine((v) => !/^(.)\1+$/.test(v), {
+    message: 'Şifre tek bir karakterin tekrarı olamaz',
+  });

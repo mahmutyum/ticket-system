@@ -8,6 +8,7 @@ import {
   NotificationType,
   NotificationStatus,
   CustomFieldType,
+  CompanyGroupType,
 } from '@prisma/client';
 
 /**
@@ -127,24 +128,10 @@ export const FIELD_TYPE_VALUES = Object.values(CustomFieldType);
 
 // ==================== ŞİRKET ====================
 
-/**
- * Şirket grup tipi — bilinçli olarak enum DEĞİL.
- *
- * Yazma yolu (`companyCreateSchema.groupType`) uzun süre `z.string().min(1)` ile
- * doğrulandı, yani veritabanında bu listenin dışında değerler bulunabilir; enum'a
- * çevirmek migration'ı patlatabilirdi. Yazma yolu artık bu listeyle doğrulanıyor,
- * ama mevcut veri temizlenmeden enum'a geçilmemeli. Bkz. docs/yol-haritasi.md.
- */
-export const COMPANY_GROUP_TYPES = {
-  CALL_CENTER: 'call_center',
-  CORPORATE: 'corporate',
-  WAREHOUSE: 'warehouse',
-  RETAIL: 'retail',
-} as const;
+export const COMPANY_GROUP_TYPES = CompanyGroupType;
+export const COMPANY_GROUP_TYPE_VALUES = Object.values(CompanyGroupType);
 
-export const COMPANY_GROUP_TYPE_VALUES = Object.values(COMPANY_GROUP_TYPES);
-
-export const COMPANY_GROUP_TYPE_LABELS: Record<string, string> = {
+export const COMPANY_GROUP_TYPE_LABELS: Record<CompanyGroupType, string> = {
   call_center: 'Çağrı Merkezi',
   corporate: 'Kurumsal',
   warehouse: 'Depo',

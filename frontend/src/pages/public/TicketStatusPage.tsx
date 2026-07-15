@@ -10,6 +10,7 @@ import {
 import { STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS } from '../../types';
 import { useTicketSSE } from '../../hooks/useSSE';
 import { useQueryClient } from '@tanstack/react-query';
+import { publicAttachmentUrl } from '../../utils/download';
 
 export default function TicketStatusPage() {
   const { accessToken } = useParams<{ accessToken: string }>();
@@ -200,7 +201,10 @@ export default function TicketStatusPage() {
             {ticket.attachments.map((att: any) => (
               <a
                 key={att.id}
-                href={`/uploads/${att.filePath}`}
+                // Ekler artık yetki kontrollü /attachments/:id üzerinden gelir.
+                // Talep edenin Bearer token'ı yok — ticket'ın accessToken'ını
+                // sunar; sunucu eşleşme ve süre kontrolü yapar.
+                href={publicAttachmentUrl(att.id, accessToken!)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 text-sm"
