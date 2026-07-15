@@ -40,6 +40,32 @@ docker compose exec backend npm run db:encrypt-smtp
 
 Idempotent'tir, tekrar çalıştırılabilir. Öncesinde veritabanı yedeği al.
 
+### Public erişim token'ı süresiz ve log'lanıyor
+
+Ticket takip linkindeki `accessToken` (`nanoid(32)`, ~192 bit) tahmin edilemez ama:
+**süresi dolmaz, döndürülmez ve ticket kapandığında iptal edilmez.** Ayrıca URL
+YOLUNDA taşındığı için nginx `access_log`'una tam olarak yazılır (`$request`) ve
+e-postalarda/tarayıcı geçmişinde kalır. Tek bir log satırı, o ticket'a kalıcı erişim
+demektir.
+
+**Geçici önlem:** Proxy log'larına erişimi kısıtla, saklama süresini kısa tut.
+
+### `/uploads` kimlik doğrulaması yapmıyor
+
+Ekler statik dosya olarak servis edilir; API tarafı kapsamı doğru uyguluyor ama
+dosyanın kendisi için token gerekmez. Yol tahmin edilemez (`nanoid(12)` + cuid) ama
+bu bir YETKİLENDİRME değil, gizlilik-by-URL'dir: link'i olan herkes, ticket kapandıktan
+sonra bile erişir.
+
+**Geçici önlem:** Ekleri kimlik doğrulamalı bir route üzerinden servis etmek
+gerekir — bkz. `docs/yol-haritasi.md`.
+
+### `POST /auth/lookup` kimliksiz PII sorgulanabilir
+
+Herhangi bir e-posta için `{id, email, fullName, companyId}` döndürür. Ticket
+numaraları da sıralı olduğu için `/public/track` ile zincirlenebilir. Rate limit var
+ama `TRUST_PROXY` yanlış ayarlanırsa o da baypas edilir.
+
 ### SSE token'ı query parametresinde
 
 Tarayıcının `EventSource` API'si özel header gönderemediği için, staff canlı bildirim
@@ -64,11 +90,10 @@ Seed artık production'a karşı çalışmayı **reddeder**: `NODE_ENV=productio
 
 **Yine de:** Bu sürümden önce production'a seed çalıştırdıysan üç şifreyi de derhal değiştir.
 
-### `/docs` endpoint'i açık
+### `/docs` varsayılan olarak açık
 
-Swagger UI `/docs` altında koşulsuz yayınlanır ve tüm endpoint listesini gösterir. Sistem
-iç ağda olduğu için kabul edilebilir görülmüştür; internete açık bir kurulumda proxy
-seviyesinde kapatmayı değerlendir.
+Swagger UI tüm endpoint listesini gösterir. İç ağ varsayımıyla varsayılan `true`;
+internete açık bir kurulumda `ENABLE_API_DOCS=false` yap.
 
 ---
 
@@ -91,6 +116,21 @@ Bunlar bilinçli tercihlerdir, bozma:
   `Category`, `CustomField`) yalnızca `admin`'e açıktır. Bu `isCompanyInScope` içinde
   **açıkça** uygulanır — Postgres'in `IN (...)` semantiği NULL'ları zaten dışlar ama bu
   tesadüfi bir korumadır, ona güvenme.
+- **SSE şirket kapsamlı:** `broadcastToStaff` her yayında `companyId` ister
+  (derleyici zorlar) ve alıcının kapsamıyla kesiştirir. Kapsam bağlantı anında
+  çözülür, keep-alive turunda tazelenir. Bu olmadan REST katmanındaki tüm kapsam
+  denetimi bu kanalda baypas edilir — deseni bozma.
+- **E-posta şablonları bağlama göre kaçışlanır:** `renderHtmlTemplate` HTML
+  gövdeler için değerleri kaçışlar; `renderTextTemplate` ham bırakır;
+  `renderSubjectTemplate` CR/LF temizler. Şablon değerlerinin çoğu kimliksiz
+  kullanıcıdan gelir — `bodyHtml`'e ham enjeksiyon, şirketin kendi SMTP'sinden
+  DKIM imzalı phishing demektir.
+- **Yükleme uzantısı doğrulanmış MIME'dan türer:** servis edilen `Content-Type`
+  uzantıdan geldiği için asıl denetim oradadır. Allowlist istemcinin gönderdiği
+  başlığa bakar ve tek başına YETERSİZDİR.
+- **Hata handler'ı route kayıtlarından ÖNCE kurulur:** sonra kurulursa hiçbir
+  route'a uygulanmaz (Fastify child context'i kayıt anında yakalar) ve ham hata
+  detayları istemciye döner.
 - **CSP:** SPA'yı frontend nginx servis eder ve `script-src 'self'` uygular —
   `unsafe-inline`/`eval` **yok** (Vite build'i inline script üretmez). `/uploads`
   `default-src 'none'; sandbox` ile servis edilir: yüklenen dosya origin içinde kod
@@ -102,10 +142,21 @@ Bunlar bilinçli tercihlerdir, bozma:
 - **Şifre kasası:** AES-256-GCM (authenticated encryption), anahtar yalnızca ortam
   değişkeninde, liste endpoint'i şifreleri hiç döndürmez, her `reveal` audit log'lanır.
 - **Rate limiting:** global 100/dk, staff login 5/dk, public lookup 10/5dk.
-- **Dosya yükleme:** MIME allowlist + dosya adı sanitizasyonu + boyut sınırı.
-- **`trustProxy`:** Reverse proxy arkasında gerçek client IP'yi kullanır — rate-limit ve
-  audit log doğru IP'yi görür.
-- **İç notlar sızmaz:** `TicketNote.isInternal` public endpoint'lerde filtrelenir.
+- **Dosya yükleme:** MIME allowlist + dosya adı sanitizasyonu + boyut sınırı +
+  uzantının doğrulanmış MIME'dan türetilmesi. SVG logo allowlist'te DEĞİLDİR
+  (aktif içerik formatı).
+- **`trustProxy` SINIRLI:** `TRUST_PROXY` kadar hop'a güvenilir, `true` DEĞİL. `true`
+  olsaydı `request.ip` istemcinin gönderdiği `X-Forwarded-For`'un en solunu alırdı ve
+  saldırgan her istekte taze bir rate-limit kovası açarak login brute force'unu
+  sınırsız hale getirirdi. Audit log ayrıca `x-real-ip` kullanır — onu nginx
+  `$remote_addr`'den set eder, sahtelenemez.
+- **İç notlar sızmaz — İKİ katmanda:** `TicketNote.isInternal` public sorguda
+  filtrelenir VE iç notların metni `ticket_history`'ye hiç yazılmaz. Tek başına
+  ilk katman yetmiyordu: history ilişkisi filtrelenmediği için not metni
+  `newValue` üzerinden public'e sızıyordu.
+- **CSV formül nötrleştirme:** `=`/`+`/`-`/`@` ile (baştaki boşluk atlanarak)
+  başlayan değerlere `'` öneki eklenir. Tırnaklamak YETMEZ — Excel tırnağı soyar
+  ve formülü yine çalıştırır.
 
 ---
 
@@ -118,6 +169,10 @@ Bunlar bilinçli tercihlerdir, bozma:
 - [ ] `NODE_ENV=production`
 - [ ] Seed production'a karşı **çalıştırılmadı** (veya şifreler değiştirildi)
 - [ ] `APP_URL` yalnızca gerçek FQDN'lerini içeriyor (CORS whitelist'i bu listedir)
+- [ ] **`TRUST_PROXY` topolojiye göre ayarlandı** — fazla verirsen istemcinin
+      uydurduğu `X-Forwarded-For`'a güvenilir ve TÜM rate limit'ler (login dahil)
+      geçersiz kalır. NPM/Coolify + frontend nginx → `2`. Doğrula: sahte
+      `X-Forwarded-For: 1.2.3.4` gönder, audit log'da görünüyorsa değer fazladır.
 - [ ] Sistem VPN/iç ağ arkasında veya proxy seviyesinde erişim kontrolü var
 - [ ] Postgres/Redis host'a expose **edilmiyor** (`docker-compose.local.yml` production'da kullanılmıyor)
 - [ ] Her `it_manager` ve `it_staff` hesabına en az bir şirket atandı — **atama yoksa

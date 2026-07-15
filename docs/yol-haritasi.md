@@ -25,16 +25,78 @@ Durum: 2026-07-15 itibarıyla.
 
 ## Öncelik 1 — Güvenlik
 
-### 1.1 SSE token'ı query parametresinde
+Aşağıdakiler bir güvenlik taramasında (XSS/enjeksiyon/yetkilendirme) bulundu ve
+**kapatılmadı** — kapatılanlar için [SECURITY.md](../SECURITY.md).
+
+### 1.1 `/uploads` kimlik doğrulaması yapmıyor
+
+Ekler statik servis edilir; API kapsamı doğru uyguluyor ama dosyanın kendisi için
+token gerekmez. Yol tahmin edilemez ama bu yetkilendirme değil, gizlilik-by-URL:
+link bir kez sızarsa (proxy log'u, tarayıcı geçmişi, e-posta) erişim kalıcıdır ve
+ticket kapandıktan sonra da sürer.
+
+**Yapılacak:** `/uploads` statik servisini kaldır; `Attachment` → `ticketId` →
+`companyId` çözen ve staff kapsamı VEYA eşleşen `accessToken` kontrolü yapan
+kimlik doğrulamalı bir route ekle.
+
+### 1.2 Public `accessToken` süresiz ve URL yolunda
+
+Süresi dolmaz, döndürülmez, ticket kapanınca iptal edilmez. URL YOLUNDA olduğu için
+nginx `access_log`'una tam yazılır.
+
+**Yapılacak:** TTL + kapanışta iptal; token'ı yoldan çıkar (POST gövdesi veya
+fragment) ya da `log_format`'ta maskele. `GET /public/ticket/:token` ayrıca kapalı
+ticket'ları okumaya izin veriyor — `resolved`/`closed` kontrolü upload yolunda var
+ama okuma yolunda yok.
+
+### 1.3 `POST /auth/lookup` kimliksiz PII oracle'ı
+
+Herhangi bir e-posta için `{id, email, fullName, companyId}` döndürüyor. Ticket
+numaraları sıralı (`TKT-2026-00001`), yani `/public/track` ile zincirlenip
+accessToken hasat edilebilir.
+
+**Yapılacak:** Kimlik doğrulaması iste ya da yalnızca boolean döndür.
+
+### 1.4 JWT'de `type` claim'i yok
+
+Access ve refresh token'ların payload'ı birebir aynı; ayrım YALNIZCA farklı
+secret'lara dayanıyor ve bu ayrım zorlanmıyor (`.refine` yok). Operatör ikisini aynı
+verirse 7 günlük refresh cookie'si access token olarak geçerli olur.
+
+**Yapılacak:** `type: 'access' | 'refresh'` claim'i ekle ve doğrulamada zorla;
+ayrıca env şemasına `JWT_SECRET !== JWT_REFRESH_SECRET` refine'ı koy.
+
+### 1.5 Access token'da rol/aktiflik yeniden kontrol edilmiyor
+
+`authenticate` saf JWT doğrulaması yapar, DB'ye bakmaz. Rol düşürülen bir kullanıcı
+15 dakika boyunca eski rolüyle çalışmaya devam eder; `PUT /staff/:id` yalnızca şifre
+değişiminde token iptal ediyor.
+
+### 1.6 SMTP yapılandırması SSRF'e açık (admin)
+
+`POST /companies/:id/smtp/test` host/port doğrulamadan bağlanır ve hata metnini
+çağırana döndürür — yarı-kör SSRF + port tarayıcı. Dahili ağ (`redis:6379`,
+`postgres:5432`) ve bulut metadata uçları erişilebilir. Şu an yalnızca `admin`
+yazabiliyor; **`it_manager`'a açılırsa yüksek önceliğe çıkar.**
+
+**Yapılacak:** DNS çözümlemesinden SONRA private/link-local CIDR blocklist'i.
+
+### 1.7 Şifre politikası ve lockout yok
+
+`min(8)`, karmaşıklık/breach kontrolü yok, hesap kilitleme yok, başarısız giriş
+audit kaydı yok.
+
+### 1.8 SSE token'ı query parametresinde
 
 `EventSource` özel header gönderemediği için staff canlı bildirim akışı JWT'yi query
 parametresinde alır ve token proxy log'larına düşer. Access token'lar 15 dk ömürlü olduğu
 için etki sınırlı. Kalıcı çözüm: kısa ömürlü tek kullanımlık SSE bileti üretmek.
 
-### 1.2 `/docs` koşulsuz açık
+### 1.9 Tek oturum sınırı
 
-Swagger UI tüm endpoint listesini gösterir. İç ağda kabul edilebilir; internete açık bir
-kurulumda proxy seviyesinde kapatılmalı ya da env bayrağına bağlanmalı.
+Redis'te personel başına tek `refresh:<staffId>` anahtarı var: B cihazında giriş
+yapmak A'nınkini sessizce öldürüyor, B'de çıkış A'yı da düşürüyor. Güvenlik açığı
+değil, kullanılabilirlik hatası (laptop + telefon normal bir senaryo).
 
 ---
 
