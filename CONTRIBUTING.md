@@ -17,7 +17,7 @@ docker compose exec backend npx tsx prisma/seed.ts
 
 Detay ve sorun giderme: [docs/kurulum.md](docs/kurulum.md).
 
-Kod tabanının teknik özeti için [docs/mimari.md](docs/mimari.md) ve [CLAUDE.md](CLAUDE.md).
+Kod tabanının teknik özeti için [docs/mimari.md](docs/mimari.md).
 
 ---
 

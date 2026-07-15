@@ -134,7 +134,6 @@ Sadece `frontend` host'a açılır (`FRONTEND_PORT`, varsayılan `1111`). Backen
 | [docs/yol-haritasi.md](docs/yol-haritasi.md) | Bilinen eksikler ve yol haritası — katkı vermeden önce oku |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Katkı rehberi, kodlama kuralları |
 | [SECURITY.md](SECURITY.md) | Güvenlik açığı bildirimi ve bilinen güvenlik sınırları |
-| [CLAUDE.md](CLAUDE.md) | Kod tabanının teknik özeti (AI asistanları ve yeni geliştiriciler için) |
 
 ---
 

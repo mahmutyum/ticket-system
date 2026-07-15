@@ -67,3 +67,7 @@ uploads/*
 
 # Docker volume override'ları
 docker-compose.override.yml
+
+# AI asistan talimatları — yalnızca local, repoya girmez
+CLAUDE.md
+.claude/
