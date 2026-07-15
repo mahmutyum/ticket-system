@@ -74,7 +74,8 @@ export async function buildApp() {
   // Buradaki politika Swagger UI'ın çalışabileceği en sıkı hâldir: swagger-ui
   // kendi başlatma script'ini ve stillerini satır içi enjekte eder, bu yüzden
   // 'unsafe-inline' zorunludur. JSON API yanıtları için CSP zaten işlevsizdir;
-  // asıl kazanç aşağıda /uploads'a uygulanan çok daha sıkı politikadır.
+  // asıl kazanç /attachments ucunun yanıt başına verdiği çok daha sıkı
+  // politikadır (`default-src 'none'; sandbox` — attachments.routes.ts).
   await app.register(helmet, {
     contentSecurityPolicy: {
       directives: {

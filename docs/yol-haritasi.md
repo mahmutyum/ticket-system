@@ -15,12 +15,42 @@ Durum: 2026-07-15 itibarıyla.
 | Kurulum / deploy | 🟢 Docker Compose ile tek komut; Coolify + NPM için belgelenmiş |
 | Veritabanı şema yönetimi | 🟢 Versiyonlanmış migration'lar, CI'da gerçek Postgres'e uygulanıyor |
 | Dokümantasyon | 🟢 Kurulum, kullanım, mimari |
-| Test | 🟡 213 test (backend 194, frontend 19) — kritik yollar korunuyor, route kapsaması kısmi |
+| Test | 🟡 233 test (backend 214, frontend 19) — kritik yollar korunuyor, route kapsaması kısmi |
 | CI | 🟢 Tip kontrolü, lint, test, migration, Docker build, bağımlılık açıkları |
 | Lint / format | 🟢 ESLint + Prettier (backend ve frontend) |
 | Bağımlılık açıkları | 🟢 Production'da 0 (CI'da zorlanıyor) |
 | API dokümantasyonu | 🟡 Endpoint listesi var, request/response gövdeleri yok |
 | Güvenlik | 🟡 Kapsamlı bir tarama yapıldı ve bulgular kapatıldı; [kalan sınırlar](../SECURITY.md) |
+
+---
+
+## Öncelik 0 — Kurmadan önce doğrulanmalı
+
+### nginx konfigürasyonu canlı test EDİLMEDİ
+
+`frontend/nginx.conf` ve `nginx/conf.d/default.conf` içindeki ek/logo servis yolu
+değiştirildi (`alias` ile diskten servis → backend'e proxy). **Değişiklik gerçek
+nginx'e karşı çalıştırılamadı** — geliştirme makinesinde Docker kilitlendi.
+
+Kanıtlanan (Docker kilitlenmeden ÖNCE, gerçek nginx konteyneriyle): eski
+`frontend/nginx.conf` `/branding/...` isteğine `200 OK` + SPA'nın `index.html`'ini
+döndürüyordu, yani **şirket logoları kırıktı**.
+
+Doğrulanmayan: düzeltilmiş konfigürasyonun sözdizimi ve yönlendirmesi. Bloklar
+aynı dosyada zaten çalışan `/api/` bloğunun birebir kalıbı (aynı direktifler,
+`proxy_pass` sonunda eğik çizgi YOK — yol değişmeden geçsin diye), ama bu kanıt değil.
+
+**İlk kurulumda yapılacak:**
+
+```bash
+docker compose config -q                 # compose sözdizimi
+docker compose up -d --build
+docker compose exec frontend nginx -t    # nginx sözdizimi
+curl -sI https://<host>/branding/<companyId>/<dosya>.png   # 200 + image/png beklenir
+curl -sI https://<host>/attachments/<id>                   # token'sız 404 beklenir
+docker compose --profile proxy up -d     # proxy profili kullanılıyorsa
+docker compose exec nginx nginx -t
+```
 
 ---
 
@@ -71,9 +101,9 @@ ucundan erişilebilir olmaya devam ediyordu. `saveLogo` artık şirket klasörü
 
 ## Öncelik 2 — Test altyapısı
 
-**Bugün: 213 test.**
+**Bugün: 233 test.**
 
-Backend (194):
+Backend (214):
 - `utils/staff-scope` — şirket kapsamı, fail-closed, filtre kesiştirme
 - `utils/crypto` — AES-256-GCM, `looksEncrypted`
 - `utils/validation` — kırpma, sınırlar, telefon/e-posta/URL, şifre politikası
@@ -83,7 +113,8 @@ Backend (194):
 - `utils/csv-escape` — formül enjeksiyonu, çerçeveleme
 - `services/sse-scope` — çapraz şirket yayın sızıntısı
 - `services/email-render` — HTML kaçışlama, replacement tuzakları
-- `services/storage` — uzantı türetme, SVG reddi, logo temizliği, yol kapsaması
+- `services/storage` — uzantı türetme, SVG reddi, logo temizliği, yol kapsaması,
+  shell yükleme denemeleri (18 payload: .php/.jsp/.sh, çift uzantı, null byte, traversal)
 - `routes/credentials.auth` — kasa yetkilendirmesi
 - `routes/staff.auth` — ayrıcalık yükseltmesi
 - `routes/tickets.auth` — ticket yazma kapsamı, ek kotası

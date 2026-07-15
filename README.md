@@ -105,10 +105,14 @@ Detaylı anlatım: **[docs/kurulum.md](docs/kurulum.md)**
 Kısaca — Coolify + Nginx Proxy Manager arkasında:
 
 ```
-İnternet/VPN → NPM (SSL + FQDN) → frontend:1111 ─┬─ /          → SPA
-                                                  ├─ /api/*     → backend:4000
-                                                  └─ /uploads/* → backend:4000
+İnternet/VPN → NPM (SSL + FQDN) → frontend:1111 ─┬─ /              → SPA
+                                                  ├─ /api/*         → backend:4000
+                                                  ├─ /attachments/* → backend:4000  (yetki kontrollü)
+                                                  └─ /branding/*    → backend:4000  (public logolar)
 ```
+
+Ekler ve logolar diskten değil **backend üzerinden** servis edilir: token ve şirket
+kapsamı kontrolleri orada yapılır.
 
 ```bash
 cp .env.example .env   # değerleri doldur (Coolify'da panelden)

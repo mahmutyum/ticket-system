@@ -228,3 +228,77 @@ describe('deleteFile', () => {
     await expect(deleteFile('yok/olmayan.txt')).resolves.toBeUndefined();
   });
 });
+
+/**
+ * Web shell yükleme denemeleri.
+ *
+ * Klasik saldırı: shell.php yükle → /uploads/shell.php iste → RCE.
+ * Zincirin her halkası ayrı kırılmalı; bu testler ilk halkayı (diske hangi adla
+ * yazıldığını) tutar. Uzantı YALNIZCA doğrulanmış MIME'dan gelir, istemcinin
+ * gönderdiği addan değil.
+ */
+describe('saveFile — shell yükleme denemeleri', () => {
+  const SHELL_NAMES = [
+    'shell.php',
+    'shell.php5',
+    'shell.phtml',
+    'shell.jsp',
+    'shell.asp',
+    'shell.aspx',
+    'shell.cgi',
+    'shell.sh',
+    'shell.html',
+    'shell.svg',
+    // Çift uzantı numaraları
+    'shell.pdf.php',
+    'shell.php.pdf',
+    'shell.php.jpg',
+    'shell.jpg.php',
+    // Null byte / boşluk ile uzantı gizleme
+    'shell.php%00.pdf',
+    'shell.php .pdf',
+    // Yol enjeksiyonu
+    '../../etc/cron.d/evil.php',
+    '..%2f..%2fshell.php',
+  ];
+
+  for (const name of SHELL_NAMES) {
+    it(`"${name}" çalıştırılabilir uzantıyla YAZILMAZ`, async () => {
+      const { saveFile } = await storage();
+      // Saldırgan izin verilen bir MIME beyan eder; uzantı ONDAN türetilir.
+      const saved = await saveFile(Buffer.from('<?php system($_GET["c"]); ?>'), name, 'shelltest', 'application/pdf');
+
+      // Diskteki ad .pdf ile biter — beyan edilen MIME'ın kanonik uzantısı.
+      expect(saved.filePath.endsWith('.pdf')).toBe(true);
+
+      // Ve içinde HİÇBİR çalıştırılabilir uzantı geçmez.
+      expect(saved.filePath).not.toMatch(/\.(php\d?|phtml|jsp|asp|aspx|cgi|sh|html?|svg)(\.|$)/i);
+
+      // Yol enjeksiyonu yok: ticket dizininin dışına çıkılmamış.
+      expect(saved.filePath.startsWith('shelltest/')).toBe(true);
+      expect(saved.filePath).not.toContain('..');
+    });
+  }
+
+  it('gerçekten .php uzantısı üreten bir MIME YOK', async () => {
+    const { isAllowedMimeType } = await storage();
+    // Allowlist'te aktif içerik tipi bulunmamalı.
+    for (const m of [
+      'application/x-httpd-php',
+      'text/html',
+      'image/svg+xml',
+      'application/x-sh',
+      'text/x-php',
+      'application/javascript',
+    ]) {
+      expect(isAllowedMimeType(m), `${m} allowlist'te OLMAMALI`).toBe(false);
+    }
+  });
+
+  it('reddedilen MIME hiç dosya yazmaz', async () => {
+    const { saveFile } = await storage();
+    await expect(
+      saveFile(Buffer.from('x'), 'a.php', 'shelltest2', 'application/x-httpd-php'),
+    ).rejects.toThrow(/İzin verilmeyen/);
+  });
+});

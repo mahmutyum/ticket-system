@@ -93,8 +93,12 @@ services:
         condition: service_healthy
       backend:
         condition: service_healthy
-    volumes:
-      - uploads:/app/uploads:ro
+    # uploads volume'u BİLEREK bağlanmadı. Eskiden `uploads:/app/uploads:ro` vardı
+    # ve nginx ekleri `alias` ile doğrudan diskten servis ediyordu — backend'e hiç
+    # sormadan, yani token ve şirket kapsamı kontrolleri devre dışı. Ekler artık
+    # /attachments ucuna proxy'leniyor. Mount'u geri eklemek baypası da geri
+    # getirmenin ilk adımı olur: nginx bu dosyalara erişemezse yanlışlıkla
+    # servis edemez.
     networks:
       - app-network
     restart: unless-stopped
