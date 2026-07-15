@@ -46,6 +46,13 @@ jobs:
       - name: Testler
         run: npm test
 
+      # Üretime giden bağımlılıklarda bilinen açık OLMAMALI.
+      # --omit=dev: dev araçlarının açıkları (vitest/esbuild zinciri gibi)
+      # kullanıcıya ulaşmaz; burada onları kırmızı yapmak gürültü olur.
+      # Yeni bir prod açığı çıkarsa CI kırılır ve bilerek karar verilir.
+      - name: Bağımlılık açıkları (production)
+        run: npm audit --omit=dev --audit-level=low
+
   frontend:
     name: Frontend — tip kontrolü, lint, build
     runs-on: ubuntu-latest
@@ -71,6 +78,9 @@ jobs:
 
       - name: Build
         run: npx vite build
+
+      - name: Bağımlılık açıkları (production)
+        run: npm audit --omit=dev --audit-level=low
 
   migrations:
     name: Migration'lar — gerçek Postgres'e uygulanıyor mu
