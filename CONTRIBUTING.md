@@ -23,25 +23,26 @@ Kod tabanının teknik özeti için [docs/mimari.md](docs/mimari.md).
 
 ## Değişiklik göndermeden önce
 
-Bu proje henüz CI'sız. **Kontroller senin sorumluluğunda:**
+CI (`.github/workflows/ci.yml`) PR'larda hepsini çalıştırır, ama yerelde geçirmek zamandan
+kazandırır:
 
 ```bash
 # Backend
 cd backend
 npm run typecheck         # kaynak tip kontrolü
 npm run typecheck:tests   # test dosyaları (ayrı tsconfig — ana build rootDir:src)
-npm test                  # testler
+npm run lint
+npm test
 
 # Frontend
 cd ../frontend
-npx tsc -b                # tip kontrolü
+npm run typecheck
+npm run lint
+npm run build
 ```
 
-Docker imajlarının hâlâ derlendiğinden emin ol:
-
-```bash
-docker compose build
-```
+CI ayrıca migration'ları **gerçek bir Postgres'e** uygular ve şemanın veritabanıyla
+örtüştüğünü doğrular — şemayı değiştirip migration üretmeyi unutursan orada yakalanır.
 
 ---
 
@@ -107,12 +108,9 @@ Güvenlik açığı bulduysan **issue açma** — [SECURITY.md](SECURITY.md)'dek
 
 [Yol haritasındaki](docs/yol-haritasi.md) yüksek değerli ve nispeten bağımsız işler:
 
-- **Route seviyesinde auth/RBAC testleri** — en yüksek etkili katkı. Birim testleri var
-  (kapsam + crypto, 29 test) ama endpoint'lerin gerçekten engellediğini doğrulayan hiçbir
-  test yok. `app.inject()` ile başlanabilir.
-- **CI** — `tsc --noEmit` + `vitest run` + `docker compose build` çalıştıran bir GitHub
-  Actions workflow'u.
-- **ESLint + Prettier** kurulumu.
+- **Public erişim testleri** — iç notların public endpoint'ten sızmadığını doğrulayan test
+  yok; regresyon riski yüksek bir alan. Örnek için `tests/routes/credentials.auth.test.ts`.
+- **Frontend test runner** — hiç yok.
 - **Zod → fastify şema entegrasyonu** (`fastify-type-provider-zod`) — şemalar zaten yazılı;
   bağlanınca `/docs` tam OpenAPI dokümanına dönüşür.
 - **Ekran görüntüleri** — README'yi ciddi biçimde iyileştirir.

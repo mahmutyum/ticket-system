@@ -1,5 +1,12 @@
 # IT Ticket System — İlerleme Takibi
 
+> **Bu bir TARİHSEL kayıttır** — projenin hangi sırayla inşa edildiğini anlatır.
+> Sistemin bugünkü hâli ve bilinen eksikler için buraya değil şuraya bak:
+>
+> - **[docs/yol-haritasi.md](docs/yol-haritasi.md)** — güncel durum ve açık maddeler
+> - **[docs/mimari.md](docs/mimari.md)** — sistem nasıl çalışıyor
+> - **[docs/kurulum.md](docs/kurulum.md)** — nasıl kurulur
+
 ## Faz 1: Temel Altyapı ✅
 **Durum**: Tamamlandı
 
@@ -133,7 +140,11 @@
 
 ---
 
-## Proje Durumu: TAMAMLANDI ✅
+## Faz 11 sonu itibarıyla özellik durumu
+
+> Aşağıdaki liste **Faz 11'in bittiği andaki** kapsamı özetler. Sonrasında
+> Faz 12-15 geldi (aşağıda). Projenin bugünkü durumu ve açık maddeler için
+> [docs/yol-haritasi.md](docs/yol-haritasi.md).
 
 ### Tüm Özellikler
 - ✅ Dockerize yapı (nginx + backend + frontend + postgres + redis)
@@ -181,3 +192,47 @@
 - Tüm servislerde healthcheck tanımı
 - `.env.example` Coolify-uyumlu: port, domain, SMTP bölümleri ayrı
 - CLAUDE.md'ye Coolify + NPM deploy rehberi eklendi
+
+---
+
+## Faz 13: Görev Yönetimi + Şifre Kasası ✅
+**Durum**: Tamamlandı (2026-06)
+
+### Yapılanlar
+- Görev yönetimi: `Task` / `TaskAssignee` / `TaskComment`, çoklu atama, yorumlar, görev e-posta şablonları
+- Şifre kasası: `CredentialEntry`, AES-256-GCM şifreleme (`utils/crypto.ts`), admin korumalı REST modülü, her görüntülemede audit log
+- Takvim: randevu süresi seçimi (`scheduledEnd`), gerçek süreyle orantılı çizim, paralel randevularda çakışma uyarısı kaldırıldı
+- Tema ve şirket bazlı branding provider'ları
+
+## Faz 14: Public Repo + Kılavuz ✅
+**Durum**: Tamamlandı (2026-07)
+
+### Yapılanlar
+- Depo public yapıldı, MIT lisansı eklendi
+- Dış kullanıcı kılavuzu: README (TR + EN özet), kurulum, kullanım, mimari, yol haritası, SECURITY, CONTRIBUTING
+- **Kurulum engelleri giderildi**: `.env.example`'a eksik `CREDENTIALS_ENC_KEY` eklendi; `prisma/migrations/` hiç yoktu — baseline üretildi ve `db push --accept-data-loss` yerine versiyonlanmış migration'lara geçildi; `prisma` CLI prod imajında yoktu, dependencies'e taşındı; dev'de şema hiç uygulanmıyordu
+- Swagger UI (`/docs`) bağlandı — paketler kuruluydu ama register edilmemişti
+
+## Faz 15: Yetkilendirme Sertleştirmesi ✅
+**Durum**: Tamamlandı (2026-07)
+
+### Yapılanlar — Rol sistemi
+- `it_manager` şirkete özel yönetici oldu: yalnızca `StaffCompany` ile atandığı şirketleri görür. `admin` sınırsız kalır.
+- Kapsam **fail-closed**: atama yoksa hiçbir şey görünmez (eskiden atamasız personel her şeyi görüyordu)
+- **Ayrıcalık yükseltmesi kapatıldı**: `PUT /staff/:id/companies` it_manager'a açıktı ve hedefin çağıran olup olmadığına bakmıyordu — yönetici kendine tüm şirketleri atayabiliyordu. Artık yalnızca admin.
+- **Kapsam bypass'ı kapatıldı**: kapsam `where`'e yazılıp istemcinin `companyId` parametresiyle eziliyordu; artık `resolveCompanyFilter` ile kesiştiriliyor
+- Kasa `it_manager`'a şirket kapsamlı açıldı; `companyId=null` global kayıtlar admin'e özel
+
+### Yapılanlar — Güvenlik
+- `CompanySmtp.pass` artık gerçekten şifreli (şemadaki "encrypted in production" yorumu yalandı). Eski kayıtlar için `npm run db:encrypt-smtp`
+- CSP: SPA'yı frontend nginx servis ettiği için politika oraya yazıldı (`script-src 'self'`, unsafe-inline yok). `/uploads` → `default-src 'none'; sandbox`
+- Seed production'a karşı kilitlendi (`--force` + güçlü şifre env'leri zorunlu)
+
+### Yapılanlar — Veri modeli
+- **Prisma enum'ları**: rol/durum/öncelik artık DB seviyesinde zorlanıyor (9 enum). Öncesinde düz `String`'di.
+- Ticket `critical` vs görev `urgent` tutarsızlığı birleştirildi → `critical`
+- `config/constants.ts` enum'lardan türetiliyor — elle liste tutulmuyor
+
+### Yapılanlar — Test
+- Kapsam ve crypto birim testleri + route seviyesinde auth/RBAC testleri
+- Bulunan açıklar için mutasyon testi yapıldı (eski davranış geri konduğunda testler kırılıyor)

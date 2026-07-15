@@ -1,5 +1,15 @@
 # Takvim Düzeltmeleri + Şifreler Modülü Implementation Plan
 
+> ## ✅ TAMAMLANDI (2026-06)
+> **Bu plan uygulanmıştır ve tarihsel kayıt olarak tutulmaktadır.**
+> Aşağıdaki checkbox'lar işaretsiz kalmış olabilir — kod tamamdır: `CredentialEntry`
+> modeli, `utils/crypto.ts`, `credentials.routes.ts` ve `/staff/passwords` sayfası
+> mevcuttur.
+>
+> **Not:** Plan yazıldığı tarihte kasa admin'e özeldi. Sonradan `it_manager`'a
+> şirket kapsamlı açıldı — güncel davranış için [docs/kullanim.md](../../kullanim.md)
+> ve [docs/mimari.md](../../mimari.md) esastır, bu doküman değil.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Yerinde destek takviminde çoklu/kısa randevu gösterimini düzeltmek ve sadece `admin` rolünün eriştiği şifreli bir "Şifreler" (credential vault) modülü eklemek.

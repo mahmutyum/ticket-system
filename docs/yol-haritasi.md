@@ -15,9 +15,9 @@ Durum: 2026-07-15 itibarıyla.
 | Kurulum / deploy | 🟢 Docker Compose ile tek komut; Coolify + NPM için belgelenmiş |
 | Veritabanı şema yönetimi | 🟢 Versiyonlanmış migration'lar |
 | Dokümantasyon | 🟢 Kurulum, kullanım, mimari |
-| **Test** | 🟡 Kritik yollar korunuyor (kapsam + crypto, 29 test); route/worker kapsaması yok |
-| **CI** | 🔴 **Yok** |
-| **Lint / format** | 🔴 **Yok** |
+| **Test** | 🟡 Kapsam, crypto ve route seviyesi auth korunuyor (52 test); ticket/SLA/worker kapsaması yok |
+| **CI** | 🟢 GitHub Actions — tip kontrolü, lint, test, migration ve Docker build |
+| **Lint / format** | 🟢 ESLint + Prettier (backend ve frontend) |
 | API dokümantasyonu | 🟡 Endpoint listesi var, request/response gövdeleri yok |
 | Güvenlik | 🟡 Yetkilendirme sertleştirildi, [bilinen sınırlar](../SECURITY.md) sürüyor |
 
@@ -40,40 +40,38 @@ kurulumda proxy seviyesinde kapatılmalı ya da env bayrağına bağlanmalı.
 
 ## Öncelik 2 — Test altyapısı
 
-**Bugün:** 29 test, iki dosyada — `tests/utils/staff-scope.test.ts` (şirket kapsamı,
-fail-closed, filtre kesiştirme) ve `tests/utils/crypto.test.ts` (AES-256-GCM,
-`looksEncrypted`). `vitest.config.ts` ve `tsconfig.test.json` mevcut (`npm test`,
-`npm run typecheck:tests`).
+**Bugün:** 52 test, dört dosyada.
 
-Bunlar birim testleridir ve yalnızca **saf mantığı** korur. **Route seviyesinde hiçbir test
-yok**: `requireRole`'ün gerçekten engellediği, handler'lardaki kapsam kontrollerinin
-çağrıldığı, iç notların public uçtan sızmadığı otomatik olarak doğrulanmıyor. Frontend'de
-test runner yok.
+- `tests/utils/staff-scope.test.ts` — şirket kapsamı, fail-closed, filtre kesiştirme.
+- `tests/utils/crypto.test.ts` — AES-256-GCM, `looksEncrypted`.
+- `tests/routes/credentials.auth.test.ts` — kasa yetkilendirmesi `app.inject()` ile:
+  kapsam dışı/global kayıt 403, reddedilen `reveal` audit log yazmıyor.
+- `tests/routes/staff.auth.test.ts` — şirket atamasında ayrıcalık yükseltmesi kapalı.
 
-**Yapılacak (öncelik sırasıyla):**
+Bulunan iki gerçek açık için **mutasyon testi** yapıldı: eski hatalı davranış geri
+konduğunda testler kırılıyor, yani dekoratif değiller.
 
-1. **Route seviyesinde auth/RBAC testleri** — en yüksek değerli boşluk. `app.inject()` ile
-   Fastify'ı ayağa kaldırıp: it_manager kapsam dışı ticket'a erişebiliyor mu, kasa
-   `reveal`'i 403 veriyor mu, `PUT /staff/:id/companies` it_manager'a kapalı mı.
-2. **Public erişim testleri** — iç notlar public endpoint'ten sızıyor mu (regresyon riski
+**Kalan boşluklar (öncelik sırasıyla):**
+
+1. **Public erişim testleri** — iç notlar public endpoint'ten sızıyor mu (regresyon riski
    yüksek), `accessToken` doğrulaması.
-3. **Ticket akışı** — oluşturma, durum geçişleri, ticket numarası üretiminde yarış durumu.
-4. **SLA hesabı** — kategori bazlı süre hesapları.
-5. Testcontainers veya compose ile gerçek Postgres/Redis'e karşı entegrasyon testleri.
+2. **Ticket akışı** — oluşturma, durum geçişleri, ticket numarası üretiminde yarış durumu.
+3. **SLA hesabı** — kategori bazlı süre hesapları.
+4. **Worker'lar** — e-posta/SMS kuyruk davranışı, retry.
+5. Testcontainers ile gerçek Postgres/Redis'e karşı entegrasyon testleri. (CI şu an
+   migration'ları gerçek Postgres'e uyguluyor ama uygulama testleri stub'lı.)
+6. **Frontend'de test runner yok.**
 
-### Öncelik 3 — CI
+### Öncelik 3 — CI ve lint ✅
 
-`.github/workflows/` yok. Hiçbir şey otomatik doğrulanmıyor.
+`.github/workflows/ci.yml` dört iş çalıştırır: backend (tip kontrolü + testler + lint),
+frontend (tip kontrolü + lint + build), migration'lar (gerçek Postgres'e `migrate deploy`,
+şema-DB örtüşme kontrolü, seed) ve Docker imaj build'leri.
 
-**Yapılacak:** PR'larda `tsc --noEmit` (backend + frontend), `vitest run`, `docker compose
-build`. Test altyapısı olgunlaştıkça genişlet.
-
-### Öncelik 4 — Lint / format
-
-Ne ESLint ne Prettier var; hiçbir package.json'da `lint` script'i yok. Kod stili tutarlı ama
-bunu koruyan bir mekanizma yok.
-
-**Yapılacak:** ESLint (typescript-eslint) + Prettier ekle, CI'a bağla.
+ESLint + Prettier her iki pakette kurulu (`npm run lint`, `npm run format`). Kurulum
+**gerçek hata** yakalamaya ayarlı, stil dayatmaya değil: biçim kuralları Prettier'a
+bırakılmış, `no-explicit-any` uyarı seviyesinde (kod tabanında bilinçli `any` var),
+`require-await` kapalı (Fastify handler'ları sözleşme gereği async).
 
 ---
 
@@ -89,34 +87,17 @@ gösterebiliyor, request/response gövdelerini belgeleyemiyor.
 fastify route şemalarına bağla. Tek hamlede hem otomatik validation hem tam OpenAPI dokümanı
 elde edilir — şemalar zaten yazılmış durumda.
 
-### 5.2 Prisma'da enum yok
+### 5.2 Enum'a çevrilmeyen iki alan
 
-Şemada 24 model var ama **hiç enum yok** — durum, öncelik ve roller düz `String`.
-Geçerli değerler yalnızca `config/constants.ts`'de ve Zod şemalarında yaşıyor; veritabanı
-seviyesinde hiçbir koruma yok.
+Durum/öncelik/rol artık Prisma enum'u (9 enum, DB seviyesinde zorlanıyor). İki alan
+bilinçli olarak `String` bırakıldı:
 
-**Yapılacak:** Ticket durumu, öncelik ve staff rolü için Prisma enum'larına geç. Veri
-geçişi gerektirir.
-
-Ayrıca `config/constants.ts` rol/durum sabitlerini tanımlar ama **hiçbir yer import etmez** —
-her kontrol ham string literal. Enum'a geçerken bu da bağlanmalı; derleyici desteği
-olmadığı için rol değişiklikleri gereğinden riskli.
-
-### 5.3 Ölü konfigürasyon
-
-`config/index.ts` `REDIS_PASSWORD`'ü zorunlu tutuyor ama backend kodu bunu **hiç okumuyor** —
-Redis kimlik doğrulaması `REDIS_URL` içinde taşınıyor. Değişken yine de gerekli, çünkü
-`docker-compose.yml` redis container'ını `--requirepass` ile başlatırken kullanıyor. Yani
-zararsız ama okuyanı yanıltıyor.
-
-**Yapılacak:** Zod şemasından çıkar (compose'un kullanımı etkilenmez) veya neden orada
-olduğunu yorumla açıkla.
-
-### 5.4 `PGADMIN_PASSWORD` zayıf varsayılan
-
-`docker-compose.yml`: `${PGADMIN_PASSWORD:-changeme}`. Komşusu `DB_PASSWORD` ve
-`REDIS_PASSWORD` doğru şekilde `${VAR:?}` ile fail-fast yaparken bu sessizce `changeme`'e
-düşüyor. `--profile tools` opt-in olduğu için etkisi sınırlı, yine de aynı desene çekilmeli.
+- **`Company.groupType`** — yazma yolu uzun süre `z.string().min(1)` ile doğrulandı, yani
+  mevcut veritabanlarında listenin dışında değerler bulunabilir; enum migration'ı
+  `ALTER ... USING` sırasında patlardı. Önce veri temizlenmeli:
+  `SELECT DISTINCT group_type FROM companies;`
+- **`Notification.channel`** — e-posta/SMS şablonlarının `slug`'ıyla eşleşir ve şablonlar
+  veritabanından yönetilir; yeni şablon eklemek migration gerektirmemeli.
 
 ---
 
