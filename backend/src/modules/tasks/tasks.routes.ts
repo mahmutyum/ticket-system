@@ -1,0 +1,403 @@
+import { FastifyPluginAsync } from 'fastify';
+import { z } from 'zod';
+import { queueEmail } from '../../jobs/queue.js';
+import { config } from '../../config/index.js';
+import { broadcastToStaff } from '../../services/sse.service.js';
+import { createAuditLog } from '../../middleware/audit.js';
+
+const taskCreateSchema = z.object({
+  title: z.string().min(1).max(300),
+  description: z.string().min(1),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
+  dueDate: z.string().datetime().optional().nullable(),
+  assigneeIds: z.array(z.string().cuid()).min(1),
+  locationId: z.string().cuid(),
+});
+
+const taskUpdateSchema = z.object({
+  title: z.string().min(1).max(300).optional(),
+  description: z.string().min(1).optional(),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+  status: z.enum(['open', 'in_progress', 'done', 'cancelled']).optional(),
+  dueDate: z.string().datetime().optional().nullable(),
+  assigneeIds: z.array(z.string().cuid()).optional(),
+  locationId: z.string().cuid().optional().nullable(),
+});
+
+const commentSchema = z.object({
+  content: z.string().min(1),
+});
+
+const TASK_SELECT = {
+  id: true,
+  title: true,
+  description: true,
+  priority: true,
+  status: true,
+  dueDate: true,
+  completedAt: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: { select: { id: true, fullName: true, email: true } },
+  location: {
+    select: {
+      id: true,
+      name: true,
+      company: { select: { id: true, name: true } },
+    },
+  },
+  assignees: {
+    select: {
+      assignedAt: true,
+      staff: { select: { id: true, fullName: true, email: true, avatarUrl: true } },
+    },
+  },
+  _count: { select: { comments: true } },
+} as const;
+
+export const taskRoutes: FastifyPluginAsync = async (app) => {
+  // List tasks — admin/manager: all, staff: only assigned
+  app.get('/', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const staffUser = request.staffUser!;
+    const q = z.object({
+      status: z.string().optional(),
+      mine: z.string().optional(), // "1" → only my assigned
+      scope: z.string().optional(), // "created" | "assigned" | "all"
+    }).parse(request.query ?? {});
+
+    const where: any = {};
+    if (q.status) where.status = q.status;
+
+    const isManager = staffUser.role === 'admin' || staffUser.role === 'it_manager';
+    if (!isManager || q.mine === '1' || q.scope === 'assigned') {
+      where.assignees = { some: { staffId: staffUser.id } };
+    } else if (q.scope === 'created') {
+      where.createdById = staffUser.id;
+    }
+
+    const tasks = await app.prisma.task.findMany({
+      where,
+      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+      select: TASK_SELECT,
+    });
+
+    reply.send({ success: true, data: tasks });
+  });
+
+  // Get single task with comments
+  app.get('/:id', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const staffUser = request.staffUser!;
+
+    const task = await app.prisma.task.findUnique({
+      where: { id },
+      select: {
+        ...TASK_SELECT,
+        comments: {
+          orderBy: { createdAt: 'asc' },
+          select: {
+            id: true,
+            content: true,
+            createdAt: true,
+            createdBy: { select: { id: true, fullName: true, role: true } },
+          },
+        },
+      },
+    });
+    if (!task) return reply.status(404).send({ success: false, error: 'Görev bulunamadı' });
+
+    const isManager = staffUser.role === 'admin' || staffUser.role === 'it_manager';
+    const isAssignee = task.assignees.some(a => a.staff.id === staffUser.id);
+    const isCreator = task.createdBy.id === staffUser.id;
+    if (!isManager && !isAssignee && !isCreator) {
+      return reply.status(403).send({ success: false, error: 'Bu göreve erişim yetkiniz yok' });
+    }
+
+    reply.send({ success: true, data: task });
+  });
+
+  // Create task — admin/it_manager only
+  app.post('/', { preHandler: [app.requireRole('admin', 'it_manager')] }, async (request, reply) => {
+    const body = taskCreateSchema.parse(request.body);
+    const staffUser = request.staffUser!;
+
+    // Validate assignees exist and active
+    const assignees = await app.prisma.staff.findMany({
+      where: { id: { in: body.assigneeIds }, isActive: true },
+      select: { id: true, email: true, fullName: true },
+    });
+    if (assignees.length !== body.assigneeIds.length) {
+      return reply.status(400).send({ success: false, error: 'Bazı atanan personeller bulunamadı veya aktif değil' });
+    }
+
+    const location = await app.prisma.location.findFirst({
+      where: { id: body.locationId, isActive: true },
+      select: { id: true },
+    });
+    if (!location) {
+      return reply.status(400).send({ success: false, error: 'Lokasyon bulunamadı veya aktif değil' });
+    }
+
+    const task = await app.prisma.task.create({
+      data: {
+        title: body.title,
+        description: body.description,
+        priority: body.priority,
+        dueDate: body.dueDate ? new Date(body.dueDate) : null,
+        createdById: staffUser.id,
+        locationId: body.locationId,
+        assignees: {
+          create: body.assigneeIds.map(staffId => ({ staffId })),
+        },
+      },
+      select: TASK_SELECT,
+    });
+
+    // Audit
+    await createAuditLog({
+      entityType: 'task',
+      entityId: task.id,
+      action: 'create',
+      changes: { title: body.title, assigneeIds: body.assigneeIds, priority: body.priority },
+      performedBy: staffUser.email,
+      ipAddress: request.headers['x-real-ip'] as string,
+    });
+
+    // SSE
+    broadcastToStaff('task_created', {
+      taskId: task.id,
+      title: task.title,
+      assigneeIds: body.assigneeIds,
+    });
+
+    // Email assignees
+    const taskUrl = `${config.CANONICAL_URL}/staff/tasks/${task.id}`;
+    for (const a of assignees) {
+      await queueEmail({
+        to: a.email,
+        templateSlug: 'task_assigned',
+        variables: {
+          staffName: a.fullName,
+          taskTitle: task.title,
+          taskDescription: body.description.substring(0, 500),
+          priority: body.priority,
+          dueDate: body.dueDate ? new Date(body.dueDate).toLocaleString('tr-TR') : '—',
+          createdBy: staffUser.email,
+          taskUrl,
+        },
+      });
+    }
+
+    reply.status(201).send({ success: true, data: task });
+  });
+
+  // Update task — admin/it_manager only (full edit). Assignees can only change status via separate endpoint.
+  app.put('/:id', { preHandler: [app.requireRole('admin', 'it_manager')] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = taskUpdateSchema.parse(request.body);
+    const staffUser = request.staffUser!;
+
+    const existing = await app.prisma.task.findUnique({
+      where: { id },
+      select: { id: true, status: true, completedAt: true, createdBy: { select: { email: true } }, assignees: { select: { staffId: true, staff: { select: { email: true, fullName: true } } } } },
+    });
+    if (!existing) return reply.status(404).send({ success: false, error: 'Görev bulunamadı' });
+
+    const updateData: any = {};
+    if (body.title !== undefined) updateData.title = body.title;
+    if (body.description !== undefined) updateData.description = body.description;
+    if (body.priority !== undefined) updateData.priority = body.priority;
+    if (body.dueDate !== undefined) updateData.dueDate = body.dueDate ? new Date(body.dueDate) : null;
+    if (body.locationId !== undefined) {
+      if (body.locationId) {
+        const loc = await app.prisma.location.findFirst({
+          where: { id: body.locationId, isActive: true },
+          select: { id: true },
+        });
+        if (!loc) {
+          return reply.status(400).send({ success: false, error: 'Lokasyon bulunamadı veya aktif değil' });
+        }
+      }
+      updateData.locationId = body.locationId;
+    }
+
+    if (body.status !== undefined && body.status !== existing.status) {
+      updateData.status = body.status;
+      if (body.status === 'done' && !existing.completedAt) {
+        updateData.completedAt = new Date();
+      } else if (body.status !== 'done') {
+        updateData.completedAt = null;
+      }
+    }
+
+    let newAssigneeIds: string[] | null = null;
+    if (body.assigneeIds) {
+      const valid = await app.prisma.staff.count({
+        where: { id: { in: body.assigneeIds }, isActive: true },
+      });
+      if (valid !== body.assigneeIds.length) {
+        return reply.status(400).send({ success: false, error: 'Bazı atanan personeller bulunamadı' });
+      }
+      newAssigneeIds = body.assigneeIds;
+    }
+
+    const task = await app.prisma.$transaction(async (tx) => {
+      const t = await tx.task.update({ where: { id }, data: updateData });
+      if (newAssigneeIds) {
+        await tx.taskAssignee.deleteMany({ where: { taskId: id } });
+        await tx.taskAssignee.createMany({
+          data: newAssigneeIds.map(staffId => ({ taskId: id, staffId })),
+        });
+      }
+      return t;
+    });
+
+    await createAuditLog({
+      entityType: 'task',
+      entityId: id,
+      action: 'update',
+      changes: body,
+      performedBy: staffUser.email,
+      ipAddress: request.headers['x-real-ip'] as string,
+    });
+
+    broadcastToStaff('task_updated', { taskId: id, status: task.status });
+
+    // Notify creator if status → done
+    if (body.status === 'done' && existing.status !== 'done' && existing.createdBy.email) {
+      const taskUrl = `${config.CANONICAL_URL}/staff/tasks/${id}`;
+      await queueEmail({
+        to: existing.createdBy.email,
+        templateSlug: 'task_completed',
+        variables: {
+          taskTitle: task.title,
+          completedBy: staffUser.email,
+          taskUrl,
+        },
+      });
+    }
+
+    reply.send({ success: true, data: task });
+  });
+
+  // Status update — assignees can change own task status
+  app.patch('/:id/status', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = z.object({
+      status: z.enum(['open', 'in_progress', 'done', 'cancelled']),
+    }).parse(request.body);
+    const staffUser = request.staffUser!;
+
+    const task = await app.prisma.task.findUnique({
+      where: { id },
+      select: {
+        id: true, status: true, title: true,
+        createdBy: { select: { email: true, id: true } },
+        assignees: { select: { staffId: true } },
+      },
+    });
+    if (!task) return reply.status(404).send({ success: false, error: 'Görev bulunamadı' });
+
+    const isManager = staffUser.role === 'admin' || staffUser.role === 'it_manager';
+    const isAssignee = task.assignees.some(a => a.staffId === staffUser.id);
+    if (!isManager && !isAssignee) {
+      return reply.status(403).send({ success: false, error: 'Bu görevi güncelleme yetkiniz yok' });
+    }
+
+    const updated = await app.prisma.task.update({
+      where: { id },
+      data: {
+        status: body.status,
+        completedAt: body.status === 'done' ? new Date() : null,
+      },
+      select: TASK_SELECT,
+    });
+
+    await createAuditLog({
+      entityType: 'task',
+      entityId: id,
+      action: 'status_change',
+      changes: { from: task.status, to: body.status },
+      performedBy: staffUser.email,
+      ipAddress: request.headers['x-real-ip'] as string,
+    });
+
+    broadcastToStaff('task_status_changed', { taskId: id, status: body.status });
+
+    if (body.status === 'done' && task.status !== 'done' && task.createdBy.email && task.createdBy.id !== staffUser.id) {
+      const taskUrl = `${config.CANONICAL_URL}/staff/tasks/${id}`;
+      await queueEmail({
+        to: task.createdBy.email,
+        templateSlug: 'task_completed',
+        variables: {
+          taskTitle: task.title,
+          completedBy: staffUser.email,
+          taskUrl,
+        },
+      });
+    }
+
+    reply.send({ success: true, data: updated });
+  });
+
+  // Delete task — admin/it_manager only
+  app.delete('/:id', { preHandler: [app.requireRole('admin', 'it_manager')] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const staffUser = request.staffUser!;
+
+    const exists = await app.prisma.task.findUnique({ where: { id }, select: { id: true } });
+    if (!exists) return reply.status(404).send({ success: false, error: 'Görev bulunamadı' });
+
+    await app.prisma.task.delete({ where: { id } });
+
+    await createAuditLog({
+      entityType: 'task',
+      entityId: id,
+      action: 'delete',
+      performedBy: staffUser.email,
+      ipAddress: request.headers['x-real-ip'] as string,
+    });
+
+    broadcastToStaff('task_deleted', { taskId: id });
+
+    reply.send({ success: true });
+  });
+
+  // Add comment
+  app.post('/:id/comments', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = commentSchema.parse(request.body);
+    const staffUser = request.staffUser!;
+
+    const task = await app.prisma.task.findUnique({
+      where: { id },
+      select: { id: true, createdById: true, assignees: { select: { staffId: true } } },
+    });
+    if (!task) return reply.status(404).send({ success: false, error: 'Görev bulunamadı' });
+
+    const isManager = staffUser.role === 'admin' || staffUser.role === 'it_manager';
+    const isAssignee = task.assignees.some(a => a.staffId === staffUser.id);
+    const isCreator = task.createdById === staffUser.id;
+    if (!isManager && !isAssignee && !isCreator) {
+      return reply.status(403).send({ success: false, error: 'Bu göreve yorum yapma yetkiniz yok' });
+    }
+
+    const comment = await app.prisma.taskComment.create({
+      data: {
+        taskId: id,
+        content: body.content,
+        createdById: staffUser.id,
+      },
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
+        createdBy: { select: { id: true, fullName: true, role: true } },
+      },
+    });
+
+    broadcastToStaff('task_comment_added', { taskId: id, commentId: comment.id });
+
+    reply.status(201).send({ success: true, data: comment });
+  });
+};

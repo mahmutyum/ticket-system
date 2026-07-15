@@ -13,15 +13,27 @@ const GROUP_TYPES = [
 
 const emptySmtpForm = { host: '', port: 587, secure: false, user: '', pass: '', fromName: '', fromEmail: '', isActive: true };
 
+const emptyCompanyForm = {
+  name: '',
+  groupType: 'corporate',
+  allowedDomains: '',
+  portalDomains: '',
+  notificationEmail: '',
+  primaryColor: '',
+  logo: '',
+};
+
 export default function CompanyManagementPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', groupType: 'corporate', allowedDomains: '', portalDomains: '', notificationEmail: '' });
+  const [form, setForm] = useState(emptyCompanyForm);
+  const [logoUploading, setLogoUploading] = useState(false);
 
   // Location form
   const [showLocForm, setShowLocForm] = useState(false);
   const [locCompanyId, setLocCompanyId] = useState('');
+  const [locEditId, setLocEditId] = useState<string | null>(null);
   const [locForm, setLocForm] = useState({ name: '', address: '', phone: '', floor: '', itRoom: '' });
 
   // SMTP form
@@ -39,8 +51,9 @@ export default function CompanyManagementPage() {
   const handleSubmitCompany = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const payload = {
-        ...form,
+      const payload: any = {
+        name: form.name,
+        groupType: form.groupType,
         allowedDomains: form.allowedDomains
           ? form.allowedDomains.split(',').map(d => d.trim().toLowerCase()).filter(Boolean)
           : [],
@@ -48,6 +61,8 @@ export default function CompanyManagementPage() {
           ? form.portalDomains.split(',').map(d => d.trim().toLowerCase()).filter(Boolean)
           : [],
         notificationEmail: form.notificationEmail || null,
+        primaryColor: form.primaryColor || null,
+        logo: form.logo || null,
       };
       if (editId) {
         await api.put(`/companies/${editId}`, payload);
@@ -59,22 +74,81 @@ export default function CompanyManagementPage() {
       queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
       setShowForm(false);
       setEditId(null);
-      setForm({ name: '', groupType: 'corporate', allowedDomains: '', portalDomains: '', notificationEmail: '' });
+      setForm(emptyCompanyForm);
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Hata');
+    }
+  };
+
+  const handleLogoUpload = async (file: File) => {
+    if (!editId) {
+      toast.error('Logoyu yüklemek için önce şirketi kaydedin');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Dosya 2MB üzerinde olamaz');
+      return;
+    }
+    setLogoUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await api.post(`/companies/${editId}/logo`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const url = res.data?.data?.logo as string;
+      if (url) {
+        setForm(prev => ({ ...prev, logo: url }));
+        toast.success('Logo yüklendi');
+        queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Logo yüklenemedi');
+    } finally {
+      setLogoUploading(false);
     }
   };
 
   const handleSubmitLocation = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/locations', { companyId: locCompanyId, ...locForm });
-      toast.success('Lokasyon eklendi');
+      if (locEditId) {
+        await api.put(`/locations/${locEditId}`, locForm);
+        toast.success('Lokasyon güncellendi');
+      } else {
+        await api.post('/locations', { companyId: locCompanyId, ...locForm });
+        toast.success('Lokasyon eklendi');
+      }
       queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
       setShowLocForm(false);
+      setLocEditId(null);
       setLocForm({ name: '', address: '', phone: '', floor: '', itRoom: '' });
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Hata');
+    }
+  };
+
+  const openEditLocation = (loc: any) => {
+    setLocEditId(loc.id);
+    setLocCompanyId(loc.companyId);
+    setLocForm({
+      name: loc.name || '',
+      address: loc.address || '',
+      phone: loc.phone || '',
+      floor: loc.floor || '',
+      itRoom: loc.itRoom || '',
+    });
+    setShowLocForm(true);
+  };
+
+  const handleDeleteLocation = async (loc: any) => {
+    if (!confirm(`"${loc.name}" lokasyonunu silmek istediğinize emin misiniz?`)) return;
+    try {
+      await api.delete(`/locations/${loc.id}`);
+      toast.success('Lokasyon silindi');
+      queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Silinemedi');
     }
   };
 
@@ -127,6 +201,26 @@ export default function CompanyManagementPage() {
     }
   };
 
+  const handleToggleCompanyActive = async (company: any) => {
+    const willDeactivate = company.isActive !== false;
+    const msg = willDeactivate
+      ? `"${company.name}" şirketini pasifleştirmek istediğinize emin misiniz? Mevcut biletler korunur ancak yeni bilet açılamaz.`
+      : `"${company.name}" şirketini tekrar aktif etmek istediğinize emin misiniz?`;
+    if (!confirm(msg)) return;
+    try {
+      if (willDeactivate) {
+        await api.delete(`/companies/${company.id}`);
+        toast.success('Şirket pasifleştirildi');
+      } else {
+        await api.post(`/companies/${company.id}/restore`);
+        toast.success('Şirket tekrar aktif edildi');
+      }
+      queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'İşlem başarısız');
+    }
+  };
+
   const handleDeleteSmtp = async () => {
     if (!confirm('SMTP ayarlarını kaldırmak istediğinize emin misiniz? Global SMTP kullanılacak.')) return;
     try {
@@ -143,15 +237,15 @@ export default function CompanyManagementPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Şirket & Lokasyon Yönetimi</h1>
-        <button onClick={() => { setShowForm(true); setEditId(null); setForm({ name: '', groupType: 'corporate', allowedDomains: '', portalDomains: '', notificationEmail: '' }); }} className="btn-primary flex items-center gap-2">
+        <button onClick={() => { setShowForm(true); setEditId(null); setForm(emptyCompanyForm); }} className="btn-primary flex items-center gap-2">
           <Plus className="w-4 h-4" /> Yeni Şirket
         </button>
       </div>
 
       {/* Company Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="glass-strong rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold mb-4">{editId ? 'Şirket Düzenle' : 'Yeni Şirket'}</h2>
             <form onSubmit={handleSubmitCompany} className="space-y-3">
               <div>
@@ -179,6 +273,78 @@ export default function CompanyManagementPage() {
                 <input type="email" className="input-field" value={form.notificationEmail} onChange={e => setForm({ ...form, notificationEmail: e.target.value })} placeholder="it-destek@company.com" />
                 <p className="text-xs text-gray-400 mt-1">Yeni ticket açıldığında bu adrese bildirim gönderilir.</p>
               </div>
+
+              <div className="border-t border-subtle pt-3 space-y-3">
+                <h3 className="text-sm font-semibold text-muted uppercase tracking-wide">Marka</h3>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Ana Renk</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      className="w-12 h-10 rounded-lg border border-gray-300 dark:border-slate-600 dark:border-slate-700 bg-transparent cursor-pointer"
+                      value={form.primaryColor || '#2563eb'}
+                      onChange={e => setForm({ ...form, primaryColor: e.target.value })}
+                    />
+                    <input
+                      type="text"
+                      className="input-field flex-1 font-mono"
+                      value={form.primaryColor}
+                      onChange={e => setForm({ ...form, primaryColor: e.target.value })}
+                      placeholder="#2563eb"
+                      pattern="^#[0-9a-fA-F]{6}$"
+                    />
+                    {form.primaryColor && (
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, primaryColor: '' })}
+                        className="text-xs text-muted hover:text-red-500"
+                        title="Sıfırla"
+                      >
+                        Sıfırla
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">Portal sayfalarında bu renk uygulanır. Boş bırakırsanız varsayılan mavi kullanılır.</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Logo</label>
+                  <div className="flex items-center gap-3">
+                    {form.logo ? (
+                      <img src={form.logo} alt="logo" className="w-14 h-14 object-contain rounded-lg border border-subtle bg-white p-1" />
+                    ) : (
+                      <div className="w-14 h-14 rounded-lg border border-dashed border-subtle flex items-center justify-center text-xs text-muted">Logo</div>
+                    )}
+                    <div className="flex-1 space-y-2">
+                      <input
+                        type="text"
+                        className="input-field"
+                        value={form.logo}
+                        onChange={e => setForm({ ...form, logo: e.target.value })}
+                        placeholder="URL veya dosya yükleyin"
+                      />
+                      <label className={`btn-secondary text-xs inline-flex items-center gap-1 cursor-pointer ${logoUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                        {logoUploading ? 'Yükleniyor...' : 'Dosya Yükle'}
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                          className="hidden"
+                          onChange={e => {
+                            const f = e.target.files?.[0];
+                            if (f) handleLogoUpload(f);
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                  {!editId && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                      Dosya yükleme için önce şirketi kaydetmelisiniz. Şimdilik URL girebilirsiniz.
+                    </p>
+                  )}
+                </div>
+              </div>
+
               <div className="flex gap-3 pt-2">
                 <button type="submit" className="btn-primary flex-1">Kaydet</button>
                 <button type="button" onClick={() => setShowForm(false)} className="btn-secondary flex-1">İptal</button>
@@ -190,9 +356,9 @@ export default function CompanyManagementPage() {
 
       {/* Location Form Modal */}
       {showLocForm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <h2 className="text-lg font-bold mb-4">Yeni Lokasyon</h2>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="glass-strong rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-bold mb-4">{locEditId ? 'Lokasyon Düzenle' : 'Yeni Lokasyon'}</h2>
             <form onSubmit={handleSubmitLocation} className="space-y-3">
               <div>
                 <label className="block text-sm font-medium mb-1">Lokasyon Adı *</label>
@@ -217,8 +383,8 @@ export default function CompanyManagementPage() {
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
-                <button type="submit" className="btn-primary flex-1">Ekle</button>
-                <button type="button" onClick={() => setShowLocForm(false)} className="btn-secondary flex-1">İptal</button>
+                <button type="submit" className="btn-primary flex-1">{locEditId ? 'Güncelle' : 'Ekle'}</button>
+                <button type="button" onClick={() => { setShowLocForm(false); setLocEditId(null); }} className="btn-secondary flex-1">İptal</button>
               </div>
             </form>
           </div>
@@ -227,8 +393,8 @@ export default function CompanyManagementPage() {
 
       {/* SMTP Config Modal */}
       {showSmtpForm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-lg">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="glass-strong rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold flex items-center gap-2">
                 <Mail className="w-5 h-5" /> SMTP Ayarları — {smtpCompanyName}
@@ -336,19 +502,34 @@ export default function CompanyManagementPage() {
                   ) : 'SMTP'}
                 </button>
                 <button
-                  onClick={() => { setLocCompanyId(company.id); setShowLocForm(true); setLocForm({ name: '', address: '', phone: '', floor: '', itRoom: '' }); }}
+                  onClick={() => { setLocCompanyId(company.id); setLocEditId(null); setShowLocForm(true); setLocForm({ name: '', address: '', phone: '', floor: '', itRoom: '' }); }}
                   className="btn-secondary text-xs flex items-center gap-1"
                 >
                   <MapPin className="w-3 h-3" /> Lokasyon Ekle
                 </button>
                 <button
-                  onClick={() => { setEditId(company.id); setForm({ name: company.name, groupType: company.groupType, allowedDomains: (company.allowedDomains as string[] || []).join(', '), portalDomains: (company.portalDomains as string[] || []).join(', '), notificationEmail: company.notificationEmail || '' }); setShowForm(true); }}
+                  onClick={() => { setEditId(company.id); setForm({ name: company.name, groupType: company.groupType, allowedDomains: (company.allowedDomains as string[] || []).join(', '), portalDomains: (company.portalDomains as string[] || []).join(', '), notificationEmail: company.notificationEmail || '', primaryColor: company.primaryColor || '', logo: company.logo || '' }); setShowForm(true); }}
                   className="p-1.5 hover:bg-gray-100 rounded"
+                  title="Düzenle"
                 >
                   <Edit2 className="w-4 h-4 text-gray-500" />
                 </button>
+                <button
+                  onClick={() => handleToggleCompanyActive(company)}
+                  className="p-1.5 hover:bg-red-50 rounded"
+                  title={company.isActive === false ? 'Tekrar aktif et' : 'Pasifleştir'}
+                >
+                  {company.isActive === false
+                    ? <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    : <XCircle className="w-4 h-4 text-red-500" />}
+                </button>
               </div>
             </div>
+            {company.isActive === false && (
+              <div className="mb-2 text-xs bg-red-50 text-red-700 px-3 py-1.5 rounded-lg inline-block">
+                Pasif — Bu şirket için yeni bilet açılamaz
+              </div>
+            )}
 
             {/* Domain restriction badges */}
             {company.allowedDomains && (company.allowedDomains as string[]).length > 0 && (
@@ -380,10 +561,28 @@ export default function CompanyManagementPage() {
             {company.locations?.length > 0 && (
               <div className="ml-8 space-y-1">
                 {company.locations.map((loc: any) => (
-                  <div key={loc.id} className="flex items-center gap-2 text-sm text-gray-600">
+                  <div key={loc.id} className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400 group">
                     <MapPin className="w-3 h-3 text-gray-400" />
                     <span>{loc.name}</span>
                     {loc.address && <span className="text-gray-400">— {loc.address}</span>}
+                    {loc.floor && <span className="text-gray-400">• Kat {loc.floor}</span>}
+                    {loc.itRoom && <span className="text-gray-400">• {loc.itRoom}</span>}
+                    <div className="ml-auto flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => openEditLocation(loc)}
+                        className="p-1 hover:bg-gray-100 rounded"
+                        title="Düzenle"
+                      >
+                        <Edit2 className="w-3 h-3 text-gray-500" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteLocation(loc)}
+                        className="p-1 hover:bg-red-50 rounded"
+                        title="Sil"
+                      >
+                        <Trash2 className="w-3 h-3 text-red-500" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

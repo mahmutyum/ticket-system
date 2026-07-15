@@ -26,6 +26,8 @@ import { eventRoutes } from './modules/events/events.routes.js';
 import { notificationRoutes } from './modules/notifications/notifications.routes.js';
 import { templateRoutes } from './modules/templates/templates.routes.js';
 import { reportRoutes } from './modules/reports/reports.routes.js';
+import { taskRoutes } from './modules/tasks/tasks.routes.js';
+import { credentialRoutes } from './modules/credentials/credentials.routes.js';
 
 export async function buildApp() {
   const app = Fastify({
@@ -104,6 +106,8 @@ export async function buildApp() {
   await app.register(eventRoutes, { prefix: '/events' });
   await app.register(templateRoutes, { prefix: '/templates' });
   await app.register(reportRoutes, { prefix: '/reports' });
+  await app.register(taskRoutes, { prefix: '/tasks' });
+  await app.register(credentialRoutes, { prefix: '/credentials' });
 
   // Global error handler
   app.setErrorHandler((error: FastifyError, request, reply) => {

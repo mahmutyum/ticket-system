@@ -3,7 +3,8 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm ci
+# --include=dev: Coolify build env'inde NODE_ENV=production set olduğunda dev deps (tsc, vite) atlanmasın
+RUN npm ci --include=dev
 
 COPY . .
 RUN npm run build

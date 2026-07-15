@@ -20,7 +20,7 @@ export default function TicketDetailPage() {
   const [uploading, setUploading] = useState(false);
   const [showCanned, setShowCanned] = useState(false);
   const [showOnsiteForm, setShowOnsiteForm] = useState(false);
-  const [onsiteForm, setOnsiteForm] = useState({ type: 'visit_employee', scheduledAt: '', roomInfo: '', notes: '' });
+  const [onsiteForm, setOnsiteForm] = useState({ type: 'come_to_it_room', scheduledAt: '', durationMin: 15, roomInfo: '', notes: '' });
 
   const { data: ticket, isLoading } = useQuery({
     queryKey: ['ticket', id],
@@ -146,7 +146,7 @@ export default function TicketDetailPage() {
           {/* Description */}
           <div className="card">
             <h3 className="text-sm font-semibold text-gray-500 mb-2">Açıklama</h3>
-            <p className="text-gray-800 whitespace-pre-wrap">{ticket.description}</p>
+            <p className="text-gray-800 dark:text-slate-200 whitespace-pre-wrap">{ticket.description}</p>
           </div>
 
           {/* Custom fields */}
@@ -155,7 +155,7 @@ export default function TicketDetailPage() {
               <h3 className="text-sm font-semibold text-gray-500 mb-3">Ek Bilgiler</h3>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {ticket.customValues.map((cv: any) => (
-                  <div key={cv.id} className="bg-gray-50 rounded-lg p-3">
+                  <div key={cv.id} className="bg-gray-50 dark:bg-slate-800/50 rounded-lg p-3">
                     <span className="text-gray-500 text-xs">{cv.customField.fieldLabel}</span>
                     <p className="font-medium mt-0.5">{cv.value}</p>
                   </div>
@@ -170,7 +170,7 @@ export default function TicketDetailPage() {
               <h3 className="text-sm font-semibold text-gray-500 flex items-center gap-2">
                 <Paperclip className="w-4 h-4" /> Dosyalar
                 {ticket.attachments?.length > 0 && (
-                  <span className="bg-gray-200 text-gray-600 text-xs px-1.5 rounded-full">{ticket.attachments.length}</span>
+                  <span className="bg-gray-200 text-gray-600 dark:text-slate-400 text-xs px-1.5 rounded-full">{ticket.attachments.length}</span>
                 )}
               </h3>
               <label className={`btn-secondary text-xs flex items-center gap-1 cursor-pointer ${uploading ? 'opacity-50' : ''}`}>
@@ -187,7 +187,7 @@ export default function TicketDetailPage() {
                     href={`/uploads/${att.filePath}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 text-sm"
+                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800/50 text-sm"
                   >
                     <FileText className="w-4 h-4 text-gray-400" />
                     <span className="flex-1 truncate">{att.fileName}</span>
@@ -226,7 +226,7 @@ export default function TicketDetailPage() {
                           {new Date(item.createdAt).toLocaleString('tr-TR')}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-700">{item.content}</p>
+                      <p className="text-sm text-gray-700 dark:text-slate-300">{item.content}</p>
                     </div>
                   );
                 }
@@ -272,7 +272,7 @@ export default function TicketDetailPage() {
                         key={cr.id}
                         type="button"
                         onClick={() => { setNoteContent(cr.content); setShowCanned(false); }}
-                        className="w-full text-left p-2 hover:bg-gray-50 rounded text-sm"
+                        className="w-full text-left p-2 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded text-sm"
                       >
                         <span className="font-medium">{cr.title}</span>
                         {cr.category && <span className="text-xs text-gray-400 ml-2">[{cr.category}]</span>}
@@ -420,7 +420,7 @@ export default function TicketDetailPage() {
               <div className="space-y-2 text-xs">
                 {ticket.onsiteSupport.map((os: any) => (
                   <div key={os.id} className="bg-orange-50 rounded p-2">
-                    <div className="font-medium">{os.type === 'come_to_it_room' ? 'IT Odasına Gelin' : 'Yerinde Müdahale'}</div>
+                    <div className="font-medium">{os.type === 'come_to_it_room' ? 'IT Odasına Gelin' : os.type === 'meeting_room' ? 'Toplantı Odası' : 'Yerinde Müdahale'}</div>
                     <div className="text-gray-500">{new Date(os.scheduledAt).toLocaleString('tr-TR')}</div>
                     <div className="text-gray-500">{os.location?.name}</div>
                   </div>
@@ -439,8 +439,9 @@ export default function TicketDetailPage() {
                   value={onsiteForm.type}
                   onChange={e => setOnsiteForm({ ...onsiteForm, type: e.target.value })}
                 >
-                  <option value="visit_employee">Yerinde Müdahale</option>
                   <option value="come_to_it_room">IT Odasına Gelin</option>
+                  <option value="meeting_room">Toplantı Odası</option>
+                  <option value="visit_employee">Yerinde Müdahale</option>
                 </select>
                 <input
                   type="datetime-local"
@@ -448,11 +449,21 @@ export default function TicketDetailPage() {
                   value={onsiteForm.scheduledAt}
                   onChange={e => setOnsiteForm({ ...onsiteForm, scheduledAt: e.target.value })}
                 />
-                {onsiteForm.type === 'come_to_it_room' && (
+                <select
+                  className="input-field text-sm"
+                  value={onsiteForm.durationMin}
+                  onChange={e => setOnsiteForm({ ...onsiteForm, durationMin: Number(e.target.value) })}
+                >
+                  <option value={10}>10 dakika</option>
+                  <option value={15}>15 dakika</option>
+                  <option value={30}>30 dakika</option>
+                  <option value={60}>60 dakika</option>
+                </select>
+                {(onsiteForm.type === 'come_to_it_room' || onsiteForm.type === 'meeting_room') && (
                   <input
                     type="text"
                     className="input-field text-sm"
-                    placeholder="Oda bilgisi"
+                    placeholder={onsiteForm.type === 'meeting_room' ? 'Toplantı odası bilgisi' : 'Oda bilgisi'}
                     value={onsiteForm.roomInfo}
                     onChange={e => setOnsiteForm({ ...onsiteForm, roomInfo: e.target.value })}
                   />
@@ -474,12 +485,15 @@ export default function TicketDetailPage() {
                           locationId: ticket.locationId,
                           type: onsiteForm.type,
                           scheduledAt: new Date(onsiteForm.scheduledAt).toISOString(),
+                          scheduledEnd: new Date(
+                            new Date(onsiteForm.scheduledAt).getTime() + onsiteForm.durationMin * 60000,
+                          ).toISOString(),
                           roomInfo: onsiteForm.roomInfo || undefined,
                           notes: onsiteForm.notes || undefined,
                         });
                         queryClient.invalidateQueries({ queryKey: ['ticket', id] });
                         setShowOnsiteForm(false);
-                        setOnsiteForm({ type: 'visit_employee', scheduledAt: '', roomInfo: '', notes: '' });
+                        setOnsiteForm({ type: 'come_to_it_room', scheduledAt: '', durationMin: 15, roomInfo: '', notes: '' });
                         toast.success('Randevu oluşturuldu');
                       } catch {
                         toast.error('Randevu oluşturulamadı');

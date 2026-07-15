@@ -210,7 +210,7 @@ export default function TicketListPage() {
             <button
               type="button"
               onClick={clearSelection}
-              className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+              className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-slate-300 flex items-center gap-1"
             >
               <X className="w-4 h-4" /> Temizle
             </button>
@@ -228,7 +228,7 @@ export default function TicketListPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 text-left text-gray-500">
+                <tr className="bg-gray-50 dark:bg-slate-800/50 text-left text-gray-500">
                   {canBulk && (
                     <th className="px-4 py-3 w-10">
                       <input
@@ -252,7 +252,7 @@ export default function TicketListPage() {
               </thead>
               <tbody>
                 {tickets.map(ticket => (
-                  <tr key={ticket.id} className="border-t hover:bg-gray-50 transition-colors">
+                  <tr key={ticket.id} className="border-t hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
                     {canBulk && (
                       <td className="px-4 py-3">
                         <input
@@ -304,7 +304,7 @@ export default function TicketListPage() {
 
         {/* Pagination */}
         {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50">
+          <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50 dark:bg-slate-800/50">
             <span className="text-sm text-gray-500">
               Toplam {pagination.total} talep
             </span>

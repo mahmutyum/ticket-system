@@ -26,6 +26,7 @@ const envSchema = z.object({
   APP_NAME: z.string().default('IT Destek Sistemi'),
   MAX_FILE_SIZE: z.coerce.number().default(26214400),
   UPLOAD_DIR: z.string().default('/app/uploads'),
+  CREDENTIALS_ENC_KEY: z.string().length(64, 'CREDENTIALS_ENC_KEY 64 karakterlik hex olmalı (32 byte)'),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -170,7 +170,24 @@ async function main() {
 <p>Talebinizi takip etmek için: <a href="{{trackingUrl}}">Buraya tıklayın</a></p>
 <p>IT Destek Ekibi</p>`,
       bodyText: 'Destek Talebiniz Alındı\n\nTalep No: {{ticketNumber}}\nKonu: {{subject}}\nTakip: {{trackingUrl}}',
-      variables: JSON.stringify(['ticketNumber', 'userName', 'subject', 'priority', 'trackingUrl']),
+      variables: ['ticketNumber', 'userName', 'subject', 'priority', 'trackingUrl'],
+    },
+    {
+      slug: 'ticket_created_internal',
+      subject: 'Yeni Talep: {{ticketNumber}} — {{subject}}',
+      bodyHtml: `<h2>Yeni Destek Talebi</h2>
+<p>Yeni bir destek talebi oluşturuldu.</p>
+<ul>
+  <li><strong>Talep No:</strong> {{ticketNumber}}</li>
+  <li><strong>Şirket:</strong> {{companyName}}</li>
+  <li><strong>Talep Eden:</strong> {{userName}} &lt;{{userEmail}}&gt;</li>
+  <li><strong>Konu:</strong> {{subject}}</li>
+  <li><strong>Öncelik:</strong> {{priority}}</li>
+  <li><strong>Kategori:</strong> {{categoryName}}</li>
+</ul>
+<p>Talebi panelden yönet: <a href="{{staffUrl}}">{{staffUrl}}</a></p>`,
+      bodyText: 'Yeni Talep: {{ticketNumber}}\nŞirket: {{companyName}}\nTalep Eden: {{userName}} <{{userEmail}}>\nKonu: {{subject}}\nÖncelik: {{priority}}\nPanel: {{staffUrl}}',
+      variables: ['ticketNumber', 'companyName', 'userName', 'userEmail', 'subject', 'priority', 'categoryName', 'staffUrl'],
     },
     {
       slug: 'status_changed',
@@ -184,7 +201,7 @@ async function main() {
 </ul>
 <p>Detay: <a href="{{trackingUrl}}">Buraya tıklayın</a></p>`,
       bodyText: 'Talep durumu güncellendi.\nTalep No: {{ticketNumber}}\nYeni Durum: {{newStatus}}\nTakip: {{trackingUrl}}',
-      variables: JSON.stringify(['ticketNumber', 'userName', 'oldStatus', 'newStatus', 'trackingUrl']),
+      variables: ['ticketNumber', 'userName', 'oldStatus', 'newStatus', 'trackingUrl'],
     },
     {
       slug: 'onsite_scheduled',
@@ -199,7 +216,7 @@ async function main() {
 </ul>
 <p>{{extraNote}}</p>`,
       bodyText: 'Yerinde destek planlandı.\nTalep: {{ticketNumber}}\nTarih: {{scheduledAt}}\nTür: {{supportType}}',
-      variables: JSON.stringify(['ticketNumber', 'userName', 'scheduledAt', 'supportType', 'locationInfo', 'extraNote']),
+      variables: ['ticketNumber', 'userName', 'scheduledAt', 'supportType', 'locationInfo', 'extraNote'],
     },
     {
       slug: 'sla_warning',
@@ -213,7 +230,7 @@ async function main() {
 </ul>
 <p>Lütfen en kısa sürede ilgilenin.</p>`,
       bodyText: 'SLA İhlali: {{ticketNumber}} - {{slaType}} süresi aşıldı. Konu: {{subject}}',
-      variables: JSON.stringify(['ticketNumber', 'staffName', 'slaType', 'companyName', 'subject']),
+      variables: ['ticketNumber', 'staffName', 'slaType', 'companyName', 'subject'],
     },
     {
       slug: 'note_added',
@@ -223,7 +240,7 @@ async function main() {
 <p><strong>{{ticketNumber}}</strong> numaralı talebinize IT ekibinden yanıt eklendi.</p>
 <p>Detay: <a href="{{trackingUrl}}">Buraya tıklayın</a></p>`,
       bodyText: 'Talebinize yanıt eklendi. Talep: {{ticketNumber}}. Takip: {{trackingUrl}}',
-      variables: JSON.stringify(['ticketNumber', 'userName', 'trackingUrl']),
+      variables: ['ticketNumber', 'userName', 'trackingUrl'],
     },
     {
       slug: 'user_reply',
@@ -233,7 +250,7 @@ async function main() {
 <p><strong>{{ticketNumber}}</strong> numaralı talebe kullanıcı (<strong>{{userEmail}}</strong>) yanıt verdi:</p>
 <blockquote style="border-left:3px solid #ccc;padding-left:12px;color:#555;">{{replyContent}}</blockquote>`,
       bodyText: 'Kullanıcı yanıtı: {{ticketNumber}} — {{userEmail}}: {{replyContent}}',
-      variables: JSON.stringify(['ticketNumber', 'staffName', 'userEmail', 'replyContent']),
+      variables: ['ticketNumber', 'staffName', 'userEmail', 'replyContent'],
     },
   ];
 
@@ -251,12 +268,12 @@ async function main() {
     {
       slug: 'ticket_created',
       body: 'IT Destek: {{ticketNumber}} numaralı talebiniz alındı. Takip: {{trackingUrl}}',
-      variables: JSON.stringify(['ticketNumber', 'trackingUrl']),
+      variables: ['ticketNumber', 'trackingUrl'],
     },
     {
       slug: 'onsite_scheduled',
       body: 'IT Destek: {{scheduledAt}} tarihinde yerinde destek planlandı. {{locationInfo}}',
-      variables: JSON.stringify(['scheduledAt', 'locationInfo']),
+      variables: ['scheduledAt', 'locationInfo'],
     },
   ];
 

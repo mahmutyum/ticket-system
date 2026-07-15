@@ -6,6 +6,20 @@ import api from '../../api/client';
 
 type TabType = 'email' | 'sms' | 'canned';
 
+function parseVariables(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(String);
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed.map(String);
+    } catch {
+      // not JSON, treat as comma-separated fallback
+      return value.split(',').map(s => s.trim()).filter(Boolean);
+    }
+  }
+  return [];
+}
+
 export default function TemplatesPage() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabType>('email');
@@ -134,7 +148,7 @@ export default function TemplatesPage() {
             key={t.key}
             onClick={() => { setTab(t.key); resetForms(); }}
             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors ${
-              tab === t.key ? 'bg-white shadow text-primary-700' : 'text-gray-500 hover:text-gray-700'
+              tab === t.key ? 'bg-white shadow text-primary-700' : 'text-gray-500 hover:text-gray-700 dark:hover:text-slate-300'
             }`}
           >
             <t.icon className="w-4 h-4" /> {t.label}
@@ -241,13 +255,13 @@ export default function TemplatesPage() {
                     <code className="text-xs bg-gray-100 px-2 py-0.5 rounded">{t.slug}</code>
                   </div>
                   <h3 className="font-medium">{t.subject}</h3>
-                  <p className="text-xs text-gray-400 mt-1">Değişkenler: {(t.variables as string[])?.join(', ') || '-'}</p>
+                  <p className="text-xs text-gray-400 mt-1">Değişkenler: {parseVariables(t.variables).join(', ') || '-'}</p>
                 </div>
                 <div className="flex gap-1">
                   <button
                     onClick={() => {
                       setEditId(t.id);
-                      setEmailForm({ slug: t.slug, subject: t.subject, bodyHtml: t.bodyHtml, bodyText: t.bodyText, variables: (t.variables as string[])?.join(', ') || '' });
+                      setEmailForm({ slug: t.slug, subject: t.subject, bodyHtml: t.bodyHtml, bodyText: t.bodyText, variables: parseVariables(t.variables).join(', ') || '' });
                       setShowForm(true);
                     }}
                     className="p-1.5 hover:bg-gray-100 rounded"
@@ -272,13 +286,13 @@ export default function TemplatesPage() {
                 <div>
                   <code className="text-xs bg-gray-100 px-2 py-0.5 rounded">{t.slug}</code>
                   <p className="mt-2 text-sm">{t.body}</p>
-                  <p className="text-xs text-gray-400 mt-1">Değişkenler: {(t.variables as string[])?.join(', ') || '-'}</p>
+                  <p className="text-xs text-gray-400 mt-1">Değişkenler: {parseVariables(t.variables).join(', ') || '-'}</p>
                 </div>
                 <div className="flex gap-1">
                   <button
                     onClick={() => {
                       setEditId(t.id);
-                      setSmsForm({ slug: t.slug, body: t.body, variables: (t.variables as string[])?.join(', ') || '' });
+                      setSmsForm({ slug: t.slug, body: t.body, variables: parseVariables(t.variables).join(', ') || '' });
                       setShowForm(true);
                     }}
                     className="p-1.5 hover:bg-gray-100 rounded"
@@ -305,7 +319,7 @@ export default function TemplatesPage() {
                     <h3 className="font-medium">{cr.title}</h3>
                     {cr.category && <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">{cr.category}</span>}
                   </div>
-                  <p className="text-sm text-gray-600 mt-1">{cr.content}</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">{cr.content}</p>
                 </div>
                 <div className="flex gap-1">
                   <button

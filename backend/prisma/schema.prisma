@@ -14,6 +14,7 @@ model Company {
   name           String   @unique
   groupType      String   @map("group_type") // "call_center", "corporate", "warehouse"
   logo           String?
+  primaryColor   String?  @map("primary_color") // hex, örn "#2563eb"
   allowedDomains Json     @default("[]") @map("allowed_domains") // ["company.com","abc.com.tr"] — email domain kısıtı
   portalDomains     Json     @default("[]") @map("portal_domains")  // ["ticket.abc.com.tr"] — erişim domain kilidi
   notificationEmail String?  @map("notification_email") // IT grup maili: it-destek@abc.com.tr
@@ -29,6 +30,7 @@ model Company {
   users          User[]
   smtpConfig     CompanySmtp?
   assignedStaff  StaffCompany[]
+  credentialEntries CredentialEntry[]
 
   @@map("companies")
 }
@@ -67,6 +69,7 @@ model Location {
   tickets        Ticket[]
   users          User[]
   onsiteSupports OnsiteSupport[]
+  tasks          Task[]
 
   @@unique([companyId, name])
   @@map("locations")
@@ -155,6 +158,9 @@ model Staff {
   ticketNotes       TicketNote[]
   ticketHistory     TicketHistory[]
   assignedCompanies StaffCompany[]
+  createdTasks      Task[]              @relation("TaskCreator")
+  taskAssignments   TaskAssignee[]
+  taskComments      TaskComment[]       @relation("TaskCommenter")
 
   @@map("staff")
 }
@@ -368,6 +374,59 @@ model SmsTemplate {
   @@map("sms_templates")
 }
 
+// ==================== GÖREVLER (TASKS) ====================
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  priority    String    @default("medium") // "low", "medium", "high", "urgent"
+  status      String    @default("open")   // "open", "in_progress", "done", "cancelled"
+  dueDate     DateTime? @map("due_date")
+  createdById String    @map("created_by_id")
+  locationId  String?   @map("location_id")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  createdBy Staff          @relation("TaskCreator", fields: [createdById], references: [id])
+  location  Location?      @relation(fields: [locationId], references: [id])
+  assignees TaskAssignee[]
+  comments  TaskComment[]
+
+  @@index([status])
+  @@index([createdById])
+  @@index([createdAt])
+  @@index([locationId])
+  @@map("tasks")
+}
+
+model TaskAssignee {
+  taskId     String   @map("task_id")
+  staffId    String   @map("staff_id")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  task  Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, staffId])
+  @@map("task_assignees")
+}
+
+model TaskComment {
+  id          String   @id @default(cuid())
+  taskId      String   @map("task_id")
+  content     String
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  task      Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdBy Staff @relation("TaskCommenter", fields: [createdById], references: [id])
+
+  @@index([taskId])
+  @@map("task_comments")
+}
+
 // ==================== AUDIT LOG ====================
 
 model AuditLog {
@@ -383,4 +442,25 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([createdAt])
   @@map("audit_log")
+}
+
+// ==================== ŞİFRELER (CREDENTIAL VAULT) ====================
+
+model CredentialEntry {
+  id          String   @id @default(cuid())
+  companyId   String?  @map("company_id")
+  title       String
+  category    String?
+  url         String?
+  username    String?
+  passwordEnc String   @map("password_enc")
+  notesEnc    String?  @map("notes_enc")
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  company Company? @relation(fields: [companyId], references: [id])
+
+  @@index([companyId])
+  @@map("credential_entries")
 }

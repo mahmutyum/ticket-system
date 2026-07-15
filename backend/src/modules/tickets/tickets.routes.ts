@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { generateTicketNumber } from '../../utils/ticket-number.js';
 import { paginationSchema, paginate, paginatedResponse } from '../../utils/pagination.js';
-import { TICKET_STATUSES, TICKET_STATUS_LABELS } from '../../config/constants.js';
+import { TICKET_STATUSES } from '../../config/constants.js';
 import { queueEmail, queueSms } from '../../jobs/queue.js';
 import { saveFile, isAllowedMimeType } from '../../services/storage.service.js';
 import { config } from '../../config/index.js';
@@ -224,15 +224,19 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
 
     // Notify company's IT group email
     if (company!.notificationEmail) {
+      const staffUrl = `${config.CANONICAL_URL}/staff/tickets/${ticket.id}`;
       await queueEmail({
         to: company!.notificationEmail,
-        templateSlug: 'ticket_created',
+        templateSlug: 'ticket_created_internal',
         variables: {
           ticketNumber,
+          companyName: ticket.company.name,
           userName: body.fullName,
+          userEmail: body.email,
           subject: body.subject,
           priority: body.priority,
-          trackingUrl,
+          categoryName: ticket.category?.name || '-',
+          staffUrl,
         },
         ticketId: ticket.id,
         companyId: body.companyId,
@@ -446,24 +450,6 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       status: ticket.status,
       priority: ticket.priority,
     });
-
-    // Queue notification for status change
-    if (body.status && body.status !== currentTicket.status) {
-      const trackingUrl = `${config.CANONICAL_URL}/ticket/${currentTicket.accessToken}`;
-      await queueEmail({
-        to: currentTicket.createdByEmail,
-        templateSlug: 'status_changed',
-        variables: {
-          ticketNumber: currentTicket.ticketNumber,
-          userName: currentTicket.createdByEmail,
-          oldStatus: TICKET_STATUS_LABELS[currentTicket.status] || currentTicket.status,
-          newStatus: TICKET_STATUS_LABELS[body.status] || body.status,
-          trackingUrl,
-        },
-        ticketId: currentTicket.id,
-        companyId: currentTicket.companyId,
-      });
-    }
 
     reply.send({ success: true, data: ticket });
   });

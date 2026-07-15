@@ -5,11 +5,12 @@ import { config } from '../../config/index.js';
 import { ONSITE_TYPE_LABELS } from '../../config/constants.js';
 import { getStaffCompanyScope } from '../../utils/staff-scope.js';
 import { createAuditLog } from '../../middleware/audit.js';
+import { formatTrDateTime } from '../../utils/format.js';
 
 const onsiteCreateSchema = z.object({
   ticketId: z.string().cuid(),
   locationId: z.string().cuid(),
-  type: z.enum(['visit_employee', 'come_to_it_room']),
+  type: z.enum(['visit_employee', 'come_to_it_room', 'meeting_room']),
   scheduledAt: z.string().datetime(),
   scheduledEnd: z.string().datetime().optional(),
   roomInfo: z.string().optional(),
@@ -73,11 +74,20 @@ export const onsiteRoutes: FastifyPluginAsync = async (app) => {
 
     // Notify employee
     const trackingUrl = `${config.CANONICAL_URL}/ticket/${ticket.accessToken}`;
-    const scheduledDate = new Date(body.scheduledAt).toLocaleString('tr-TR');
+    const scheduledDate = formatTrDateTime(body.scheduledAt);
     const supportType = ONSITE_TYPE_LABELS[body.type] || body.type;
     const locationInfo = body.roomInfo
       ? `${onsite.location.name} - ${body.roomInfo}`
       : onsite.location.name;
+
+    let extraNote: string;
+    if (body.type === 'come_to_it_room') {
+      extraNote = `Lütfen belirtilen saatte IT odasına (${body.roomInfo || locationInfo}) geliniz.`;
+    } else if (body.type === 'meeting_room') {
+      extraNote = `Lütfen belirtilen saatte toplantı odasına (${body.roomInfo || locationInfo}) geliniz.`;
+    } else {
+      extraNote = 'IT ekibi belirtilen saatte size gelecektir.';
+    }
 
     await queueEmail({
       to: ticket.createdByEmail,
@@ -88,9 +98,7 @@ export const onsiteRoutes: FastifyPluginAsync = async (app) => {
         scheduledAt: scheduledDate,
         supportType,
         locationInfo,
-        extraNote: body.type === 'come_to_it_room'
-          ? `Lütfen belirtilen saatte IT odasına (${body.roomInfo || locationInfo}) geliniz.`
-          : 'IT ekibi belirtilen saatte size gelecektir.',
+        extraNote,
       },
       ticketId: body.ticketId,
       companyId: ticket.companyId,
@@ -190,9 +198,7 @@ export const onsiteRoutes: FastifyPluginAsync = async (app) => {
       });
 
       if (ticket) {
-        const scheduledDate = body.scheduledAt
-          ? new Date(body.scheduledAt).toLocaleString('tr-TR')
-          : new Date(onsite.scheduledAt).toLocaleString('tr-TR');
+        const scheduledDate = formatTrDateTime(body.scheduledAt || onsite.scheduledAt);
 
         await queueEmail({
           to: ticket.createdByEmail,
@@ -234,13 +240,20 @@ export const onsiteRoutes: FastifyPluginAsync = async (app) => {
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
 
-    const startDate = week ? new Date(week) : new Date();
-    startDate.setHours(0, 0, 0, 0);
-    const dayOfWeek = startDate.getDay();
-    startDate.setDate(startDate.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+    // Frontend, kullanıcının yerel saatine göre Pazartesi 00:00'ı hesaplayıp ISO olarak gönderir.
+    // Burada o anı olduğu gibi başlangıç kabul edip 7 gün ekliyoruz; sunucu zaman diliminden
+    // bağımsız tutarlı bir aralık elde etmek için yeniden "haftanın başına git" hesabı yapmıyoruz.
+    let startDate: Date;
+    if (week) {
+      startDate = new Date(week);
+    } else {
+      startDate = new Date();
+      startDate.setHours(0, 0, 0, 0);
+      const dayOfWeek = startDate.getDay();
+      startDate.setDate(startDate.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+    }
 
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + 7);
+    const endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     const scopeFilter = scopeCompanyIds
       ? { ticket: { companyId: { in: scopeCompanyIds } } }

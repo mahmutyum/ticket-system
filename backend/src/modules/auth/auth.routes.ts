@@ -34,9 +34,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     reply
       .setCookie('refresh_token', tokens.refreshToken, {
         httpOnly: true,
-        secure: true,
-        sameSite: 'strict',
-        path: '/auth/staff/refresh',
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
         maxAge: 7 * 24 * 60 * 60,
       })
       .send({
@@ -90,9 +90,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       reply
         .setCookie('refresh_token', tokens.refreshToken, {
           httpOnly: true,
-          secure: true,
-          sameSite: 'strict',
-          path: '/auth/staff/refresh',
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
           maxAge: 7 * 24 * 60 * 60,
         })
         .send({
@@ -108,7 +108,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
   app.post('/staff/logout', { preHandler: [app.authenticate] }, async (request, reply) => {
     await app.redis.del(`refresh:${request.staffUser!.id}`);
     reply
-      .clearCookie('refresh_token', { path: '/auth/staff/refresh' })
+      .clearCookie('refresh_token', { path: '/' })
       .send({ success: true });
   });
 

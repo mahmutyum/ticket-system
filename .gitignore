@@ -1,14 +1,69 @@
+# Bağımlılıklar
 node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# Build çıktıları
 dist/
 build/
+.next/
+out/
+*.tsbuildinfo
+
+# Prisma üretilmiş istemci
+**/.prisma/
+**/node_modules/.prisma/
+backend/prisma/generated/
+
+# Ortam değişkenleri
 .env
+.env.local
+.env.*.local
+.env.development
+.env.production
+!.env.example
+
+# Loglar
+logs/
 *.log
-uploads/*
-!uploads/.gitkeep
-nginx/ssl/*.pem
-nginx/ssl/*.key
-.DS_Store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editör / IDE
+.vscode/
+!.vscode/extensions.json
+.idea/
 *.swp
 *.swo
+
+# OS dosyaları
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Test / coverage
 coverage/
-.prisma/
+.nyc_output/
+
+# Geçici dosyalar
+*.tmp
+*.temp
+.cache/
+.parcel-cache/
+
+# Yüklenen dosyalar (uploads klasörü içeriği — .gitkeep tutulur)
+uploads/*
+!uploads/.gitkeep
+
+# Vite
+.vite/
+
+# TypeScript
+*.tsbuildinfo
+
+# Docker volume override'ları
+docker-compose.override.yml

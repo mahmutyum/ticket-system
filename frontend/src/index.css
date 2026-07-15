@@ -3,33 +3,102 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* Default primary palette (blue) — overridden at runtime by BrandingProvider */
+    --color-primary-50: 239 246 255;
+    --color-primary-100: 219 234 254;
+    --color-primary-200: 191 219 254;
+    --color-primary-300: 147 197 253;
+    --color-primary-400: 96 165 250;
+    --color-primary-500: 59 130 246;
+    --color-primary-600: 37 99 235;
+    --color-primary-700: 29 78 216;
+    --color-primary-800: 30 64 175;
+    --color-primary-900: 30 58 138;
+  }
+
+  html {
+    @apply bg-gray-50;
+  }
+  html.dark {
+    @apply bg-slate-950;
+  }
+
   body {
-    @apply text-gray-900 antialiased;
+    @apply text-gray-900 antialiased dark:text-slate-100;
   }
 }
 
 @layer components {
   .btn-primary {
     @apply bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700
-           transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed;
+           transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed
+           shadow-sm hover:shadow active:scale-[0.98]
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2
+           dark:ring-offset-slate-900;
   }
 
   .btn-secondary {
     @apply bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300
-           hover:bg-gray-50 transition-colors font-medium;
+           hover:bg-gray-50 transition-all font-medium active:scale-[0.98]
+           dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700;
   }
 
   .btn-danger {
     @apply bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700
-           transition-colors font-medium;
+           transition-all font-medium shadow-sm active:scale-[0.98];
   }
 
   .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2
-           focus:ring-primary-500 focus:border-primary-500 outline-none transition-shadow;
+    @apply w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2
+           focus:ring-primary-500 focus:border-primary-500 outline-none transition-all
+           text-gray-900 placeholder:text-gray-400
+           dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder:text-slate-500
+           dark:focus:border-primary-400;
   }
 
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6;
+    @apply bg-white rounded-xl shadow-soft border border-gray-200 p-6
+           dark:bg-slate-900 dark:border-slate-800;
+  }
+
+  /* Glassmorphism surface — for modals, headers, hero sections */
+  .glass {
+    @apply bg-white/70 backdrop-blur-md border border-white/40 shadow-soft
+           dark:bg-slate-900/60 dark:border-slate-700/50;
+  }
+
+  .glass-strong {
+    @apply bg-white/85 backdrop-blur-xl border border-white/60 shadow-soft
+           dark:bg-slate-900/75 dark:border-slate-700/60;
+  }
+
+  /* Subtle gradient background using primary tone */
+  .gradient-surface {
+    background: linear-gradient(135deg,
+      rgb(var(--color-primary-50) / 0.6) 0%,
+      rgb(var(--color-primary-100) / 0.3) 100%);
+  }
+  html.dark .gradient-surface {
+    background: linear-gradient(135deg,
+      rgb(var(--color-primary-900) / 0.25) 0%,
+      rgb(15 23 42) 100%);
+  }
+
+  /* Decorative orbs for hero/auth backgrounds */
+  .orb {
+    @apply pointer-events-none absolute rounded-full blur-3xl opacity-40;
+  }
+}
+
+@layer utilities {
+  .text-muted {
+    @apply text-gray-500 dark:text-slate-400;
+  }
+  .border-subtle {
+    @apply border-gray-200 dark:border-slate-800;
+  }
+  .surface-2 {
+    @apply bg-gray-50 dark:bg-slate-800/50;
   }
 }

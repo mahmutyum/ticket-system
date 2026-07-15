@@ -1,12 +1,13 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import { Calendar, MapPin, Clock, User, CheckCircle2, XCircle } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { MapPin, User, ChevronLeft, ChevronRight, CalendarDays, X, Clock, Hash } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
 
 const TYPE_LABELS: Record<string, string> = {
-  visit_employee: 'Yerinde Müdahale',
   come_to_it_room: 'IT Odasına Gelin',
+  meeting_room: 'Toplantı Odası',
+  visit_employee: 'Yerinde Müdahale',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -17,157 +18,578 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  scheduled: 'bg-blue-100 text-blue-700',
-  in_progress: 'bg-yellow-100 text-yellow-700',
-  completed: 'bg-green-100 text-green-700',
-  cancelled: 'bg-red-100 text-red-700',
+  scheduled: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200',
+  in_progress: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-200',
+  completed: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-200',
+  cancelled: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-200',
 };
+
+const TYPE_BAR_COLORS: Record<string, string> = {
+  come_to_it_room: 'bg-blue-500',
+  meeting_room: 'bg-purple-500',
+  visit_employee: 'bg-emerald-500',
+};
+
+const DAY_NAMES = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+const TIMELINE_START_HOUR = 8;
+const TIMELINE_END_HOUR = 19;
+const HOUR_HEIGHT = 80; // px
+const TOTAL_HOURS = TIMELINE_END_HOUR - TIMELINE_START_HOUR;
+const DEFAULT_DURATION_MIN = 15;
+
+type LayoutItem = { event: any; col: number; cols: number };
+
+// Bir event'in dakika cinsinden süresi: scheduledEnd varsa ondan, yoksa varsayılan.
+function eventDurationMin(e: any, fallback = DEFAULT_DURATION_MIN): number {
+  if (!e.scheduledEnd) return fallback;
+  const ms = new Date(e.scheduledEnd).getTime() - new Date(e.scheduledAt).getTime();
+  const min = Math.round(ms / 60000);
+  return min > 0 ? min : fallback;
+}
+
+// Interval-overlap lane atama: aynı anda örtüşen event'leri ayrı kolonlara yerleştirir.
+// Paralel randevular normaldir; çakışma uyarısı yok.
+function computeLayout(events: any[]): LayoutItem[] {
+  if (events.length === 0) return [];
+  const items = events
+    .map((e) => {
+      const start = new Date(e.scheduledAt).getTime();
+      return { e, start, end: start + eventDurationMin(e) * 60 * 1000 };
+    })
+    .sort((a, b) => a.start - b.start || a.end - b.end);
+
+  const result: LayoutItem[] = [];
+  let cluster: typeof items = [];
+  let clusterEnd = -Infinity;
+
+  const flushCluster = () => {
+    if (cluster.length === 0) return;
+    const lanes: number[] = []; // her lane'in son bitiş zamanı
+    const assignments: number[] = [];
+    cluster.forEach((it) => {
+      let placed = -1;
+      for (let i = 0; i < lanes.length; i++) {
+        if (lanes[i] <= it.start) {
+          lanes[i] = it.end;
+          placed = i;
+          break;
+        }
+      }
+      if (placed === -1) {
+        lanes.push(it.end);
+        placed = lanes.length - 1;
+      }
+      assignments.push(placed);
+    });
+    const cols = lanes.length;
+    cluster.forEach((it, idx) => {
+      result.push({ event: it.e, col: assignments[idx], cols });
+    });
+  };
+
+  items.forEach((it) => {
+    if (cluster.length === 0 || it.start < clusterEnd) {
+      cluster.push(it);
+      clusterEnd = Math.max(clusterEnd, it.end);
+    } else {
+      flushCluster();
+      cluster = [it];
+      clusterEnd = it.end;
+    }
+  });
+  flushCluster();
+  return result;
+}
+
+function startOfDay(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function mondayOf(d: Date) {
+  const x = startOfDay(d);
+  const dow = x.getDay();
+  const offset = dow === 0 ? -6 : 1 - dow;
+  x.setDate(x.getDate() + offset);
+  return x;
+}
+
+function sameDay(a: Date, b: Date) {
+  return a.toDateString() === b.toDateString();
+}
+
+function toInputDate(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 export default function OnsiteSupportPage() {
   const queryClient = useQueryClient();
-  const [weekOffset, setWeekOffset] = useState(0);
+  const [selectedDate, setSelectedDate] = useState<Date>(() => startOfDay(new Date()));
+  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
 
-  const startOfWeek = new Date();
-  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1 + weekOffset * 7);
-  startOfWeek.setHours(0, 0, 0, 0);
+  const weekStart = useMemo(() => mondayOf(selectedDate), [selectedDate]);
 
   const { data } = useQuery({
-    queryKey: ['onsite-calendar', weekOffset],
-    queryFn: async () => (await api.get(`/onsite-support/calendar?week=${startOfWeek.toISOString()}`)).data.data,
+    queryKey: ['onsite-calendar', weekStart.toISOString()],
+    queryFn: async () =>
+      (await api.get(`/onsite-support/calendar?week=${weekStart.toISOString()}`)).data.data,
   });
 
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(startOfWeek);
-    d.setDate(d.getDate() + i);
-    return d;
-  });
-
-  const dayNames = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+  const weekDays = useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(weekStart);
+        d.setDate(d.getDate() + i);
+        return d;
+      }),
+    [weekStart],
+  );
 
   const handleStatusUpdate = async (id: string, status: string) => {
     try {
       await api.put(`/onsite-support/${id}`, { status });
       queryClient.invalidateQueries({ queryKey: ['onsite-calendar'] });
       toast.success('Durum güncellendi');
+      setSelectedEvent(null);
     } catch {
       toast.error('Güncelleme başarısız');
     }
   };
 
-  const getEventsForDay = (day: Date) => {
-    if (!data?.events) return [];
-    return data.events.filter((e: any) => {
-      const eventDate = new Date(e.scheduledAt);
-      return eventDate.toDateString() === day.toDateString();
-    });
+  const eventsForDay = (day: Date) => {
+    if (!data?.events) return [] as any[];
+    return (data.events as any[])
+      .filter((e) => sameDay(new Date(e.scheduledAt), day))
+      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
   };
+
+  const selectedDayEvents = useMemo(() => eventsForDay(selectedDate), [data, selectedDate]);
+
+  // Interval-overlap lane atama (15 dk varsayılan süre)
+  const layout = useMemo(() => computeLayout(selectedDayEvents), [selectedDayEvents]);
+
+  const goToday = () => setSelectedDate(startOfDay(new Date()));
+  const goPrevDay = () => {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() - 1);
+    setSelectedDate(d);
+  };
+  const goNextDay = () => {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() + 1);
+    setSelectedDate(d);
+  };
+
+  const isToday = sameDay(selectedDate, new Date());
+  const longDateLabel = selectedDate.toLocaleDateString('tr-TR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Yerinde Destek Takvimi</h1>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setWeekOffset(w => w - 1)} className="btn-secondary text-sm">← Önceki</button>
-          <button onClick={() => setWeekOffset(0)} className="btn-secondary text-sm">Bu Hafta</button>
-          <button onClick={() => setWeekOffset(w => w + 1)} className="btn-secondary text-sm">Sonraki →</button>
+      {/* Üst başlık + tarih kontrolleri */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Yerinde Destek Takvimi</h1>
+          <p className="text-sm text-muted capitalize">{longDateLabel}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={goPrevDay}
+              className="btn-secondary text-sm !px-2"
+              title="Önceki gün"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={goToday}
+              className={`btn-secondary text-sm ${isToday ? 'ring-1 ring-primary-400' : ''}`}
+            >
+              Bugün
+            </button>
+            <button
+              onClick={goNextDay}
+              className="btn-secondary text-sm !px-2"
+              title="Sonraki gün"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+          <label className="relative">
+            <input
+              type="date"
+              value={toInputDate(selectedDate)}
+              onChange={(e) => {
+                if (!e.target.value) return;
+                const [y, m, d] = e.target.value.split('-').map(Number);
+                setSelectedDate(new Date(y, m - 1, d));
+              }}
+              className="input-field !py-1.5 !pl-8 text-sm"
+            />
+            <CalendarDays className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          </label>
         </div>
       </div>
 
-      {/* Week grid */}
-      <div className="grid grid-cols-7 gap-2">
-        {days.map((day, i) => {
-          const events = getEventsForDay(day);
-          const isToday = day.toDateString() === new Date().toDateString();
+      {/* Hafta şeridi — kompakt, doluluk rozetli */}
+      <div className="card !p-3">
+        <div className="grid grid-cols-7 gap-2">
+          {weekDays.map((day, i) => {
+            const events = eventsForDay(day);
+            const active = events.filter((e) => e.status !== 'cancelled');
+            const count = active.length;
+            const selected = sameDay(day, selectedDate);
+            const today = sameDay(day, new Date());
 
-          return (
-            <div key={i} className={`card p-3 min-h-[200px] ${isToday ? 'ring-2 ring-primary-400' : ''}`}>
-              <div className="text-center mb-2">
-                <div className="text-xs text-gray-400">{dayNames[i]}</div>
-                <div className={`text-lg font-bold ${isToday ? 'text-primary-600' : ''}`}>
-                  {day.getDate()}
+            return (
+              <button
+                key={i}
+                onClick={() => setSelectedDate(startOfDay(day))}
+                className={`relative rounded-lg p-2 text-center transition-all border ${
+                  selected
+                    ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
+                    : today
+                    ? 'border-primary-400 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-700'
+                    : 'border-gray-200 hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800/50'
+                }`}
+              >
+                <div className={`text-[10px] uppercase tracking-wide ${selected ? 'text-white/80' : 'text-muted'}`}>
+                  {DAY_NAMES[i]}
                 </div>
-              </div>
+                <div className="text-lg font-bold leading-tight">{day.getDate()}</div>
+                <div className="flex items-center justify-center gap-1 mt-1 min-h-[18px]">
+                  {count > 0 && (
+                    <span
+                      className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
+                        selected
+                          ? 'bg-white/20 text-white'
+                          : count >= 5
+                          ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-200'
+                          : count >= 3
+                          ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-200'
+                          : 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-              <div className="space-y-2">
-                {events.map((event: any) => (
-                  <div key={event.id} className="bg-gray-50 rounded-lg p-2 text-xs space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${STATUS_COLORS[event.status] || ''}`}>
-                        {TYPE_LABELS[event.type]}
-                      </span>
-                      <span className="text-gray-400">
-                        {new Date(event.scheduledAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <div className="font-medium truncate">{event.ticket?.subject}</div>
-                    <div className="text-gray-500 flex items-center gap-1">
-                      <User className="w-3 h-3" />
-                      {event.ticket?.createdBy?.fullName}
-                    </div>
-                    <div className="text-gray-500 flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      {event.location?.name}
-                    </div>
+      {/* Günlük timeline */}
+      <div className="card p-0 overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-slate-800">
+          <h3 className="font-semibold">
+            {selectedDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })} —{' '}
+            <span className="text-muted font-normal">
+              {selectedDayEvents.filter((e) => e.status !== 'cancelled').length} aktif randevu
+            </span>
+          </h3>
+        </div>
 
-                    {event.status === 'scheduled' && (
-                      <div className="flex gap-1 pt-1">
+        {selectedDayEvents.length === 0 ? (
+          <div className="px-4 py-12 text-center text-muted text-sm">
+            Bu gün için randevu yok.
+          </div>
+        ) : (
+          <div className="relative flex">
+            {/* Saat sütunu */}
+            <div className="w-16 flex-shrink-0 border-r border-gray-200 dark:border-slate-800">
+              {Array.from({ length: TOTAL_HOURS }, (_, i) => {
+                const hour = TIMELINE_START_HOUR + i;
+                return (
+                  <div
+                    key={hour}
+                    className="text-xs text-muted text-right pr-2 pt-1"
+                    style={{ height: HOUR_HEIGHT }}
+                  >
+                    {String(hour).padStart(2, '0')}:00
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Etkinlik alanı */}
+            <div className="relative flex-1" style={{ height: TOTAL_HOURS * HOUR_HEIGHT }}>
+              {/* Saat ızgarası */}
+              {Array.from({ length: TOTAL_HOURS }, (_, i) => (
+                <div
+                  key={i}
+                  className="absolute left-0 right-0 border-t border-gray-100 dark:border-slate-800"
+                  style={{ top: i * HOUR_HEIGHT }}
+                />
+              ))}
+
+              {/* Şu anki saat çizgisi (sadece bugün için) */}
+              {isToday &&
+                (() => {
+                  const now = new Date();
+                  const minutes = (now.getHours() - TIMELINE_START_HOUR) * 60 + now.getMinutes();
+                  if (minutes < 0 || minutes > TOTAL_HOURS * 60) return null;
+                  const top = (minutes / 60) * HOUR_HEIGHT;
+                  return (
+                    <div
+                      className="absolute left-0 right-0 z-10 pointer-events-none"
+                      style={{ top }}
+                    >
+                      <div className="h-px bg-red-500" />
+                      <div className="absolute -left-1 -top-1 w-2 h-2 rounded-full bg-red-500" />
+                    </div>
+                  );
+                })()}
+
+              {/* Etkinlikler */}
+              {layout.map(({ event, col, cols }) => {
+                const start = new Date(event.scheduledAt);
+                const minutesFromStart =
+                  (start.getHours() - TIMELINE_START_HOUR) * 60 + start.getMinutes();
+                if (minutesFromStart < 0 || minutesFromStart > TOTAL_HOURS * 60) return null;
+                const top = (minutesFromStart / 60) * HOUR_HEIGHT;
+                const widthPct = 100 / cols;
+                const leftPct = col * widthPct;
+                const cancelled = event.status === 'cancelled';
+                const durationMin = eventDurationMin(event);
+                const height = Math.max((durationMin / 60) * HOUR_HEIGHT, 28);
+                // Kart yüksekliğine göre kademeli içerik: kısa kart yalnızca saat + konu;
+                // tüm detay tıklanınca açılan popup'ta gösterilir.
+                const compact = height < 52;
+                return (
+                  <button
+                    key={event.id}
+                    type="button"
+                    onClick={() => setSelectedEvent(event)}
+                    title="Detayları gör"
+                    className={`absolute rounded-lg px-2 py-1 text-xs overflow-hidden border shadow-sm text-left transition-all hover:shadow-md hover:ring-1 hover:ring-primary-400 hover:z-20 focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                      cancelled
+                        ? 'bg-gray-50 dark:bg-slate-800/40 border-gray-200 dark:border-slate-700 opacity-60'
+                        : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700'
+                    }`}
+                    style={{
+                      top,
+                      left: `calc(${leftPct}% + 4px)`,
+                      width: `calc(${widthPct}% - 8px)`,
+                      height: height - 4,
+                      zIndex: 2,
+                    }}
+                  >
+                    <div className="flex gap-1.5 h-full">
+                      <div
+                        className={`w-1 rounded-full flex-shrink-0 ${
+                          TYPE_BAR_COLORS[event.type] || 'bg-gray-400'
+                        } ${cancelled ? 'opacity-40' : ''}`}
+                      />
+                      <div className="flex-1 min-w-0 leading-tight">
+                        {compact ? (
+                          <div className="flex items-baseline gap-1 truncate">
+                            <span className="font-semibold text-[11px] flex-shrink-0">
+                              {start.toLocaleTimeString('tr-TR', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                            <span className="truncate text-[11px]">{event.ticket?.subject}</span>
+                          </div>
+                        ) : (
+                          <div className="space-y-0.5">
+                            <span className="font-semibold text-[11px]">
+                              {start.toLocaleTimeString('tr-TR', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                            <div className="font-medium truncate">{event.ticket?.subject}</div>
+                            <div className="text-muted truncate flex items-center gap-1">
+                              <User className="w-3 h-3 flex-shrink-0" />
+                              <span className="truncate">{event.ticket?.createdBy?.fullName}</span>
+                            </div>
+                            {height >= 76 && (
+                              <div className="text-muted truncate flex items-center gap-1">
+                                <MapPin className="w-3 h-3 flex-shrink-0" />
+                                <span className="truncate">{event.location?.name}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Seçilen günün liste özeti */}
+      {selectedDayEvents.length > 0 && (
+        <div className="card">
+          <h3 className="font-semibold mb-3">Liste Görünümü</h3>
+          <div className="space-y-2">
+            {selectedDayEvents.map((event) => (
+              <button
+                key={event.id}
+                type="button"
+                onClick={() => setSelectedEvent(event)}
+                className="w-full text-left flex items-center gap-4 p-3 bg-gray-50 dark:bg-slate-800/50 rounded-lg text-sm transition-colors hover:bg-gray-100 dark:hover:bg-slate-800"
+              >
+                <div
+                  className={`w-1 h-10 rounded-full ${
+                    TYPE_BAR_COLORS[event.type] || 'bg-gray-400'
+                  }`}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate">
+                    {event.ticket?.ticketNumber} — {event.ticket?.subject}
+                  </div>
+                  <div className="text-muted text-xs">
+                    {event.ticket?.createdBy?.fullName} • {event.location?.name} •{' '}
+                    {new Date(event.scheduledAt).toLocaleTimeString('tr-TR', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </div>
+                </div>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                    STATUS_COLORS[event.status]
+                  }`}
+                >
+                  {STATUS_LABELS[event.status]}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Randevu detay popup'ı */}
+      {selectedEvent &&
+        (() => {
+          const ev = selectedEvent;
+          const start = new Date(ev.scheduledAt);
+          const durationMin = eventDurationMin(ev);
+          const end = new Date(start.getTime() + durationMin * 60000);
+          const fmt = (d: Date) =>
+            d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+          return (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+              onClick={() => setSelectedEvent(null)}
+            >
+              <div
+                className="card w-full max-w-md !p-0 overflow-hidden shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-gray-200 dark:border-slate-800">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div
+                      className={`w-1.5 self-stretch rounded-full flex-shrink-0 ${
+                        TYPE_BAR_COLORS[ev.type] || 'bg-gray-400'
+                      }`}
+                    />
+                    <div className="min-w-0">
+                      <h3 className="font-semibold break-words">{ev.ticket?.subject}</h3>
+                      <span
+                        className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                          STATUS_COLORS[ev.status] || ''
+                        }`}
+                      >
+                        {STATUS_LABELS[ev.status] || ev.status}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedEvent(null)}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex-shrink-0"
+                    title="Kapat"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="px-5 py-4 space-y-2.5 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-muted flex-shrink-0" />
+                    <span>
+                      {fmt(start)} – {fmt(end)}{' '}
+                      <span className="text-muted">({durationMin} dk)</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="w-4 h-4 text-muted flex-shrink-0" />
+                    <span className="capitalize">
+                      {start.toLocaleDateString('tr-TR', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                      })}{' '}
+                      · {TYPE_LABELS[ev.type] || ev.type}
+                    </span>
+                  </div>
+                  {ev.ticket?.ticketNumber && (
+                    <div className="flex items-center gap-2">
+                      <Hash className="w-4 h-4 text-muted flex-shrink-0" />
+                      <span>{ev.ticket.ticketNumber}</span>
+                    </div>
+                  )}
+                  {ev.ticket?.createdBy?.fullName && (
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-muted flex-shrink-0" />
+                      <span>{ev.ticket.createdBy.fullName}</span>
+                    </div>
+                  )}
+                  {ev.location?.name && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-muted flex-shrink-0" />
+                      <span>{ev.location.name}</span>
+                    </div>
+                  )}
+                </div>
+
+                {(ev.status === 'scheduled' || ev.status === 'in_progress') && (
+                  <div className="flex gap-2 px-5 py-4 border-t border-gray-200 dark:border-slate-800">
+                    {ev.status === 'scheduled' && (
+                      <>
                         <button
-                          onClick={() => handleStatusUpdate(event.id, 'in_progress')}
-                          className="flex-1 bg-yellow-100 text-yellow-700 py-0.5 rounded text-[10px] hover:bg-yellow-200"
+                          onClick={() => handleStatusUpdate(ev.id, 'in_progress')}
+                          className="flex-1 bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-200 py-2 rounded-lg text-sm font-medium hover:bg-yellow-200 dark:hover:bg-yellow-500/30"
                         >
                           Başla
                         </button>
                         <button
-                          onClick={() => handleStatusUpdate(event.id, 'cancelled')}
-                          className="flex-1 bg-red-100 text-red-700 py-0.5 rounded text-[10px] hover:bg-red-200"
+                          onClick={() => handleStatusUpdate(ev.id, 'cancelled')}
+                          className="flex-1 bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-200 py-2 rounded-lg text-sm font-medium hover:bg-red-200 dark:hover:bg-red-500/30"
                         >
                           İptal
                         </button>
-                      </div>
+                      </>
                     )}
-                    {event.status === 'in_progress' && (
+                    {ev.status === 'in_progress' && (
                       <button
-                        onClick={() => handleStatusUpdate(event.id, 'completed')}
-                        className="w-full bg-green-100 text-green-700 py-0.5 rounded text-[10px] hover:bg-green-200"
+                        onClick={() => handleStatusUpdate(ev.id, 'completed')}
+                        className="flex-1 bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-200 py-2 rounded-lg text-sm font-medium hover:bg-green-200 dark:hover:bg-green-500/30"
                       >
                         Tamamla
                       </button>
                     )}
                   </div>
-                ))}
+                )}
               </div>
             </div>
           );
-        })}
-      </div>
-
-      {/* Upcoming list */}
-      <div className="card">
-        <h3 className="font-semibold mb-3">Bu Haftanın Randevuları</h3>
-        {data?.events?.length > 0 ? (
-          <div className="space-y-2">
-            {data.events.map((event: any) => (
-              <div key={event.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg text-sm">
-                <div className="flex-shrink-0">
-                  <Calendar className="w-5 h-5 text-gray-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium">{event.ticket?.ticketNumber} — {event.ticket?.subject}</div>
-                  <div className="text-gray-500 text-xs">
-                    {event.ticket?.createdBy?.fullName} • {event.location?.name} •
-                    {new Date(event.scheduledAt).toLocaleString('tr-TR')}
-                  </div>
-                </div>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[event.status]}`}>
-                  {STATUS_LABELS[event.status]}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-400 text-sm">Bu hafta randevu yok.</p>
-        )}
-      </div>
+        })()}
     </div>
   );
 }

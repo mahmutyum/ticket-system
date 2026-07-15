@@ -18,6 +18,18 @@ const categoryUpdateSchema = categoryCreateSchema.partial().extend({
 });
 
 export const categoryRoutes: FastifyPluginAsync = async (app) => {
+  // Staff: tüm aktif kategorileri listele (raporlar filtre dropdown'ı için)
+  app.get('/', {
+    preHandler: [app.authenticate],
+  }, async (_request, reply) => {
+    const categories = await app.prisma.category.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, companyId: true },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    });
+    reply.send({ success: true, data: categories });
+  });
+
   // Admin: Reorder — MUST be before /:id
   app.put('/reorder', {
     preHandler: [app.requireRole('admin', 'it_manager')],

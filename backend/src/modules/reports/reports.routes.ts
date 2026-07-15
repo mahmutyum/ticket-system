@@ -13,6 +13,32 @@ const reportFilterSchema = paginationSchema.extend({
   priority: z.string().optional(),
 });
 
+type CommonFilters = {
+  dateFrom?: string;
+  dateTo?: string;
+  companyId?: string;
+  categoryId?: string;
+  assignedToId?: string;
+  priority?: string;
+  status?: string;
+};
+
+function buildTicketWhere(filters: CommonFilters, scopeCompanyIds: string[] | null): any {
+  const where: any = {};
+  if (scopeCompanyIds) where.companyId = { in: scopeCompanyIds };
+  if (filters.dateFrom || filters.dateTo) {
+    where.createdAt = {};
+    if (filters.dateFrom) where.createdAt.gte = new Date(filters.dateFrom);
+    if (filters.dateTo) where.createdAt.lte = new Date(filters.dateTo + 'T23:59:59Z');
+  }
+  if (filters.companyId) where.companyId = filters.companyId;
+  if (filters.categoryId) where.categoryId = filters.categoryId;
+  if (filters.assignedToId) where.assignedToId = filters.assignedToId;
+  if (filters.priority) where.priority = filters.priority;
+  if (filters.status) where.status = filters.status;
+  return where;
+}
+
 function csvEscape(value: string | null | undefined): string {
   if (value == null) return '';
   const str = String(value);
@@ -69,20 +95,11 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
   app.get('/staff-performance', {
     preHandler: [app.requireRole('admin', 'it_manager')],
   }, async (request, reply) => {
-    const query = request.query as { dateFrom?: string; dateTo?: string };
+    const query = request.query as CommonFilters;
     const staffUser = request.staffUser!;
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
-
-    const dateFilter: any = {};
-    if (query.dateFrom || query.dateTo) {
-      dateFilter.createdAt = {};
-      if (query.dateFrom) dateFilter.createdAt.gte = new Date(query.dateFrom);
-      if (query.dateTo) dateFilter.createdAt.lte = new Date(query.dateTo + 'T23:59:59Z');
-    }
-    if (scopeCompanyIds) {
-      dateFilter.companyId = { in: scopeCompanyIds };
-    }
+    const dateFilter = buildTicketWhere(query, scopeCompanyIds);
 
     const staff = await app.prisma.staff.findMany({
       where: { isActive: true },
@@ -142,20 +159,11 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
   app.get('/categories', {
     preHandler: [app.requireRole('admin', 'it_manager')],
   }, async (request, reply) => {
-    const query = request.query as { dateFrom?: string; dateTo?: string };
+    const query = request.query as CommonFilters;
     const staffUser = request.staffUser!;
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
-
-    const where: any = {};
-    if (query.dateFrom || query.dateTo) {
-      where.createdAt = {};
-      if (query.dateFrom) where.createdAt.gte = new Date(query.dateFrom);
-      if (query.dateTo) where.createdAt.lte = new Date(query.dateTo + 'T23:59:59Z');
-    }
-    if (scopeCompanyIds) {
-      where.companyId = { in: scopeCompanyIds };
-    }
+    const where = buildTicketWhere(query, scopeCompanyIds);
 
     const categories = await app.prisma.ticket.groupBy({
       by: ['categoryId'],
@@ -185,21 +193,11 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
   app.get('/export/csv', {
     preHandler: [app.requireRole('admin', 'it_manager')],
   }, async (request, reply) => {
-    const query = request.query as { dateFrom?: string; dateTo?: string; companyId?: string };
+    const query = request.query as CommonFilters;
     const staffUser = request.staffUser!;
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
-
-    const where: any = {};
-    if (scopeCompanyIds) {
-      where.companyId = { in: scopeCompanyIds };
-    }
-    if (query.dateFrom || query.dateTo) {
-      where.createdAt = {};
-      if (query.dateFrom) where.createdAt.gte = new Date(query.dateFrom);
-      if (query.dateTo) where.createdAt.lte = new Date(query.dateTo + 'T23:59:59Z');
-    }
-    if (query.companyId) where.companyId = query.companyId;
+    const where = buildTicketWhere(query, scopeCompanyIds);
 
     const tickets = await app.prisma.ticket.findMany({
       where,
@@ -235,5 +233,145 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
       .header('Content-Type', 'text/csv; charset=utf-8')
       .header('Content-Disposition', `attachment; filename="ticket-rapor-${new Date().toISOString().split('T')[0]}.csv"`)
       .send(csv);
+  });
+
+  // Zaman serisi overview: günlük / haftalık / aylık bucket'larda created/resolved/inProgress/overdue
+  app.get('/overview', {
+    preHandler: [app.requireRole('admin', 'it_manager')],
+  }, async (request, reply) => {
+    const query = request.query as CommonFilters & { period?: 'daily' | 'weekly' | 'monthly' };
+    const period = query.period === 'weekly' ? 'week' : query.period === 'monthly' ? 'month' : 'day';
+    const staffUser = request.staffUser!;
+
+    const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
+    const where = buildTicketWhere(query, scopeCompanyIds);
+
+    const tickets = await app.prisma.ticket.findMany({
+      where,
+      select: {
+        createdAt: true,
+        status: true,
+        resolvedAt: true,
+        slaResolveMet: true,
+      },
+      take: 50000,
+    });
+
+    const bucketKey = (d: Date): string => {
+      const x = new Date(d);
+      if (period === 'day') {
+        return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+      }
+      if (period === 'month') {
+        return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-01`;
+      }
+      // week: ISO Pazartesi
+      const day = x.getDay();
+      const offset = day === 0 ? -6 : 1 - day;
+      x.setDate(x.getDate() + offset);
+      x.setHours(0, 0, 0, 0);
+      return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+    };
+
+    const buckets = new Map<string, { bucket: string; created: number; resolved: number; inProgress: number; overdue: number }>();
+    const ensure = (key: string) => {
+      let b = buckets.get(key);
+      if (!b) {
+        b = { bucket: key, created: 0, resolved: 0, inProgress: 0, overdue: 0 };
+        buckets.set(key, b);
+      }
+      return b;
+    };
+
+    tickets.forEach((t) => {
+      const created = ensure(bucketKey(new Date(t.createdAt)));
+      created.created += 1;
+      if (t.status === 'in_progress') created.inProgress += 1;
+      if (t.slaResolveMet === false) created.overdue += 1;
+      if (t.resolvedAt) {
+        const r = ensure(bucketKey(new Date(t.resolvedAt)));
+        r.resolved += 1;
+      }
+    });
+
+    const data = Array.from(buckets.values()).sort((a, b) => a.bucket.localeCompare(b.bucket));
+    reply.send({ success: true, data, period });
+  });
+
+  // SLA trend serisi
+  app.get('/sla-trends', {
+    preHandler: [app.requireRole('admin', 'it_manager')],
+  }, async (request, reply) => {
+    const query = request.query as CommonFilters & { period?: 'weekly' | 'monthly' };
+    const period = query.period === 'monthly' ? 'month' : 'week';
+    const staffUser = request.staffUser!;
+
+    const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
+    const where = buildTicketWhere(query, scopeCompanyIds);
+
+    const tickets = await app.prisma.ticket.findMany({
+      where,
+      select: {
+        createdAt: true,
+        slaResponseMet: true,
+        slaResolveMet: true,
+      },
+      take: 50000,
+    });
+
+    const bucketKey = (d: Date): string => {
+      const x = new Date(d);
+      if (period === 'month') {
+        return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-01`;
+      }
+      const day = x.getDay();
+      const offset = day === 0 ? -6 : 1 - day;
+      x.setDate(x.getDate() + offset);
+      x.setHours(0, 0, 0, 0);
+      return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+    };
+
+    const buckets = new Map<string, {
+      bucket: string;
+      total: number;
+      responseMet: number;
+      responseTotal: number;
+      resolveMet: number;
+      resolveTotal: number;
+    }>();
+    const ensure = (key: string) => {
+      let b = buckets.get(key);
+      if (!b) {
+        b = { bucket: key, total: 0, responseMet: 0, responseTotal: 0, resolveMet: 0, resolveTotal: 0 };
+        buckets.set(key, b);
+      }
+      return b;
+    };
+
+    tickets.forEach((t) => {
+      const b = ensure(bucketKey(new Date(t.createdAt)));
+      b.total += 1;
+      if (t.slaResponseMet !== null) {
+        b.responseTotal += 1;
+        if (t.slaResponseMet) b.responseMet += 1;
+      }
+      if (t.slaResolveMet !== null) {
+        b.resolveTotal += 1;
+        if (t.slaResolveMet) b.resolveMet += 1;
+      }
+    });
+
+    const data = Array.from(buckets.values())
+      .map((b) => ({
+        bucket: b.bucket,
+        total: b.total,
+        responseMet: b.responseMet,
+        resolveMet: b.resolveMet,
+        responseRate: b.responseTotal > 0 ? Math.round((b.responseMet / b.responseTotal) * 100) : null,
+        resolveRate: b.resolveTotal > 0 ? Math.round((b.resolveMet / b.resolveTotal) * 100) : null,
+      }))
+      .sort((a, b) => a.bucket.localeCompare(b.bucket));
+
+    reply.send({ success: true, data, period });
   });
 };

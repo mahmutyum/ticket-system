@@ -195,7 +195,7 @@ export default function StaffManagementPage() {
                 <label
                   key={c.id}
                   className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                    selectedCompanyIds.includes(c.id) ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:bg-gray-50'
+                    selectedCompanyIds.includes(c.id) ? 'border-primary-500 bg-primary-50' : 'border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50'
                   }`}
                 >
                   <input
@@ -224,7 +224,7 @@ export default function StaffManagementPage() {
       <div className="card p-0 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-gray-50 text-left text-gray-500">
+            <tr className="bg-gray-50 dark:bg-slate-800/50 text-left text-gray-500">
               <th className="px-4 py-3 font-medium">Ad Soyad</th>
               <th className="px-4 py-3 font-medium">Email</th>
               <th className="px-4 py-3 font-medium">Rol</th>
@@ -238,7 +238,7 @@ export default function StaffManagementPage() {
             {staffList?.map((staff: any) => {
               const companyNames = (staff.assignedCompanies || []).map((ac: any) => ac.company?.name).filter(Boolean);
               return (
-                <tr key={staff.id} className="border-t hover:bg-gray-50">
+                <tr key={staff.id} className="border-t hover:bg-gray-50 dark:hover:bg-slate-800/50">
                   <td className="px-4 py-3 font-medium">{staff.fullName}</td>
                   <td className="px-4 py-3 text-gray-500">{staff.email}</td>
                   <td className="px-4 py-3 text-xs">{ROLES.find(r => r.value === staff.role)?.label}</td>

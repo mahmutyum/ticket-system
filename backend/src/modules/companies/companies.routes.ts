@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { testSmtpConnection, invalidateCompanyTransporter } from '../../services/email.service.js';
 import { createAuditLog } from '../../middleware/audit.js';
+import { saveLogo, isAllowedLogoMimeType } from '../../services/storage.service.js';
 
 const smtpConfigSchema = z.object({
   host: z.string().min(1),
@@ -18,7 +19,8 @@ const smtpConfigSchema = z.object({
 const companyCreateSchema = z.object({
   name: z.string().min(1),
   groupType: z.string().min(1),
-  logo: z.string().optional(),
+  logo: z.string().optional().nullable(),
+  primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Geçerli hex renk değil').optional().nullable(),
   allowedDomains: z.array(z.string()).default([]),
   portalDomains: z.array(z.string()).default([]),
   notificationEmail: z.string().email().nullable().optional(),
@@ -40,11 +42,29 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
         name: true,
         groupType: true,
         logo: true,
+        primaryColor: true,
         allowedDomains: true,
         portalDomains: true,
       },
     });
     reply.send({ success: true, data: companies });
+  });
+
+  // Public: Get branding by host (portal domain match)
+  app.get('/branding/by-host', async (request, reply) => {
+    const q = z.object({ host: z.string().min(1) }).parse(request.query ?? {});
+    const host = q.host.toLowerCase().split(':')[0];
+    const companies = await app.prisma.company.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, logo: true, primaryColor: true, portalDomains: true },
+    });
+    const match = companies.find(c => {
+      const domains = Array.isArray(c.portalDomains) ? (c.portalDomains as string[]) : [];
+      return domains.some(d => typeof d === 'string' && d.toLowerCase() === host);
+    });
+    if (!match) return reply.send({ success: true, data: null });
+    const { portalDomains, ...rest } = match;
+    reply.send({ success: true, data: rest });
   });
 
   // Admin: List all companies (including inactive) — MUST be before /:id
@@ -55,6 +75,10 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
       orderBy: { name: 'asc' },
       include: {
         _count: { select: { locations: true, tickets: true } },
+        locations: {
+          where: { isActive: true },
+          orderBy: { name: 'asc' },
+        },
         smtpConfig: {
           select: {
             id: true,
@@ -164,6 +188,40 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
     reply.send({ success: true, data: company });
   });
 
+  // Admin: Soft-delete company (deactivate)
+  app.delete('/:id', {
+    preHandler: [app.requireRole('admin')],
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const existing = await app.prisma.company.findUnique({ where: { id } });
+    if (!existing) {
+      return reply.status(404).send({ success: false, error: 'Şirket bulunamadı' });
+    }
+    const company = await app.prisma.company.update({
+      where: { id },
+      data: { isActive: false },
+    });
+    await createAuditLog({ entityType: 'company', entityId: id, action: 'deactivate', changes: { name: existing.name }, performedBy: request.staffUser!.email, ipAddress: request.headers['x-real-ip'] as string });
+    reply.send({ success: true, data: company });
+  });
+
+  // Admin: Restore soft-deleted company
+  app.post('/:id/restore', {
+    preHandler: [app.requireRole('admin')],
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const existing = await app.prisma.company.findUnique({ where: { id } });
+    if (!existing) {
+      return reply.status(404).send({ success: false, error: 'Şirket bulunamadı' });
+    }
+    const company = await app.prisma.company.update({
+      where: { id },
+      data: { isActive: true },
+    });
+    await createAuditLog({ entityType: 'company', entityId: id, action: 'restore', changes: { name: existing.name }, performedBy: request.staffUser!.email, ipAddress: request.headers['x-real-ip'] as string });
+    reply.send({ success: true, data: company });
+  });
+
   // ==================== COMPANY SMTP CONFIG ====================
 
   // Get company SMTP config
@@ -257,5 +315,31 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
     } else {
       reply.status(400).send({ success: false, error: `SMTP bağlantısı başarısız: ${result.error}` });
     }
+  });
+
+  // Admin: Upload company logo
+  app.post('/:id/logo', {
+    preHandler: [app.requireRole('admin', 'it_manager')],
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const exists = await app.prisma.company.findUnique({ where: { id }, select: { id: true } });
+    if (!exists) return reply.status(404).send({ success: false, error: 'Şirket bulunamadı' });
+
+    const file = await request.file();
+    if (!file) return reply.status(400).send({ success: false, error: 'Dosya bulunamadı' });
+    if (!isAllowedLogoMimeType(file.mimetype)) {
+      return reply.status(400).send({ success: false, error: 'Sadece PNG, JPG, WEBP veya SVG yüklenebilir' });
+    }
+    const buffer = await file.toBuffer();
+    if (buffer.length > 2 * 1024 * 1024) {
+      return reply.status(400).send({ success: false, error: 'Dosya boyutu 2MB üzerinde olamaz' });
+    }
+    const saved = await saveLogo(buffer, file.filename, id);
+    const updated = await app.prisma.company.update({
+      where: { id },
+      data: { logo: saved.url },
+      select: { id: true, logo: true },
+    });
+    reply.send({ success: true, data: updated });
   });
 };

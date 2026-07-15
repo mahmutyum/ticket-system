@@ -51,6 +51,30 @@ export async function saveFile(
   };
 }
 
+const ALLOWED_LOGO_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml']);
+
+export function isAllowedLogoMimeType(mimeType: string): boolean {
+  return ALLOWED_LOGO_MIME.has(mimeType);
+}
+
+export async function saveLogo(
+  buffer: Buffer,
+  originalName: string,
+  companyId: string,
+): Promise<{ url: string; filePath: string }> {
+  const dir = join(config.UPLOAD_DIR, 'branding', companyId);
+  await mkdir(dir, { recursive: true });
+
+  const fileName = sanitizeFilename(originalName);
+  const filePath = join(dir, fileName);
+  await writeFile(filePath, buffer);
+
+  return {
+    url: `/uploads/branding/${companyId}/${fileName}`,
+    filePath: `branding/${companyId}/${fileName}`,
+  };
+}
+
 export async function deleteFile(filePath: string): Promise<void> {
   const fullPath = join(config.UPLOAD_DIR, filePath);
   try {

@@ -56,13 +56,15 @@ export const COMPANY_GROUP_TYPES = {
 } as const;
 
 export const ONSITE_TYPES = {
-  VISIT_EMPLOYEE: 'visit_employee',
   COME_TO_IT_ROOM: 'come_to_it_room',
+  MEETING_ROOM: 'meeting_room',
+  VISIT_EMPLOYEE: 'visit_employee',
 } as const;
 
 export const ONSITE_TYPE_LABELS: Record<string, string> = {
-  visit_employee: 'Yerinde Müdahale',
   come_to_it_room: 'IT Odasına Gelin',
+  meeting_room: 'Toplantı Odası',
+  visit_employee: 'Yerinde Müdahale',
 };
 
 export const NOTIFICATION_CHANNELS = {

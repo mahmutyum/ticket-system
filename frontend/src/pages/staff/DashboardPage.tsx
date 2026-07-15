@@ -87,7 +87,7 @@ export default function DashboardPage() {
 
       {/* Filter panel */}
       {showFilters && (
-        <div className="card bg-gray-50">
+        <div className="card bg-gray-50 dark:bg-slate-800/50">
           <div className="flex flex-wrap gap-4 items-end">
             <div className="min-w-[180px]">
               <label className="block text-xs font-medium text-gray-500 mb-1">Şirket</label>
@@ -142,7 +142,7 @@ export default function DashboardPage() {
                 <button
                   key={item.status}
                   onClick={() => { setStatus(item.status); setShowFilters(true); }}
-                  className="flex items-center gap-3 w-full hover:bg-gray-50 rounded-lg px-2 py-1 -mx-2 transition-colors"
+                  className="flex items-center gap-3 w-full hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-lg px-2 py-1 -mx-2 transition-colors"
                 >
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium min-w-[80px] text-center ${STATUS_COLORS[item.status] || 'bg-gray-100'}`}>
                     {STATUS_LABELS[item.status] || item.status}
@@ -165,7 +165,7 @@ export default function DashboardPage() {
               <button
                 key={item.companyId}
                 onClick={() => { setCompanyId(item.companyId); setShowFilters(true); }}
-                className="flex items-center justify-between w-full hover:bg-gray-50 rounded-lg px-2 py-1 -mx-2 transition-colors"
+                className="flex items-center justify-between w-full hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-lg px-2 py-1 -mx-2 transition-colors"
               >
                 <span className="text-sm">{item.companyName}</span>
                 <span className="text-sm font-bold">{item.count}</span>
@@ -204,7 +204,7 @@ export default function DashboardPage() {
               </thead>
               <tbody>
                 {stats.recentTickets.map((ticket: any) => (
-                  <tr key={ticket.id} className="border-b last:border-0 hover:bg-gray-50">
+                  <tr key={ticket.id} className="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                     <td className="py-2">
                       <Link to={`/staff/tickets/${ticket.id}`} className="text-primary-600 hover:underline font-mono text-xs">
                         {ticket.ticketNumber}
