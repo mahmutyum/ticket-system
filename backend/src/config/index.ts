@@ -33,6 +33,28 @@ const envSchema = z.object({
   // Swagger UI (/docs) tüm endpoint listesini yayınlar. İç ağda kabul edilebilir;
   // internete açık bir kurulumda kapatılabilsin diye bayrağa bağlı.
   ENABLE_API_DOCS: z.string().transform((v) => v !== 'false').default('true'),
+
+  /**
+   * Kaç reverse proxy hop'una güvenilecek. Rate limiting'in TAMAMI buna bağlıdır.
+   *
+   * Daha önce kodda sabit `trustProxy: true` vardı: bu, X-Forwarded-For zincirinin
+   * TAMAMINA güven demektir ve `request.ip` zincirin EN SOLUNU alır — yani
+   * istemcinin gönderdiği değeri. nginx `$proxy_add_x_forwarded_for` ile
+   * istemcininkine EKLEDİĞİ için sahte giriş hayatta kalıyordu. Sonuç: saldırgan
+   * her istekte `X-Forwarded-For: <rastgele>` gönderip her seferinde taze bir
+   * rate-limit kovası alıyordu — login 5/dk dahil TÜM limitler geçersizdi
+   * (lockout da olmadığı için sessiz sınırsız brute force). Ters yönde de
+   * kullanılabiliyordu: kurbanın IP'siyle kovayı doldurup onu kilitlemek.
+   *
+   * Doğru değer topolojiye bağlıdır — backend'e en yakından sayılır:
+   *   1 → yalnızca frontend nginx var (dahili proxy profili veya doğrudan)
+   *   2 → NPM/Coolify + frontend nginx (varsayılan production topolojisi)
+   *
+   * Fazla vermek tehlikelidir (istemcinin uydurduğu IP'ye güvenilir), az vermek
+   * yalnızca hassasiyeti düşürür (herkes proxy'nin IP'sinden görünür). Bu yüzden
+   * güvenli tarafa, 1'e varsayılıyor.
+   */
+  TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(1),
 });
 
 export type Env = z.infer<typeof envSchema>;

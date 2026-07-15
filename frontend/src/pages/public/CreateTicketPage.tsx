@@ -4,6 +4,8 @@ import { CheckCircle, ArrowLeft, ArrowRight, Building2, MapPin, Tag, FileText, U
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import type { Company, Location, Category, CustomField } from '../../types';
+import FieldHint from '../../components/FieldHint';
+import { INPUT_LIMITS as LIMITS } from '../../types';
 
 const STEPS = ['Email', 'Şirket', 'Lokasyon', 'Kategori', 'Detay', 'Onay'];
 
@@ -151,11 +153,24 @@ export default function CreateTicketPage() {
 
   const canNext = () => {
     switch (step) {
-      case 0: return form.email && form.fullName && emailDomain && hasAccessibleCompanies;
+      case 0:
+        return (
+          !!form.email &&
+          form.fullName.trim().length >= LIMITS.fullName.min &&
+          !!emailDomain &&
+          hasAccessibleCompanies
+        );
       case 1: return !!form.companyId;
       case 2: return !!form.locationId;
       case 3: return !!form.categoryId;
-      case 4: return form.subject && form.description;
+      case 4:
+        // Backend'in alt sınırlarıyla aynı ölçüt — yalnızca "dolu mu" bakılsaydı
+        // tek karakterlik bir konu ilerler ve gönderimde 400 alırdı.
+        // trim() de backend'le aynı: "   " boş sayılır.
+        return (
+          form.subject.trim().length >= LIMITS.subject.min &&
+          form.description.trim().length >= LIMITS.description.min
+        );
       default: return true;
     }
   };
@@ -309,6 +324,8 @@ export default function CreateTicketPage() {
                 className="input-field"
                 value={form.fullName}
                 onChange={e => update({ fullName: e.target.value })}
+                minLength={LIMITS.fullName.min}
+                maxLength={LIMITS.fullName.max}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -424,6 +441,11 @@ export default function CreateTicketPage() {
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <FileText className="w-5 h-5" /> Detaylar
             </h3>
+            {/*
+              maxLength ve sayaçlar backend kurallarıyla HİZALI olmalı
+              (backend/src/utils/validation.ts → LIMITS). Hizalı değilse kullanıcı
+              yazar, gönderir ve sunucudan 400 yer — hata formda değil ağda çıkar.
+            */}
             <div>
               <label className="block text-sm font-medium mb-1">Konu *</label>
               <input
@@ -432,7 +454,11 @@ export default function CreateTicketPage() {
                 value={form.subject}
                 onChange={e => update({ subject: e.target.value })}
                 placeholder="Sorunu kısaca tanımlayın"
+                minLength={LIMITS.subject.min}
+                maxLength={LIMITS.subject.max}
+                required
               />
+              <FieldHint value={form.subject} {...LIMITS.subject} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Açıklama *</label>
@@ -441,7 +467,11 @@ export default function CreateTicketPage() {
                 value={form.description}
                 onChange={e => update({ description: e.target.value })}
                 placeholder="Sorunu detaylı olarak açıklayın..."
+                minLength={LIMITS.description.min}
+                maxLength={LIMITS.description.max}
+                required
               />
+              <FieldHint value={form.description} {...LIMITS.description} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Öncelik</label>

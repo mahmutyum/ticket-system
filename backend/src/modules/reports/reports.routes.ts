@@ -39,10 +39,37 @@ function buildTicketWhere(filters: CommonFilters, scopeCompanyIds: string[] | nu
   return where;
 }
 
-function csvEscape(value: string | null | undefined): string {
+/**
+ * Bir CSV alanını hem ÇERÇEVELEME hem FORMÜL enjeksiyonuna karşı güvenli hale getirir.
+ *
+ * Bu ikisi ayrı sorundur ve ayrı çareleri vardır — önceki hali formül riskini
+ * doğru tespit edip yanlış çareyi uyguluyordu:
+ *
+ * - **Çerçeveleme** (`"`, `;`, satır sonu): alanı tırnak içine al, içerideki
+ *   tırnakları ikile. `\r` de tetiklemeli — yalnızca `\n` kontrol ediliyordu ve
+ *   içinde CR geçen bir konu satır enjeksiyonuna yol açıyordu.
+ * - **Formül enjeksiyonu** (`=`, `+`, `-`, `@` ile başlayan değer): tırnaklamak
+ *   İŞE YARAMAZ. Excel ayrıştırırken tırnakları soyar ve hücre değeri yine
+ *   `=cmd|'/c calc'!A0` olur, yine formül olarak çalışır. Çare değerin başına
+ *   tek tırnak koymaktır — Excel bunu "metin olarak yorumla" işareti sayar.
+ *   Ayrıca kontrol baştaki boşluğu da atlamalı: `\t=cmd|...` eski regex'e
+ *   (index 0'da sabitli) hiç uymuyordu, yani tespit bile edilmiyordu.
+ *
+ * Tehdit gerçek ve kimliksiz: POST /tickets ile konusu `=cmd|'/c calc'!A0` olan
+ * bir talep açılır, bir yönetici raporu CSV olarak dışa aktarıp açtığında
+ * kendi makinesinde DDE tetiklenir.
+ */
+export function csvEscape(value: string | null | undefined): string {
   if (value == null) return '';
-  const str = String(value);
-  if (str.includes('"') || str.includes(';') || str.includes('\n') || /^[=+\-@]/.test(str)) {
+  let str = String(value);
+
+  // Formül nötrleştirmesi ÖNCE — baştaki boşluk/tab atlanarak kontrol edilir.
+  if (/^[\s]*[=+\-@]/.test(str)) {
+    str = `'${str}`;
+  }
+
+  // Çerçeveleme — CR de dahil.
+  if (str.includes('"') || str.includes(';') || str.includes('\n') || str.includes('\r')) {
     return `"${str.replace(/"/g, '""')}"`;
   }
   return str;

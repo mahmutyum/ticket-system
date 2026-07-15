@@ -330,3 +330,25 @@ export const ONSITE_STATUS_COLORS: Record<string, string> = {
   completed: 'bg-green-100 text-green-800',
   cancelled: 'bg-red-100 text-red-800',
 };
+
+/**
+ * Girdi uzunluk sınırları — backend ile HİZALI olmalı.
+ *
+ * Kaynak: `backend/src/utils/validation.ts` → `LIMITS`.
+ * Bu iki dosya arasında derleyici bağı yok (ayrı paketler), bu yüzden biri
+ * değişirse diğeri elle güncellenmeli. Hizasızlık sessizce şuna yol açar:
+ * kullanıcı forma yazar, gönderir ve sunucudan 400 alır — hata alanın yanında
+ * değil, ağ katmanında çıkar.
+ */
+export const INPUT_LIMITS = {
+  subject: { min: 5, max: 200 },
+  description: { min: 10, max: 5000 },
+  noteContent: { min: 1, max: 5000 },
+  customFieldValue: { max: 2000 },
+  fullName: { min: 2, max: 100 },
+  shortLabel: { max: 100 },
+  taskTitle: { min: 3, max: 300 },
+  taskDescription: { min: 1, max: 5000 },
+  taskComment: { min: 1, max: 2000 },
+  notes: { max: 2000 },
+} as const;
