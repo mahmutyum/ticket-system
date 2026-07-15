@@ -24,36 +24,6 @@ Durum: 2026-07-15 itibarıyla.
 
 ---
 
-## Öncelik 0 — Kurmadan önce doğrulanmalı
-
-### nginx konfigürasyonu canlı test EDİLMEDİ
-
-`frontend/nginx.conf` ve `nginx/conf.d/default.conf` içindeki ek/logo servis yolu
-değiştirildi (`alias` ile diskten servis → backend'e proxy). **Değişiklik gerçek
-nginx'e karşı çalıştırılamadı** — geliştirme makinesinde Docker kilitlendi.
-
-Kanıtlanan (Docker kilitlenmeden ÖNCE, gerçek nginx konteyneriyle): eski
-`frontend/nginx.conf` `/branding/...` isteğine `200 OK` + SPA'nın `index.html`'ini
-döndürüyordu, yani **şirket logoları kırıktı**.
-
-Doğrulanmayan: düzeltilmiş konfigürasyonun sözdizimi ve yönlendirmesi. Bloklar
-aynı dosyada zaten çalışan `/api/` bloğunun birebir kalıbı (aynı direktifler,
-`proxy_pass` sonunda eğik çizgi YOK — yol değişmeden geçsin diye), ama bu kanıt değil.
-
-**İlk kurulumda yapılacak:**
-
-```bash
-docker compose config -q                 # compose sözdizimi
-docker compose up -d --build
-docker compose exec frontend nginx -t    # nginx sözdizimi
-curl -sI https://<host>/branding/<companyId>/<dosya>.png   # 200 + image/png beklenir
-curl -sI https://<host>/attachments/<id>                   # token'sız 404 beklenir
-docker compose --profile proxy up -d     # proxy profili kullanılıyorsa
-docker compose exec nginx nginx -t
-```
-
----
-
 ## Öncelik 1 — Kalan güvenlik maddeleri
 
 Bir güvenlik taramasının (XSS / enjeksiyon / yetkilendirme / auth) bulguları kapatıldı —

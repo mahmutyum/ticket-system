@@ -126,6 +126,14 @@ tutulmuştur.
   okuyordu — backend'e hiç sormadan. Ek yetkilendirmesi o profilde tamamen devre
   dışıydı. Artık `/attachments`'a proxy'leniyor ve nginx'e uploads volume'u hiç
   bağlanmıyor.
+
+  Gerçek nginx konteynerleriyle, aynı istek iki konfigürasyona karşı doğrulandı
+  (uploads volume'u bilerek bağlı bırakılarak):
+
+  | `GET /uploads/tkt1/gizli.pdf` | Sonuç |
+  |---|---|
+  | Eski konfigürasyon | `200` — **dosyanın içeriği** (kimlik doğrulaması yok) |
+  | Yeni konfigürasyon | `200` — SPA HTML; dosya sızmıyor |
 - **nginx `add_header` miras alınmıyordu.** `/uploads` location'ı kendi
   `add_header`'ını tanımladığı için server seviyesindeki CSP uygulanmıyordu —
   yüklenen dosyalar CSP'siz servis ediliyordu. (Gerçek nginx konteynerleriyle
