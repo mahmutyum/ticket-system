@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { StaffRole } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { createAuditLog } from '../../middleware/audit.js';
 
@@ -7,14 +8,14 @@ const staffCreateSchema = z.object({
   email: z.string().email(),
   fullName: z.string().min(1),
   password: z.string().min(8),
-  role: z.enum(['admin', 'it_manager', 'it_staff']),
+  role: z.nativeEnum(StaffRole),
   department: z.string().optional(),
   phone: z.string().optional(),
 });
 
 const staffUpdateSchema = z.object({
   fullName: z.string().min(1).optional(),
-  role: z.enum(['admin', 'it_manager', 'it_staff']).optional(),
+  role: z.nativeEnum(StaffRole).optional(),
   department: z.string().optional(),
   phone: z.string().optional(),
   isActive: z.boolean().optional(),
@@ -30,12 +31,16 @@ export const staffRoutes: FastifyPluginAsync = async (app) => {
 
     const where: any = {};
     if (companyId) {
-      // Staff assigned to this company OR admins/managers (who see all)
+      // Bu şirkete erişebilen personel: o şirkete atanmış olanlar VEYA admin
+      // (rolü gereği sınırsız).
+      //
+      // Buradaki liste kapsam modelini yansıtmak ZORUNDA. Önceden it_manager da
+      // "hepsini görür" sayılıyor ve atamasız it_staff sınırsız kabul ediliyordu;
+      // it_manager şirket kapsamına alınıp fail-closed'a geçildikten sonra bu iki
+      // varsayım da yanlış hale geldi. Tek doğruluk kaynağı utils/staff-scope.ts.
       where.OR = [
         { assignedCompanies: { some: { companyId } } },
-        { role: { in: ['admin', 'it_manager'] } },
-        // Staff with no assignments (unrestricted)
-        { assignedCompanies: { none: {} }, role: 'it_staff' },
+        { role: StaffRole.admin },
       ];
     }
 

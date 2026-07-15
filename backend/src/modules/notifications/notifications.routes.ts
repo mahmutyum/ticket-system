@@ -1,10 +1,11 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { NotificationType, NotificationStatus } from '@prisma/client';
 import { queueEmail, queueSms } from '../../jobs/queue.js';
 
 const notificationFilterSchema = z.object({
-  status: z.enum(['pending', 'sent', 'failed']).optional(),
-  type: z.enum(['email', 'sms']).optional(),
+  status: z.nativeEnum(NotificationStatus).optional(),
+  type: z.nativeEnum(NotificationType).optional(),
   ticketId: z.string().optional(),
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(50),

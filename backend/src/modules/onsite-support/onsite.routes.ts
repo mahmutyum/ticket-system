@@ -1,7 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { queueEmail, queueSms } from '../../jobs/queue.js';
-import { config } from '../../config/index.js';
+import { OnsiteType, OnsiteStatus } from '@prisma/client';
+import { queueEmail } from '../../jobs/queue.js';
 import { ONSITE_TYPE_LABELS } from '../../config/constants.js';
 import { getStaffCompanyScope } from '../../utils/staff-scope.js';
 import { createAuditLog } from '../../middleware/audit.js';
@@ -10,7 +10,7 @@ import { formatTrDateTime } from '../../utils/format.js';
 const onsiteCreateSchema = z.object({
   ticketId: z.string().cuid(),
   locationId: z.string().cuid(),
-  type: z.enum(['visit_employee', 'come_to_it_room', 'meeting_room']),
+  type: z.nativeEnum(OnsiteType),
   scheduledAt: z.string().datetime(),
   scheduledEnd: z.string().datetime().optional(),
   roomInfo: z.string().optional(),
@@ -21,7 +21,7 @@ const onsiteCreateSchema = z.object({
 const onsiteUpdateSchema = z.object({
   scheduledAt: z.string().datetime().optional(),
   scheduledEnd: z.string().datetime().optional(),
-  status: z.enum(['scheduled', 'in_progress', 'completed', 'cancelled']).optional(),
+  status: z.nativeEnum(OnsiteStatus).optional(),
   notes: z.string().optional(),
   roomInfo: z.string().optional(),
 });
@@ -73,7 +73,6 @@ export const onsiteRoutes: FastifyPluginAsync = async (app) => {
     });
 
     // Notify employee
-    const trackingUrl = `${config.CANONICAL_URL}/ticket/${ticket.accessToken}`;
     const scheduledDate = formatTrDateTime(body.scheduledAt);
     const supportType = ONSITE_TYPE_LABELS[body.type] || body.type;
     const locationInfo = body.roomInfo

@@ -7,6 +7,89 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ==================== ENUM'LAR ====================
+//
+// Bu değerler eskiden düz String'di ve geçerli küme yalnızca Zod şemalarında
+// yaşıyordu: veritabanı seviyesinde hiçbir koruma yoktu ve derleyici de yardım
+// etmiyordu (her kontrol ham string literal'di). `config/constants.ts` bu
+// enum'lardan TÜRETİLİR — geçerli değerlerin tek doğruluk kaynağı burasıdır.
+//
+// Yeni bir değer eklerken: önce buraya ekle, `prisma migrate dev` çalıştır,
+// sonra etiketini `config/constants.ts`'e yaz. Zod şemaları `z.nativeEnum` ile
+// otomatik uyar.
+//
+// NOT: `Company.groupType` ve `Notification.channel` bilinçli olarak String
+// bırakıldı — bkz. docs/yol-haritasi.md.
+
+enum StaffRole {
+  admin
+  it_manager
+  it_staff
+}
+
+enum TicketStatus {
+  open
+  in_progress
+  waiting_user_response
+  waiting_other_department
+  topic_transferred
+  process_outside_it
+  on_hold
+  resolved
+  closed
+}
+
+/// Ticket ve görevler için ORTAK öncelik sözlüğü.
+/// Görevler eskiden 'urgent' kullanıyordu; aynı kavramın iki sözcüğü olmasın
+/// diye 'critical'a hizalandı.
+enum Priority {
+  low
+  medium
+  high
+  critical
+}
+
+enum TaskStatus {
+  open
+  in_progress
+  done
+  cancelled
+}
+
+enum OnsiteType {
+  come_to_it_room
+  meeting_room
+  visit_employee
+}
+
+enum OnsiteStatus {
+  scheduled
+  in_progress
+  completed
+  cancelled
+}
+
+enum NotificationType {
+  email
+  sms
+}
+
+enum NotificationStatus {
+  pending
+  sent
+  failed
+}
+
+enum CustomFieldType {
+  text
+  number
+  select
+  phone
+  url
+  email
+  textarea
+}
+
 // ==================== ŞİRKET & LOKASYON ====================
 
 model Company {
@@ -104,17 +187,17 @@ model Category {
 // ==================== ÖZEL ALANLAR ====================
 
 model CustomField {
-  id          String   @id @default(cuid())
-  companyId   String?  @map("company_id")
-  fieldName   String   @map("field_name")
-  fieldLabel  String   @map("field_label")
-  fieldType   String   @map("field_type") // "text", "number", "select", "phone", "url"
+  id          String          @id @default(cuid())
+  companyId   String?         @map("company_id")
+  fieldName   String          @map("field_name")
+  fieldLabel  String          @map("field_label")
+  fieldType   CustomFieldType @map("field_type")
   options     Json?
-  required    Boolean  @default(false)
-  sortOrder   Int      @default(0) @map("sort_order")
-  isActive    Boolean  @default(true) @map("is_active")
+  required    Boolean         @default(false)
+  sortOrder   Int             @default(0) @map("sort_order")
+  isActive    Boolean         @default(true) @map("is_active")
   placeholder String?
-  createdAt   DateTime @default(now()) @map("created_at")
+  createdAt   DateTime        @default(now()) @map("created_at")
 
   company Company?            @relation(fields: [companyId], references: [id])
   values  TicketCustomValue[]
@@ -144,17 +227,17 @@ model User {
 }
 
 model Staff {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  fullName     String   @map("full_name")
-  passwordHash String   @map("password_hash")
-  role         String // "admin", "it_manager", "it_staff"
+  id           String    @id @default(cuid())
+  email        String    @unique
+  fullName     String    @map("full_name")
+  passwordHash String    @map("password_hash")
+  role         StaffRole
   department   String?
   phone        String?
-  isActive     Boolean  @default(true) @map("is_active")
-  avatarUrl    String?  @map("avatar_url")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  isActive     Boolean   @default(true) @map("is_active")
+  avatarUrl    String?   @map("avatar_url")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   assignedTickets   Ticket[]        @relation("TicketAssignee")
   ticketNotes       TicketNote[]
@@ -181,28 +264,28 @@ model StaffCompany {
 // ==================== TİCKET SİSTEMİ ====================
 
 model Ticket {
-  id               String    @id @default(cuid())
-  ticketNumber     String    @unique @map("ticket_number")
-  companyId        String    @map("company_id")
-  locationId       String    @map("location_id")
-  categoryId       String    @map("category_id")
-  createdByEmail   String    @map("created_by_email")
-  createdByUserId  String?   @map("created_by_user_id")
-  assignedToId     String?   @map("assigned_to_id")
+  id               String       @id @default(cuid())
+  ticketNumber     String       @unique @map("ticket_number")
+  companyId        String       @map("company_id")
+  locationId       String       @map("location_id")
+  categoryId       String       @map("category_id")
+  createdByEmail   String       @map("created_by_email")
+  createdByUserId  String?      @map("created_by_user_id")
+  assignedToId     String?      @map("assigned_to_id")
   subject          String
   description      String
-  priority         String    @default("medium")
-  status           String    @default("open")
-  accessToken      String    @unique @map("access_token")
-  slaResponseDue   DateTime? @map("sla_response_due")
-  slaResolveDue    DateTime? @map("sla_resolve_due")
-  slaResponseMet   Boolean?  @map("sla_response_met")
-  slaResolveMet    Boolean?  @map("sla_resolve_met")
-  firstRespondedAt DateTime? @map("first_responded_at")
-  resolvedAt       DateTime? @map("resolved_at")
-  closedAt         DateTime? @map("closed_at")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
+  priority         Priority     @default(medium)
+  status           TicketStatus @default(open)
+  accessToken      String       @unique @map("access_token")
+  slaResponseDue   DateTime?    @map("sla_response_due")
+  slaResolveDue    DateTime?    @map("sla_resolve_due")
+  slaResponseMet   Boolean?     @map("sla_response_met")
+  slaResolveMet    Boolean?     @map("sla_resolve_met")
+  firstRespondedAt DateTime?    @map("first_responded_at")
+  resolvedAt       DateTime?    @map("resolved_at")
+  closedAt         DateTime?    @map("closed_at")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
 
   company       Company             @relation(fields: [companyId], references: [id])
   location      Location            @relation(fields: [locationId], references: [id])
@@ -286,18 +369,18 @@ model Attachment {
 // ==================== YERİNDE DESTEK ====================
 
 model OnsiteSupport {
-  id           String    @id @default(cuid())
-  ticketId     String    @map("ticket_id")
-  locationId   String    @map("location_id")
-  type         String // "visit_employee", "come_to_it_room"
-  scheduledAt  DateTime  @map("scheduled_at")
-  scheduledEnd DateTime? @map("scheduled_end")
-  roomInfo     String?   @map("room_info")
-  floorInfo    String?   @map("floor_info")
+  id           String       @id @default(cuid())
+  ticketId     String       @map("ticket_id")
+  locationId   String       @map("location_id")
+  type         OnsiteType
+  scheduledAt  DateTime     @map("scheduled_at")
+  scheduledEnd DateTime?    @map("scheduled_end")
+  roomInfo     String?      @map("room_info")
+  floorInfo    String?      @map("floor_info")
   notes        String?
-  status       String    @default("scheduled") // "scheduled", "in_progress", "completed", "cancelled"
-  completedAt  DateTime? @map("completed_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
+  status       OnsiteStatus @default(scheduled)
+  completedAt  DateTime?    @map("completed_at")
+  createdAt    DateTime     @default(now()) @map("created_at")
 
   ticket   Ticket   @relation(fields: [ticketId], references: [id])
   location Location @relation(fields: [locationId], references: [id])
@@ -308,17 +391,17 @@ model OnsiteSupport {
 // ==================== BİLDİRİMLER ====================
 
 model Notification {
-  id        String    @id @default(cuid())
-  ticketId  String?   @map("ticket_id")
-  type      String // "email", "sms"
+  id        String             @id @default(cuid())
+  ticketId  String?            @map("ticket_id")
+  type      NotificationType
   channel   String // "ticket_created", "status_changed", etc.
   recipient String
   subject   String?
   body      String
-  status    String    @default("pending") // "pending", "sent", "failed"
-  errorMsg  String?   @map("error_msg")
-  sentAt    DateTime? @map("sent_at")
-  createdAt DateTime  @default(now()) @map("created_at")
+  status    NotificationStatus @default(pending)
+  errorMsg  String?            @map("error_msg")
+  sentAt    DateTime?          @map("sent_at")
+  createdAt DateTime           @default(now()) @map("created_at")
 
   ticket Ticket? @relation(fields: [ticketId], references: [id])
 
@@ -334,7 +417,7 @@ model TicketTemplate {
   name        String
   subject     String
   description String
-  priority    String   @default("medium")
+  priority    Priority @default(medium)
   createdAt   DateTime @default(now()) @map("created_at")
 
   category Category @relation(fields: [categoryId], references: [id])
@@ -379,17 +462,17 @@ model SmsTemplate {
 // ==================== GÖREVLER (TASKS) ====================
 
 model Task {
-  id          String    @id @default(cuid())
+  id          String     @id @default(cuid())
   title       String
   description String
-  priority    String    @default("medium") // "low", "medium", "high", "critical" — ticket önceliğiyle aynı sözlük
-  status      String    @default("open") // "open", "in_progress", "done", "cancelled"
-  dueDate     DateTime? @map("due_date")
-  createdById String    @map("created_by_id")
-  locationId  String?   @map("location_id")
-  completedAt DateTime? @map("completed_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  priority    Priority   @default(medium)
+  status      TaskStatus @default(open)
+  dueDate     DateTime?  @map("due_date")
+  createdById String     @map("created_by_id")
+  locationId  String?    @map("location_id")
+  completedAt DateTime?  @map("completed_at")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
 
   createdBy Staff          @relation("TaskCreator", fields: [createdById], references: [id])
   location  Location?      @relation(fields: [locationId], references: [id])

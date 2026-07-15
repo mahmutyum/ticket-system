@@ -4,8 +4,11 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(4000),
   DATABASE_URL: z.string(),
+  // Redis kimlik doğrulaması REDIS_URL içinde taşınır (redis://:<şifre>@host).
+  // REDIS_PASSWORD backend tarafından OKUNMAZ — yalnızca docker-compose redis
+  // container'ını `--requirepass` ile başlatırken kullanır. Burada zorunlu
+  // tutulması okuyanı "backend bunu kullanıyor" sanmaya itiyordu.
   REDIS_URL: z.string(),
-  REDIS_PASSWORD: z.string(),
   JWT_SECRET: z.string().min(32),
   JWT_REFRESH_SECRET: z.string().min(32),
   ACCESS_TOKEN_EXPIRY: z.string().default('15m'),
@@ -27,6 +30,9 @@ const envSchema = z.object({
   MAX_FILE_SIZE: z.coerce.number().default(26214400),
   UPLOAD_DIR: z.string().default('/app/uploads'),
   CREDENTIALS_ENC_KEY: z.string().length(64, 'CREDENTIALS_ENC_KEY 64 karakterlik hex olmalı (32 byte)'),
+  // Swagger UI (/docs) tüm endpoint listesini yayınlar. İç ağda kabul edilebilir;
+  // internete açık bir kurulumda kapatılabilsin diye bayrağa bağlı.
+  ENABLE_API_DOCS: z.string().transform((v) => v !== 'false').default('true'),
 });
 
 export type Env = z.infer<typeof envSchema>;

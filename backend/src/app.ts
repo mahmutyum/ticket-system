@@ -8,7 +8,6 @@ import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
-import { join } from 'path';
 import { config } from './config/index.js';
 import { prismaPlugin } from './plugins/prisma.js';
 import { redisPlugin } from './plugins/redis.js';
@@ -124,26 +123,28 @@ export async function buildApp() {
   // handler içinde Zod ile yapılır (`schema.parse(request.body)`). Bu yüzden
   // Swagger request/response gövdelerini gösteremez — sadece endpoint listesi
   // (method + path) üretir. Gövde formatları için ilgili modülün Zod şemasına bak.
-  await app.register(swagger, {
-    openapi: {
-      info: {
-        title: 'IT Ticket System API',
-        description:
-          'Endpoint listesi. Frontend bu API\'ye /api/* öneki ile erişir (nginx rewrite eder); ' +
-          'buradaki yollar backend\'in gördüğü ham yollardır.',
-        version: '1.0.0',
-      },
-      components: {
-        securitySchemes: {
-          bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+  if (config.ENABLE_API_DOCS) {
+    await app.register(swagger, {
+      openapi: {
+        info: {
+          title: 'IT Ticket System API',
+          description:
+            'Endpoint listesi. Frontend bu API\'ye /api/* öneki ile erişir (nginx rewrite eder); ' +
+            'buradaki yollar backend\'in gördüğü ham yollardır.',
+          version: '1.0.0',
+        },
+        components: {
+          securitySchemes: {
+            bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+          },
         },
       },
-    },
-  });
-  await app.register(swaggerUi, {
-    routePrefix: '/docs',
-    uiConfig: { docExpansion: 'list', deepLinking: true },
-  });
+    });
+    await app.register(swaggerUi, {
+      routePrefix: '/docs',
+      uiConfig: { docExpansion: 'list', deepLinking: true },
+    });
+  }
 
   // Health check
   app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));

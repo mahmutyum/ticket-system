@@ -3,12 +3,12 @@ import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { generateTicketNumber } from '../../utils/ticket-number.js';
 import { paginationSchema, paginate, paginatedResponse } from '../../utils/pagination.js';
-import { TICKET_STATUSES } from '../../config/constants.js';
+import { TicketStatus, Priority } from '@prisma/client';
 import { queueEmail, queueSms } from '../../jobs/queue.js';
 import { saveFile, isAllowedMimeType } from '../../services/storage.service.js';
 import { config } from '../../config/index.js';
 import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.js';
-import { getStaffCompanyScope, companyWhereClause , resolveCompanyFilter } from '../../utils/staff-scope.js';
+import { getStaffCompanyScope, resolveCompanyFilter } from '../../utils/staff-scope.js';
 
 const ticketCreateSchema = z.object({
   companyId: z.string().cuid(),
@@ -20,21 +20,16 @@ const ticketCreateSchema = z.object({
   department: z.string().optional(),
   subject: z.string().min(1).max(200),
   description: z.string().min(1),
-  priority: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
+  priority: z.nativeEnum(Priority).default(Priority.medium),
   customFields: z.array(z.object({
     fieldId: z.string().cuid(),
     value: z.string(),
   })).optional(),
 });
 
-const VALID_STATUSES = [
-  'open', 'in_progress', 'waiting_user_response', 'waiting_other_department',
-  'topic_transferred', 'process_outside_it', 'on_hold', 'resolved', 'closed',
-] as const;
-
 const ticketUpdateSchema = z.object({
-  status: z.enum(VALID_STATUSES).optional(),
-  priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+  status: z.nativeEnum(TicketStatus).optional(),
+  priority: z.nativeEnum(Priority).optional(),
   assignedToId: z.string().cuid().nullable().optional(),
 });
 
@@ -71,7 +66,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
     // Portal domain lock: if request comes from a portal domain mapped to a DIFFERENT company, block it
     const origin = request.headers['origin'] || request.headers['referer'] || '';
     let originHostname = '';
-    try { originHostname = new URL(origin as string).hostname.toLowerCase(); } catch { /* ignore */ }
+    try { originHostname = new URL(origin).hostname.toLowerCase(); } catch { /* ignore */ }
 
     if (originHostname) {
       const portalLockedCompanies = await app.prisma.company.findMany({
@@ -223,10 +218,10 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
     }
 
     // Notify company's IT group email
-    if (company!.notificationEmail) {
+    if (company.notificationEmail) {
       const staffUrl = `${config.CANONICAL_URL}/staff/tickets/${ticket.id}`;
       await queueEmail({
-        to: company!.notificationEmail,
+        to: company.notificationEmail,
         templateSlug: 'ticket_created_internal',
         variables: {
           ticketNumber,
@@ -384,19 +379,19 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       });
 
       // Track first response and resolution
-      if (!currentTicket.firstRespondedAt && body.status === TICKET_STATUSES.IN_PROGRESS) {
+      if (!currentTicket.firstRespondedAt && body.status === TicketStatus.in_progress) {
         updateData.firstRespondedAt = new Date();
         updateData.slaResponseMet = currentTicket.slaResponseDue
           ? new Date() <= currentTicket.slaResponseDue
           : null;
       }
-      if (body.status === TICKET_STATUSES.RESOLVED) {
+      if (body.status === TicketStatus.resolved) {
         updateData.resolvedAt = new Date();
         updateData.slaResolveMet = currentTicket.slaResolveDue
           ? new Date() <= currentTicket.slaResolveDue
           : null;
       }
-      if (body.status === TICKET_STATUSES.CLOSED) {
+      if (body.status === TicketStatus.closed) {
         updateData.closedAt = new Date();
       }
     }
@@ -459,9 +454,9 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
   }, async (request, reply) => {
     const body = z.object({
       ticketIds: z.array(z.string().cuid()),
-      status: z.enum(VALID_STATUSES).optional(),
+      status: z.nativeEnum(TicketStatus).optional(),
       assignedToId: z.string().cuid().nullable().optional(),
-      priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+      priority: z.nativeEnum(Priority).optional(),
     }).parse(request.body);
 
     const staffUser = request.staffUser!;

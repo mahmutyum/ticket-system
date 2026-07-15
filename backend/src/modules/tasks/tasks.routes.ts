@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { Priority, TaskStatus } from '@prisma/client';
 import { queueEmail } from '../../jobs/queue.js';
 import { config } from '../../config/index.js';
 import { broadcastToStaff } from '../../services/sse.service.js';
@@ -32,7 +33,7 @@ function taskScopeWhere(scope: string[] | null, staffId: string): Record<string,
 const taskCreateSchema = z.object({
   title: z.string().min(1).max(300),
   description: z.string().min(1),
-  priority: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
+  priority: z.nativeEnum(Priority).default(Priority.medium),
   dueDate: z.string().datetime().optional().nullable(),
   assigneeIds: z.array(z.string().cuid()).min(1),
   locationId: z.string().cuid(),
@@ -41,8 +42,8 @@ const taskCreateSchema = z.object({
 const taskUpdateSchema = z.object({
   title: z.string().min(1).max(300).optional(),
   description: z.string().min(1).optional(),
-  priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
-  status: z.enum(['open', 'in_progress', 'done', 'cancelled']).optional(),
+  priority: z.nativeEnum(Priority).optional(),
+  status: z.nativeEnum(TaskStatus).optional(),
   dueDate: z.string().datetime().optional().nullable(),
   assigneeIds: z.array(z.string().cuid()).optional(),
   locationId: z.string().cuid().optional().nullable(),
@@ -349,7 +350,7 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
   app.patch('/:id/status', { preHandler: [app.authenticate] }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = z.object({
-      status: z.enum(['open', 'in_progress', 'done', 'cancelled']),
+      status: z.nativeEnum(TaskStatus),
     }).parse(request.body);
     const staffUser = request.staffUser!;
 

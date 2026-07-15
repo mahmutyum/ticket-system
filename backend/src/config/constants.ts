@@ -1,16 +1,47 @@
-export const TICKET_STATUSES = {
-  OPEN: 'open',
-  IN_PROGRESS: 'in_progress',
-  WAITING_USER_RESPONSE: 'waiting_user_response',
-  WAITING_OTHER_DEPARTMENT: 'waiting_other_department',
-  TOPIC_TRANSFERRED: 'topic_transferred',
-  PROCESS_OUTSIDE_IT: 'process_outside_it',
-  ON_HOLD: 'on_hold',
-  RESOLVED: 'resolved',
-  CLOSED: 'closed',
-} as const;
+import {
+  StaffRole,
+  TicketStatus,
+  Priority,
+  TaskStatus,
+  OnsiteType,
+  OnsiteStatus,
+  NotificationType,
+  NotificationStatus,
+  CustomFieldType,
+} from '@prisma/client';
 
-export const TICKET_STATUS_LABELS: Record<string, string> = {
+/**
+ * Durum / öncelik / rol sözlükleri.
+ *
+ * Geçerli DEĞERLER Prisma şemasındaki enum'lardan gelir — burada elle liste
+ * tutulmaz. Şemaya bir değer eklenip `prisma generate` çalıştırıldığında
+ * `Object.values(...)` onu otomatik görür ve Zod şemaları (`z.nativeEnum`)
+ * otomatik uyar. Eksik kalan tek şey ETİKETTİR: aşağıdaki `Record<Enum, string>`
+ * tipleri enum'un tüm üyelerini zorunlu kılar, yani etiket eklemeyi unutursan
+ * `tsc` hata verir.
+ *
+ * Bu dosya daha önce elle yazılmış string listeleri içeriyordu ve büyük kısmını
+ * hiçbir yer import etmiyordu; her kontrol ham string literal'di. Değerler artık
+ * tek kaynaktan geldiği için o durum tekrarlanamaz.
+ */
+
+// ==================== ROLLER ====================
+
+export const STAFF_ROLES = StaffRole;
+export const STAFF_ROLE_VALUES = Object.values(StaffRole);
+
+export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
+  admin: 'Sistem Yöneticisi',
+  it_manager: 'IT Yöneticisi',
+  it_staff: 'IT Personeli',
+};
+
+// ==================== TICKET ====================
+
+export const TICKET_STATUSES = TicketStatus;
+export const TICKET_STATUS_VALUES = Object.values(TicketStatus);
+
+export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
   open: 'Açık',
   in_progress: 'İşlemde',
   waiting_user_response: 'Kullanıcı Yanıtı Bekleniyor',
@@ -22,51 +53,64 @@ export const TICKET_STATUS_LABELS: Record<string, string> = {
   closed: 'Kapatıldı',
 };
 
-export const PRIORITIES = {
-  LOW: 'low',
-  MEDIUM: 'medium',
-  HIGH: 'high',
-  CRITICAL: 'critical',
-} as const;
+/** Ticket ve görevler için ORTAK öncelik sözlüğü. */
+export const PRIORITIES = Priority;
+export const PRIORITY_VALUES = Object.values(Priority);
 
-export const PRIORITY_LABELS: Record<string, string> = {
+export const PRIORITY_LABELS: Record<Priority, string> = {
   low: 'Düşük',
   medium: 'Orta',
   high: 'Yüksek',
   critical: 'Kritik',
 };
 
-export const STAFF_ROLES = {
-  ADMIN: 'admin',
-  IT_MANAGER: 'it_manager',
-  IT_STAFF: 'it_staff',
-} as const;
+// ==================== GÖREVLER ====================
 
-export const STAFF_ROLE_LABELS: Record<string, string> = {
-  admin: 'Sistem Yöneticisi',
-  it_manager: 'IT Yöneticisi',
-  it_staff: 'IT Personeli',
+export const TASK_STATUSES = TaskStatus;
+export const TASK_STATUS_VALUES = Object.values(TaskStatus);
+
+export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
+  open: 'Açık',
+  in_progress: 'Devam Ediyor',
+  done: 'Tamamlandı',
+  cancelled: 'İptal',
 };
 
-export const COMPANY_GROUP_TYPES = {
-  CALL_CENTER: 'call_center',
-  CORPORATE: 'corporate',
-  WAREHOUSE: 'warehouse',
-  RETAIL: 'retail',
-} as const;
+// ==================== YERİNDE DESTEK ====================
 
-export const ONSITE_TYPES = {
-  COME_TO_IT_ROOM: 'come_to_it_room',
-  MEETING_ROOM: 'meeting_room',
-  VISIT_EMPLOYEE: 'visit_employee',
-} as const;
+export const ONSITE_TYPES = OnsiteType;
+export const ONSITE_TYPE_VALUES = Object.values(OnsiteType);
 
-export const ONSITE_TYPE_LABELS: Record<string, string> = {
+export const ONSITE_TYPE_LABELS: Record<OnsiteType, string> = {
   come_to_it_room: 'IT Odasına Gelin',
   meeting_room: 'Toplantı Odası',
   visit_employee: 'Yerinde Müdahale',
 };
 
+export const ONSITE_STATUSES = OnsiteStatus;
+export const ONSITE_STATUS_VALUES = Object.values(OnsiteStatus);
+
+export const ONSITE_STATUS_LABELS: Record<OnsiteStatus, string> = {
+  scheduled: 'Planlanmış',
+  in_progress: 'Devam Ediyor',
+  completed: 'Tamamlandı',
+  cancelled: 'İptal',
+};
+
+// ==================== BİLDİRİMLER ====================
+
+export const NOTIFICATION_TYPES = NotificationType;
+export const NOTIFICATION_TYPE_VALUES = Object.values(NotificationType);
+
+export const NOTIFICATION_STATUSES = NotificationStatus;
+export const NOTIFICATION_STATUS_VALUES = Object.values(NotificationStatus);
+
+/**
+ * Bildirim kanalları — bilinçli olarak enum DEĞİL.
+ *
+ * Kanal, e-posta/SMS şablonlarının `slug` alanıyla eşleşir ve şablonlar
+ * veritabanından yönetilir; yeni bir şablon eklemek migration gerektirmemeli.
+ */
 export const NOTIFICATION_CHANNELS = {
   TICKET_CREATED: 'ticket_created',
   STATUS_CHANGED: 'status_changed',
@@ -76,4 +120,33 @@ export const NOTIFICATION_CHANNELS = {
   SLA_WARNING: 'sla_warning',
 } as const;
 
-export const FIELD_TYPES = ['text', 'number', 'select', 'phone', 'url', 'email', 'textarea'] as const;
+// ==================== ÖZEL ALANLAR ====================
+
+export const FIELD_TYPES = CustomFieldType;
+export const FIELD_TYPE_VALUES = Object.values(CustomFieldType);
+
+// ==================== ŞİRKET ====================
+
+/**
+ * Şirket grup tipi — bilinçli olarak enum DEĞİL.
+ *
+ * Yazma yolu (`companyCreateSchema.groupType`) uzun süre `z.string().min(1)` ile
+ * doğrulandı, yani veritabanında bu listenin dışında değerler bulunabilir; enum'a
+ * çevirmek migration'ı patlatabilirdi. Yazma yolu artık bu listeyle doğrulanıyor,
+ * ama mevcut veri temizlenmeden enum'a geçilmemeli. Bkz. docs/yol-haritasi.md.
+ */
+export const COMPANY_GROUP_TYPES = {
+  CALL_CENTER: 'call_center',
+  CORPORATE: 'corporate',
+  WAREHOUSE: 'warehouse',
+  RETAIL: 'retail',
+} as const;
+
+export const COMPANY_GROUP_TYPE_VALUES = Object.values(COMPANY_GROUP_TYPES);
+
+export const COMPANY_GROUP_TYPE_LABELS: Record<string, string> = {
+  call_center: 'Çağrı Merkezi',
+  corporate: 'Kurumsal',
+  warehouse: 'Depo',
+  retail: 'Perakende',
+};

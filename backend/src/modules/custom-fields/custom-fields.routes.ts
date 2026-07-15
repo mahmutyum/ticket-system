@@ -1,13 +1,13 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { FIELD_TYPES } from '../../config/constants.js';
+import { CustomFieldType } from '@prisma/client';
 import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
 
 const customFieldCreateSchema = z.object({
   companyId: z.string().cuid().nullable().optional(),
   fieldName: z.string().min(1),
   fieldLabel: z.string().min(1),
-  fieldType: z.enum(FIELD_TYPES),
+  fieldType: z.nativeEnum(CustomFieldType),
   options: z.array(z.string()).optional(),
   required: z.boolean().default(false),
   sortOrder: z.number().int().default(0),
