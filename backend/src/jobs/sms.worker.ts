@@ -1,5 +1,6 @@
 import { Worker } from 'bullmq';
 import { sendSms } from '../services/sms.service.js';
+import { renderTextTemplate } from '../services/email.service.js';
 import { prisma } from '../db.js';
 import { redisConnection } from './queue.js';
 import type { SmsJobData } from './queue.js';
@@ -17,10 +18,9 @@ const smsWorker = new Worker<SmsJobData>(
       throw new Error(`SMS template not found: ${templateSlug}`);
     }
 
-    let body = template.body;
-    for (const [key, value] of Object.entries(variables)) {
-      body = body.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value ?? '');
-    }
+    // SMS düz metindir — HTML kaçışlaması gerekmez, ama ortak render'ı kullan:
+    // inline kopya replacement-string tuzağını ($& $` $') taşıyordu.
+    const body = renderTextTemplate(template.body, variables);
 
     await sendSms({ to, body });
 

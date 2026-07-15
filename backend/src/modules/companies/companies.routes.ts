@@ -353,7 +353,7 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
     if (buffer.length > 2 * 1024 * 1024) {
       return reply.status(400).send({ success: false, error: 'Dosya boyutu 2MB üzerinde olamaz' });
     }
-    const saved = await saveLogo(buffer, file.filename, id);
+    const saved = await saveLogo(buffer, file.filename, id, file.mimetype);
     const updated = await app.prisma.company.update({
       where: { id },
       data: { logo: saved.url },

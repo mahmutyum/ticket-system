@@ -148,15 +148,75 @@ export async function sendEmailForCompany(
   }
 }
 
+const HTML_ESCAPES: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
+
+/** HTML metin bağlamı için kaçışlama. */
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
+}
+
+/** Yer tutucu deseni — şablon TEK GEÇİŞTE taranır. */
+const PLACEHOLDER = /\{\{(\w+)\}\}/g;
+
 /**
- * Render a template string by replacing {{variable}} placeholders
+ * `{{degisken}}` yer tutucularını doldurur.
+ *
+ * Üç tuzak burada kapatılır:
+ *
+ * 1. **Tek geçiş.** Önceden her değişken için ayrı bir `replace` turu
+ *    yapılıyordu; bir değerin İÇİNDEKİ `{{x}}` sonraki turda genişletiliyordu.
+ *    Yani kullanıcı girdisi (ör. ticket konusu) şablonun başka bir değişkenini
+ *    tetikleyebiliyordu. Tek geçişte üretilen çıktı bir daha taranmaz.
+ * 2. **Replacer FONKSİYONU.** `String.replace`'in replacement STRING'inde `$&`,
+ *    `` $` ``, `$'`, `$1` özeldir; değer doğrudan verilseydi konusu `` $` `` olan
+ *    bir ticket şablonun kendi metnini çıktıya kopyalardı.
+ * 3. **Bilinmeyen yer tutucu olduğu gibi bırakılır** — sessizce boşaltılmaz,
+ *    böylece şablondaki yazım hatası gözle görülür.
+ *
+ * `transform`, değerin gideceği BAĞLAMA göre kaçışlar — çağıran seçmek zorunda.
  */
-export function renderTemplate(template: string, variables: Record<string, string>): string {
-  let result = template;
-  for (const [key, value] of Object.entries(variables)) {
-    result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value ?? '');
-  }
-  return result;
+function render(
+  template: string,
+  variables: Record<string, string>,
+  transform: (value: string) => string,
+): string {
+  return template.replace(PLACEHOLDER, (match, key: string) => {
+    if (!Object.prototype.hasOwnProperty.call(variables, key)) return match;
+    return transform(variables[key] ?? '');
+  });
+}
+
+/**
+ * HTML gövde için render — değerler KAÇIŞLANIR.
+ *
+ * Şablon gövdeleri HTML'dir ve değerlerin çoğu KİMLİKSİZ kullanıcıdan gelir
+ * (ticket konusu, ad, public yanıt metni). Kaçışlama olmadan saldırgan IT grup
+ * mailine, şirketin KENDİ SMTP'sinden DKIM imzalı, meşru görünen bir phishing
+ * bloğu enjekte edebiliyordu.
+ */
+export function renderHtmlTemplate(template: string, variables: Record<string, string>): string {
+  return render(template, variables, escapeHtml);
+}
+
+/** Düz metin gövde için render — HTML bağlamı yok, kaçışlama gerekmez. */
+export function renderTextTemplate(template: string, variables: Record<string, string>): string {
+  return render(template, variables, (v) => v);
+}
+
+/**
+ * E-posta KONU başlığı için render — satır sonları temizlenir.
+ *
+ * Konu bir MIME başlığıdır; içindeki CR/LF başlık enjeksiyonuna zemin hazırlar.
+ * (nodemailer da temizler; bu ikinci katman.)
+ */
+export function renderSubjectTemplate(template: string, variables: Record<string, string>): string {
+  return render(template, variables, (v) => v.replace(/[\r\n]+/g, ' ').trim());
 }
 
 /**

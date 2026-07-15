@@ -1,5 +1,7 @@
 import Fastify from 'fastify';
 import type { FastifyError } from 'fastify';
+import { ZodError } from 'zod';
+import { Prisma } from '@prisma/client';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import cookie from '@fastify/cookie';
@@ -32,9 +34,12 @@ import { credentialRoutes } from './modules/credentials/credentials.routes.js';
 
 export async function buildApp() {
   const app = Fastify({
-    // NPM/Coolify reverse proxy arkasında: X-Forwarded-For/Proto/Host
-    // header'larına güven. Rate-limit ve audit log gerçek client IP'yi alsın.
-    trustProxy: true,
+    // Reverse proxy arkasında X-Forwarded-* header'larına güvenilir — AMA
+    // sınırlı sayıda hop için. `true` olsaydı zincirin tamamına güvenilir ve
+    // request.ip istemcinin uydurduğu değeri alırdı; rate limiting'in tamamı
+    // (login 5/dk dahil) tek bir başlıkla baypas edilirdi.
+    // Değeri TRUST_PROXY belirler — gerekçe ve doğru değer config/index.ts'te.
+    trustProxy: config.TRUST_PROXY,
     logger: {
       level: config.NODE_ENV === 'production' ? 'info' : 'debug',
       transport: config.NODE_ENV === 'development'
@@ -103,14 +108,25 @@ export async function buildApp() {
   // Static file serving (uploads)
   //
   // Yüklenen dosyalar kullanıcı içeriğidir ve uygulamayla AYNI origin'den servis
-  // edilir. MIME allowlist (storage.service.ts) SVG ve HTML'i dışlar, ama burada
-  // ayrıca en sıkı CSP uygulanır: hiçbir kaynak yüklenemez ve sandbox script
-  // çalıştırmayı engeller. Böylece allowlist bir gün gevşetilse bile yüklenen
-  // bir dosya origin içinde kod çalıştıramaz.
+  // edilir. Üç katman birlikte korur:
+  //
+  // 1. Uzantı, doğrulanmış MIME'dan türetilir (storage.service.ts). Servis edilen
+  //    Content-Type uzantıdan geldiği için asıl denetim oradadır — allowlist'in
+  //    kendisi istemcinin gönderdiği başlığa bakar ve tek başına yeterli DEĞİLDİR.
+  // 2. `nosniff` — içerik başka bir tip olarak yorumlanamaz.
+  // 3. `default-src 'none'; sandbox` — dosya bir şekilde belge olarak açılsa bile
+  //    script çalıştıramaz.
+  //
+  // UYARI: `--profile proxy` kurulumunda istekler buraya HİÇ ulaşmaz; nginx
+  // `alias` ile doğrudan diskten servis eder. O yüzden aynı başlıklar
+  // nginx/conf.d/default.conf içinde de TANIMLIDIR — orada silinirse bu blok
+  // devreye girmez.
   await app.register(fastifyStatic, {
     root: config.UPLOAD_DIR,
     prefix: '/uploads/',
     decorateReply: false,
+    // Nokta ile başlayan dosyalar servis edilmesin (varsayılan 'allow').
+    dotfiles: 'deny',
     setHeaders: (res) => {
       res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
       res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -149,6 +165,58 @@ export async function buildApp() {
   // Health check
   app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
 
+  // Global error handler
+  //
+  // SIRA ÖNEMLİ: bu blok route kayıtlarından ÖNCE gelmelidir. `await
+  // app.register(...)` çağrıldığı anda child context'i oluşturur ve o an geçerli
+  // olan hata handler'ını yakalar. Route'lardan sonra çağrılırsa hiçbirine
+  // uygulanmaz — Fastify'ın varsayılan handler'ı devrede kalır ve buradaki
+  // Türkçe mesajlar, 500 gizleme, 400 eşlemesi hiç çalışmaz. (Bu dosyada
+  // uzun süre böyleydi: yanıtlar {statusCode, error, message} formatında
+  // dönüyordu, {success, error} değil.)
+  //
+  // ZodError ve PrismaClientValidationError'ın `statusCode`'u YOKTUR. Sadece
+  // `error.statusCode || 500` bakıldığında bunlar 500 "Sunucu hatası" oluyor ve
+  // her biri error log'a yazılıyordu. Sonuç: `?dateFrom=abc` gibi sıradan bir
+  // istemci hatası, kimliksiz bir kullanıcının tetikleyebildiği 500'e ve log
+  // gürültüsüne dönüşüyordu; gerçek sunucu arızaları da bunların arasında
+  // kayboluyordu.
+  app.setErrorHandler((error: FastifyError, request, reply) => {
+    // Girdi doğrulama hataları → 400.
+    if (error instanceof ZodError) {
+      return reply.status(400).send({
+        success: false,
+        error: 'Geçersiz istek',
+        // Alan bazlı ayrıntı yalnızca geliştirmede — production'da şema yapısını
+        // dışarı vermez.
+        ...(config.NODE_ENV === 'development' && { details: error.flatten() }),
+      });
+    }
+
+    // Prisma'ya geçersiz bir değer/alan ulaştıysa bu da bir istemci hatasıdır
+    // (ör. tarih olarak ayrıştırılamayan bir query parametresi).
+    if (
+      error instanceof Prisma.PrismaClientValidationError ||
+      error instanceof Prisma.PrismaClientKnownRequestError
+    ) {
+      app.log.warn({ err: error }, 'Prisma reddetti — geçersiz istek');
+      return reply.status(400).send({ success: false, error: 'Geçersiz istek' });
+    }
+
+    const statusCode = error.statusCode || 500;
+    const message = statusCode === 500 ? 'Sunucu hatası' : error.message;
+
+    if (statusCode === 500) {
+      app.log.error(error);
+    }
+
+    reply.status(statusCode).send({
+      success: false,
+      error: message,
+      ...(config.NODE_ENV === 'development' && { stack: error.stack }),
+    });
+  });
+
   // API Routes
   await app.register(authRoutes, { prefix: '/auth' });
   await app.register(companyRoutes, { prefix: '/companies' });
@@ -168,21 +236,6 @@ export async function buildApp() {
   await app.register(taskRoutes, { prefix: '/tasks' });
   await app.register(credentialRoutes, { prefix: '/credentials' });
 
-  // Global error handler
-  app.setErrorHandler((error: FastifyError, request, reply) => {
-    const statusCode = error.statusCode || 500;
-    const message = statusCode === 500 ? 'Sunucu hatası' : error.message;
-
-    if (statusCode === 500) {
-      app.log.error(error);
-    }
-
-    reply.status(statusCode).send({
-      success: false,
-      error: message,
-      ...(config.NODE_ENV === 'development' && { stack: error.stack }),
-    });
-  });
 
   return app;
 }

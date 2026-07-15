@@ -1,5 +1,5 @@
 import { Worker } from 'bullmq';
-import { sendEmailForCompany, renderTemplate } from '../services/email.service.js';
+import { sendEmailForCompany, renderHtmlTemplate, renderTextTemplate, renderSubjectTemplate } from '../services/email.service.js';
 import { prisma } from '../db.js';
 import { redisConnection } from './queue.js';
 import type { EmailJobData } from './queue.js';
@@ -17,9 +17,11 @@ const emailWorker = new Worker<EmailJobData>(
       throw new Error(`Email template not found: ${templateSlug}`);
     }
 
-    const subject = renderTemplate(template.subject, variables);
-    const html = renderTemplate(template.bodyHtml, variables);
-    const text = renderTemplate(template.bodyText, variables);
+    // Her bağlam kendi kaçışlamasını ister: konu başlıktır (CR/LF temizlenir),
+    // gövde HTML'dir (kaçışlanır), düz metin gövde ham kalır.
+    const subject = renderSubjectTemplate(template.subject, variables);
+    const html = renderHtmlTemplate(template.bodyHtml, variables);
+    const text = renderTextTemplate(template.bodyText, variables);
 
     let companySmtp = null;
     if (companyId) {
