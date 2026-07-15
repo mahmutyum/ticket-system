@@ -73,8 +73,16 @@ jobs:
       - name: Tip kontrolü
         run: npx tsc -b
 
+      # Testler ana tsconfig'in include'u dışındadır (yalnızca `src`) — ayrı
+      # kontrol edilmezse test dosyalarındaki tip hataları sessizce geçer.
+      - name: Tip kontrolü (testler)
+        run: npm run typecheck:tests
+
       - name: Lint
         run: npm run lint
+
+      - name: Testler
+        run: npm test
 
       - name: Build
         run: npx vite build
