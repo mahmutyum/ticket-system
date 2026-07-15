@@ -299,11 +299,22 @@ export const STATUS_COLORS: Record<string, string> = {
   closed: 'bg-gray-200 text-gray-600',
 };
 
+// Öncelik sözlüğü ticket ve görevler için ORTAKTIR. Görevler eskiden 'urgent'
+// kullanıyordu; aynı kavramın iki sözcüğü olmasın diye 'critical'a hizalandı.
+// Yeni bir öncelik rozeti gerekiyorsa buraya ekle — sayfalarda kopyalama.
 export const PRIORITY_COLORS: Record<string, string> = {
-  low: 'bg-gray-100 text-gray-700',
-  medium: 'bg-blue-100 text-blue-700',
-  high: 'bg-orange-100 text-orange-700',
-  critical: 'bg-red-100 text-red-700',
+  low: 'bg-gray-100 text-gray-700 dark:bg-slate-700/60 dark:text-slate-300',
+  medium: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
+  high: 'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300',
+  critical: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+};
+
+/** Öncelik sıralama ağırlığı (yüksek = önce). */
+export const PRIORITY_WEIGHT: Record<string, number> = {
+  critical: 4,
+  high: 3,
+  medium: 2,
+  low: 1,
 };
 
 export const ONSITE_STATUS_LABELS: Record<string, string> = {

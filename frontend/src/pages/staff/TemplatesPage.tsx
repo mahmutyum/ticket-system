@@ -159,7 +159,7 @@ export default function TemplatesPage() {
       {/* Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="card w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold mb-4">
               {editId ? 'Düzenle' : 'Yeni'} — {tabs.find(t => t.key === tab)?.label}
             </h2>

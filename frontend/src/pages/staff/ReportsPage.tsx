@@ -28,7 +28,7 @@ const PRIORITIES = [
   { value: 'low', label: 'Düşük' },
   { value: 'medium', label: 'Orta' },
   { value: 'high', label: 'Yüksek' },
-  { value: 'urgent', label: 'Acil' },
+  { value: 'critical', label: 'Kritik' },
 ];
 
 function toInputDate(d: Date) {

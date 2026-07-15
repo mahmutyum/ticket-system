@@ -32,7 +32,7 @@ function taskScopeWhere(scope: string[] | null, staffId: string): Record<string,
 const taskCreateSchema = z.object({
   title: z.string().min(1).max(300),
   description: z.string().min(1),
-  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
+  priority: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
   dueDate: z.string().datetime().optional().nullable(),
   assigneeIds: z.array(z.string().cuid()).min(1),
   locationId: z.string().cuid(),
@@ -41,7 +41,7 @@ const taskCreateSchema = z.object({
 const taskUpdateSchema = z.object({
   title: z.string().min(1).max(300).optional(),
   description: z.string().min(1).optional(),
-  priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+  priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
   status: z.enum(['open', 'in_progress', 'done', 'cancelled']).optional(),
   dueDate: z.string().datetime().optional().nullable(),
   assigneeIds: z.array(z.string().cuid()).optional(),

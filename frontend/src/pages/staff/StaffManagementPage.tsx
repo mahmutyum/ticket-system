@@ -136,7 +136,7 @@ export default function StaffManagementPage() {
       {/* Staff Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+          <div className="card w-full max-w-md">
             <h2 className="text-lg font-bold mb-4">{editId ? 'Personel Düzenle' : 'Yeni Personel'}</h2>
             <form onSubmit={handleSubmit} className="space-y-3">
               {!editId && (
@@ -181,7 +181,7 @@ export default function StaffManagementPage() {
       {/* Company Assignment Modal */}
       {showCompanyModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+          <div className="card w-full max-w-md">
             <h2 className="text-lg font-bold mb-2">Şirket Ataması</h2>
             <p className="text-sm text-gray-500 mb-4">
               <strong>{companyStaffName}</strong> hangi şirketlerin taleplerini görebilir?

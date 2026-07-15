@@ -1,11 +1,14 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Plus, Edit2, Trash2, Users, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Users, Clock, AlertCircle, Search, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
 import { useAuthStore } from '../../stores/auth.store';
+// Öncelik sözlüğü ticket'larla ORTAK — burada kopyalama, tek kaynaktan al.
+import { PRIORITY_LABELS as PRIORITY_LABEL, PRIORITY_COLORS as PRIORITY_COLOR, PRIORITY_WEIGHT } from '../../types';
 
+// Durum sözlüğü göreve özgüdür (ticket'ın 9 durumundan farklı).
 const STATUS_LABEL: Record<string, string> = {
   open: 'Açık',
   in_progress: 'Devam Ediyor',
@@ -13,26 +16,29 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: 'İptal',
 };
 
+// Karanlık modda okunabilirlik için her rozetin dark: karşılığı olmalı — aksi
+// halde açık zemin + koyu metin karanlık temada düşük kontrastta kalır.
 const STATUS_COLOR: Record<string, string> = {
-  open: 'bg-blue-100 text-blue-800',
-  in_progress: 'bg-yellow-100 text-yellow-800',
-  done: 'bg-green-100 text-green-800',
-  cancelled: 'bg-gray-200 text-gray-600 dark:text-slate-400',
+  open: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300',
+  in_progress: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-300',
+  done: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300',
+  cancelled: 'bg-gray-200 text-gray-600 dark:bg-slate-700/60 dark:text-slate-400',
 };
 
-const PRIORITY_LABEL: Record<string, string> = {
-  low: 'Düşük',
-  medium: 'Orta',
-  high: 'Yüksek',
-  urgent: 'Acil',
+type SortKey = 'dueDate' | 'priority' | 'createdAt' | 'title';
+
+const SORT_LABEL: Record<SortKey, string> = {
+  dueDate: 'Bitiş tarihi (yakın önce)',
+  priority: 'Öncelik (acil önce)',
+  createdAt: 'Oluşturma (yeni önce)',
+  title: 'Başlık (A-Z)',
 };
 
-const PRIORITY_COLOR: Record<string, string> = {
-  low: 'bg-gray-100 text-gray-700 dark:text-slate-300',
-  medium: 'bg-blue-100 text-blue-700',
-  high: 'bg-orange-100 text-orange-700',
-  urgent: 'bg-red-100 text-red-700',
-};
+const isOverdue = (t: any) =>
+  !!t.dueDate && t.status !== 'done' && t.status !== 'cancelled' && new Date(t.dueDate) < new Date();
+
+/** Türkçe'ye duyarlı arama — 'İ/ı' İngilizce toLowerCase ile bozulur. */
+const tr = (s: string) => s.toLocaleLowerCase('tr');
 
 interface FormState {
   title: string;
@@ -65,8 +71,15 @@ export default function TasksPage() {
   const { user } = useAuthStore();
   const isManager = user?.role === 'admin' || user?.role === 'it_manager';
 
+  // scope ve statusFilter sunucuya gider; aşağıdakiler istemci tarafında uygulanır
+  // (liste sayfalanmadığı için tamamı zaten bellekte).
   const [scope, setScope] = useState<'all' | 'assigned' | 'created'>(isManager ? 'all' : 'assigned');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [assigneeFilter, setAssigneeFilter] = useState<string>('');
+  const [priorityFilter, setPriorityFilter] = useState<string>('');
+  const [overdueOnly, setOverdueOnly] = useState(false);
+  const [search, setSearch] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('dueDate');
 
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -183,6 +196,9 @@ export default function TasksPage() {
     });
   };
 
+  // İstatistikler sunucudan gelen kümenin tamamını anlatır; istemci filtreleri
+  // bunu daraltmaz. Böylece kutucuklar filtre açıkken de doğru toplamı gösterir
+  // ve filtreye tıklama kısayolu olarak kullanılabilir.
   const stats = useMemo(() => {
     const list = tasks || [];
     return {
@@ -190,9 +206,45 @@ export default function TasksPage() {
       open: list.filter((t: any) => t.status === 'open').length,
       inProgress: list.filter((t: any) => t.status === 'in_progress').length,
       done: list.filter((t: any) => t.status === 'done').length,
-      overdue: list.filter((t: any) => t.dueDate && t.status !== 'done' && t.status !== 'cancelled' && new Date(t.dueDate) < new Date()).length,
+      overdue: list.filter(isOverdue).length,
     };
   }, [tasks]);
+
+  const visible = useMemo(() => {
+    const q = tr(search.trim());
+    const rows = (tasks || []).filter((t: any) => {
+      if (assigneeFilter && !t.assignees?.some((a: any) => a.staff.id === assigneeFilter)) return false;
+      if (priorityFilter && t.priority !== priorityFilter) return false;
+      if (overdueOnly && !isOverdue(t)) return false;
+      if (!q) return true;
+      return [t.title, t.description, t.location?.name, t.location?.company?.name]
+        .filter(Boolean)
+        .some((f: string) => tr(String(f)).includes(q));
+    });
+
+    return [...rows].sort((a: any, b: any) => {
+      switch (sortKey) {
+        case 'dueDate':
+          // Bitiş tarihi olmayanlar sona; geciken görevler doğal olarak başa gelir.
+          if (!a.dueDate && !b.dueDate) return 0;
+          if (!a.dueDate) return 1;
+          if (!b.dueDate) return -1;
+          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        case 'priority':
+          return (PRIORITY_WEIGHT[b.priority] ?? 0) - (PRIORITY_WEIGHT[a.priority] ?? 0);
+        case 'createdAt':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'title':
+          return String(a.title).localeCompare(String(b.title), 'tr', { sensitivity: 'base' });
+      }
+    });
+  }, [tasks, search, assigneeFilter, priorityFilter, overdueOnly, sortKey]);
+
+  const filtersActive = !!(search || assigneeFilter || priorityFilter || overdueOnly || statusFilter);
+  const clearFilters = () => {
+    setSearch(''); setAssigneeFilter(''); setPriorityFilter('');
+    setOverdueOnly(false); setStatusFilter('');
+  };
 
   return (
     <div className="space-y-4">
@@ -208,20 +260,53 @@ export default function TasksPage() {
         )}
       </div>
 
-      {/* Stats */}
+      {/* Stats — tıklanabilir filtre kısayolları */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div className="card p-3"><div className="text-xs text-gray-500">Toplam</div><div className="text-2xl font-bold">{stats.total}</div></div>
-        <div className="card p-3"><div className="text-xs text-gray-500">Açık</div><div className="text-2xl font-bold text-blue-600">{stats.open}</div></div>
-        <div className="card p-3"><div className="text-xs text-gray-500">Devam</div><div className="text-2xl font-bold text-yellow-600">{stats.inProgress}</div></div>
-        <div className="card p-3"><div className="text-xs text-gray-500">Tamamlanan</div><div className="text-2xl font-bold text-green-600">{stats.done}</div></div>
-        <div className="card p-3"><div className="text-xs text-gray-500">Süresi Geçen</div><div className="text-2xl font-bold text-red-600">{stats.overdue}</div></div>
+        <button
+          onClick={clearFilters}
+          className={`card p-3 text-left transition-shadow hover:shadow-md ${!filtersActive ? 'ring-2 ring-primary-500' : ''}`}
+        >
+          <div className="text-xs text-gray-500">Toplam</div>
+          <div className="text-2xl font-bold">{stats.total}</div>
+        </button>
+        {([
+          ['open', 'Açık', stats.open, 'text-blue-600'],
+          ['in_progress', 'Devam', stats.inProgress, 'text-yellow-600'],
+          ['done', 'Tamamlanan', stats.done, 'text-green-600'],
+        ] as const).map(([key, label, value, color]) => (
+          <button
+            key={key}
+            onClick={() => { setOverdueOnly(false); setStatusFilter(statusFilter === key ? '' : key); }}
+            className={`card p-3 text-left transition-shadow hover:shadow-md ${statusFilter === key ? 'ring-2 ring-primary-500' : ''}`}
+          >
+            <div className="text-xs text-gray-500">{label}</div>
+            <div className={`text-2xl font-bold ${color}`}>{value}</div>
+          </button>
+        ))}
+        <button
+          onClick={() => { setStatusFilter(''); setOverdueOnly(v => !v); }}
+          className={`card p-3 text-left transition-shadow hover:shadow-md ${overdueOnly ? 'ring-2 ring-red-500' : ''}`}
+        >
+          <div className="text-xs text-gray-500">Süresi Geçen</div>
+          <div className="text-2xl font-bold text-red-600">{stats.overdue}</div>
+        </button>
       </div>
 
       {/* Filters */}
-      <div className="card p-3 flex flex-wrap gap-3 items-center">
+      <div className="card p-3 flex flex-wrap gap-2 items-center">
+        <label className="relative flex-1 min-w-[200px] max-w-xs">
+          <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            className="input-field !pl-8 w-full"
+            placeholder="Başlık, açıklama veya lokasyon ara..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </label>
+
         {isManager && (
           <select
-            className="input-field max-w-[200px]"
+            className="input-field w-auto"
             value={scope}
             onChange={e => setScope(e.target.value as any)}
           >
@@ -230,22 +315,54 @@ export default function TasksPage() {
             <option value="created">Oluşturduklarım</option>
           </select>
         )}
-        <select
-          className="input-field max-w-[200px]"
-          value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
-        >
+
+        {/* Yöneticinin en çok ihtiyaç duyduğu filtre: "Ali'nin görevleri". */}
+        {isManager && scope === 'all' && (
+          <select
+            className="input-field w-auto"
+            value={assigneeFilter}
+            onChange={e => setAssigneeFilter(e.target.value)}
+          >
+            <option value="">Tüm personel</option>
+            {(staffList || []).filter((s: any) => s.isActive).map((s: any) => (
+              <option key={s.id} value={s.id}>{s.fullName}</option>
+            ))}
+          </select>
+        )}
+
+        <select className="input-field w-auto" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
           <option value="">Tüm Durumlar</option>
           {Object.entries(STATUS_LABEL).map(([k, v]) => (
             <option key={k} value={k}>{v}</option>
           ))}
         </select>
+
+        <select className="input-field w-auto" value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)}>
+          <option value="">Tüm Öncelikler</option>
+          {Object.entries(PRIORITY_LABEL).map(([k, v]) => (
+            <option key={k} value={k}>{v}</option>
+          ))}
+        </select>
+
+        <select className="input-field w-auto" value={sortKey} onChange={e => setSortKey(e.target.value as SortKey)}>
+          {Object.entries(SORT_LABEL).map(([k, v]) => (
+            <option key={k} value={k}>{v}</option>
+          ))}
+        </select>
+
+        {filtersActive && (
+          <button onClick={clearFilters} className="text-sm text-muted hover:text-primary-600 inline-flex items-center gap-1">
+            <X className="w-3.5 h-3.5" /> Temizle
+          </button>
+        )}
+        <span className="text-sm text-muted ml-auto">{visible.length} görev</span>
       </div>
 
       {/* Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          {/* .card zaten dark: karşılığını içerir — ham bg-white karanlık modda beyaz kalıyordu. */}
+          <div className="card w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold mb-4">{editId ? 'Görevi Düzenle' : 'Yeni Görev'}</h2>
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
@@ -330,22 +447,31 @@ export default function TasksPage() {
       {/* List */}
       {isLoading ? (
         <div className="text-center py-12 text-gray-500">Yükleniyor...</div>
-      ) : !tasks?.length ? (
-        <div className="card p-12 text-center text-gray-500">Görev bulunamadı</div>
+      ) : !visible.length ? (
+        <div className="card p-12 text-center text-gray-500">
+          {tasks?.length ? (
+            <>
+              <p>Filtrelerle eşleşen görev yok.</p>
+              <button onClick={clearFilters} className="btn-secondary text-sm mt-3">Filtreleri temizle</button>
+            </>
+          ) : (
+            'Görev bulunamadı'
+          )}
+        </div>
       ) : (
         <div className="space-y-2">
-          {tasks.map((t: any) => {
+          {visible.map((t: any) => {
             const days = daysOpen(t.createdAt, t.completedAt);
-            const overdue = t.dueDate && t.status !== 'done' && t.status !== 'cancelled' && new Date(t.dueDate) < new Date();
+            const overdue = isOverdue(t);
             return (
-              <div key={t.id} className="card p-4 hover:shadow-md transition-shadow">
+              <div key={t.id} className={`card p-4 hover:shadow-md transition-shadow ${overdue ? 'border-l-4 border-l-red-500' : ''}`}>
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <Link to={`/staff/tasks/${t.id}`} className="text-base font-semibold hover:text-primary-600">{t.title}</Link>
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${STATUS_COLOR[t.status]}`}>{STATUS_LABEL[t.status]}</span>
+                      {/* Durum rozeti yok — sağdaki seçici hem durumu gösterir hem değiştirir. */}
                       <span className={`px-2 py-0.5 rounded-full text-xs ${PRIORITY_COLOR[t.priority]}`}>{PRIORITY_LABEL[t.priority]}</span>
-                      {overdue && <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700 flex items-center gap-1"><AlertCircle className="w-3 h-3" />Süresi Geçti</span>}
+                      {overdue && <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300 flex items-center gap-1"><AlertCircle className="w-3 h-3" />Süresi Geçti</span>}
                     </div>
                     <p className="text-sm text-gray-600 dark:text-slate-400 line-clamp-2">{t.description}</p>
                     <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 flex-wrap">
@@ -358,16 +484,37 @@ export default function TasksPage() {
                     </div>
                     <div className="flex flex-wrap gap-1 mt-2">
                       {t.assignees.map((a: any) => (
-                        <span key={a.staff.id} className="text-xs bg-gray-100 px-2 py-0.5 rounded-full">{a.staff.fullName}</span>
+                        <span
+                          key={a.staff.id}
+                          className={`text-xs px-2 py-0.5 rounded-full cursor-default ${
+                            assigneeFilter === a.staff.id
+                              ? 'bg-primary-100 text-primary-800 dark:bg-primary-500/20 dark:text-primary-300'
+                              : 'bg-gray-100 text-gray-700 dark:bg-slate-700/60 dark:text-slate-300'
+                          }`}
+                        >
+                          {a.staff.fullName}
+                        </span>
                       ))}
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    {t.status !== 'done' && t.status !== 'cancelled' && (
-                      <button onClick={() => handleStatus(t.id, 'done')} className="p-1.5 hover:bg-green-100 rounded text-green-600" title="Tamamlandı işaretle">
-                        <CheckCircle2 className="w-4 h-4" />
-                      </button>
-                    )}
+                    {/*
+                      Durum listeden doğrudan değiştirilebilir. Önceden yalnızca
+                      tek yönlü bir "Tamamlandı" butonu vardı: in_progress veya
+                      cancelled'a geçilemiyor, yanlışlıkla tamamlanan görev geri
+                      alınamıyordu (butonun kendisi kayboluyordu).
+                    */}
+                    <select
+                      value={t.status}
+                      onChange={(e) => handleStatus(t.id, e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={`${t.title} durumu`}
+                      className={`text-xs rounded-full border-0 px-2 py-1 cursor-pointer focus:ring-2 focus:ring-primary-500 ${STATUS_COLOR[t.status]}`}
+                    >
+                      {Object.entries(STATUS_LABEL).map(([k, v]) => (
+                        <option key={k} value={k}>{v}</option>
+                      ))}
+                    </select>
                     {isManager && (
                       <>
                         <button onClick={() => handleEdit(t)} className="p-1.5 hover:bg-gray-100 rounded" title="Düzenle">

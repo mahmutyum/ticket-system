@@ -382,7 +382,7 @@ model Task {
   id          String    @id @default(cuid())
   title       String
   description String
-  priority    String    @default("medium") // "low", "medium", "high", "urgent"
+  priority    String    @default("medium") // "low", "medium", "high", "critical" — ticket önceliğiyle aynı sözlük
   status      String    @default("open") // "open", "in_progress", "done", "cancelled"
   dueDate     DateTime? @map("due_date")
   createdById String    @map("created_by_id")

@@ -5,6 +5,8 @@ import { ArrowLeft, Send, Clock, User, Users, AlertCircle, CheckCircle2 } from '
 import toast from 'react-hot-toast';
 import api from '../../api/client';
 import { useAuthStore } from '../../stores/auth.store';
+// Öncelik sözlüğü ticket'larla ORTAK — burada kopyalama, tek kaynaktan al.
+import { PRIORITY_LABELS as PRIORITY_LABEL, PRIORITY_COLORS as PRIORITY_COLOR } from '../../types';
 
 const STATUS_LABEL: Record<string, string> = {
   open: 'Açık',
@@ -18,20 +20,6 @@ const STATUS_COLOR: Record<string, string> = {
   in_progress: 'bg-yellow-100 text-yellow-800',
   done: 'bg-green-100 text-green-800',
   cancelled: 'bg-gray-200 text-gray-600 dark:text-slate-400',
-};
-
-const PRIORITY_LABEL: Record<string, string> = {
-  low: 'Düşük',
-  medium: 'Orta',
-  high: 'Yüksek',
-  urgent: 'Acil',
-};
-
-const PRIORITY_COLOR: Record<string, string> = {
-  low: 'bg-gray-100 text-gray-700 dark:text-slate-300',
-  medium: 'bg-blue-100 text-blue-700',
-  high: 'bg-orange-100 text-orange-700',
-  urgent: 'bg-red-100 text-red-700',
 };
 
 function daysOpen(createdAt: string, completedAt?: string | null): number {
