@@ -1,5 +1,5 @@
-import { mkdir, writeFile, unlink } from 'fs/promises';
-import { join, extname, basename } from 'path';
+import { mkdir, writeFile, unlink, readdir } from 'fs/promises';
+import { join, extname, basename, resolve, sep } from 'path';
 import { nanoid } from 'nanoid';
 import { config } from '../config/index.js';
 
@@ -129,6 +129,17 @@ export async function saveLogo(
   const filePath = join(dir, fileName);
   await writeFile(filePath, buffer);
 
+  // Eski logoyu sil. Dosya adı her yüklemede rastgele (nanoid) olduğu için yeni
+  // logo eskisinin ÜZERİNE yazmaz — temizlenmezse her yeniden yükleme diskte bir
+  // dosya bırakır ve bu dosyalar `/branding` ucundan süresizce erişilebilir kalır.
+  //
+  // Silinecek dosyayı DB'deki `logo` string'ini ayrıştırarak bulmak yerine
+  // klasördeki diğer dosyaları buduyoruz: şirket başına tek logo invaryantı
+  // burada, kaydın yanında zorlanmış olur ve önceden birikmiş yetimler de
+  // temizlenir. Ayrıca yola çevrilecek bir string olmadığı için traversal yüzeyi
+  // yok.
+  await pruneDirectory(dir, fileName);
+
   return {
     // Logo public bir uçtan inline servis edilir (ekler gibi indirilmez).
     url: `/branding/${companyId}/${fileName}`,
@@ -136,8 +147,37 @@ export async function saveLogo(
   };
 }
 
+/** `dir` içinde `keep` dışındaki dosyaları siler. Hata yutulur: temizlik, asıl işi bozmamalı. */
+async function pruneDirectory(dir: string, keep: string): Promise<void> {
+  try {
+    const entries = await readdir(dir);
+    await Promise.all(
+      entries
+        .filter((name) => name !== keep)
+        .map((name) => unlink(join(dir, name)).catch(() => {})),
+    );
+  } catch {
+    // dizin okunamadı — yükleme yine de başarılı sayılır
+  }
+}
+
+/**
+ * `UPLOAD_DIR` içindeki bir dosyayı siler.
+ *
+ * `filePath` DAİMA UPLOAD_DIR'e göre göreli olmalıdır. Çağıran güvenilir olsa da
+ * kapsama kontrolü yapılır: `join()` `../` segmentlerini sadeleştirir, yani
+ * doğrulanmamış bir `filePath` upload dizininin dışına çıkabilir ve rastgele dosya
+ * sildirebilir. Bugün tüm çağıranlar sabit yollar veriyor; bu kontrol bunun
+ * yarın da doğru kalmasını sağlar.
+ */
 export async function deleteFile(filePath: string): Promise<void> {
-  const fullPath = join(config.UPLOAD_DIR, filePath);
+  const root = resolve(config.UPLOAD_DIR);
+  const fullPath = resolve(root, filePath);
+
+  if (fullPath !== root && !fullPath.startsWith(root + sep)) {
+    throw new Error('Geçersiz dosya yolu: upload dizininin dışında');
+  }
+
   try {
     await unlink(fullPath);
   } catch {

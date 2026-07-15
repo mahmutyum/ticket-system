@@ -131,6 +131,22 @@ export const LIMITS = {
 } as const;
 
 /**
+ * Ek yükleme kotası — ticket başına.
+ *
+ * `LIMITS`'ten ayrı: bunlar karakter değil bayt/adet ve frontend'in `INPUT_LIMITS`
+ * karşılığı yok (form alanı sınırı değil, sunucu tarafı kaynak koruması).
+ *
+ * Dosya başına 25 MB sınırı vardı ama toplam yoktu: aynı ticket'a sınırsız ek
+ * yüklenip disk şişirilebiliyordu.
+ */
+export const ATTACHMENT_LIMITS = {
+  /** Ticket başına dosya adedi. */
+  maxCount: 20,
+  /** Ticket başına toplam bayt (200 MB). */
+  maxTotalBytes: 200 * 1024 * 1024,
+} as const;
+
+/**
  * En yaygın kötü şifreler.
  *
  * Tam bir breach listesi (HIBP) ağ çağrısı gerektirir ve iç ağda çalışan bir

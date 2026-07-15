@@ -3,13 +3,14 @@ import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { generateTicketNumber } from '../../utils/ticket-number.js';
 import { paginationSchema, paginate, paginatedResponse } from '../../utils/pagination.js';
-import { requiredText, optionalText, phoneSchema, emailSchema, LIMITS } from '../../utils/validation.js';
+import { requiredText, optionalText, phoneSchema, emailSchema, LIMITS, ATTACHMENT_LIMITS } from '../../utils/validation.js';
 import { TicketStatus, Priority } from '@prisma/client';
 import { queueEmail, queueSms } from '../../jobs/queue.js';
 import { saveFile, isAllowedMimeType } from '../../services/storage.service.js';
 import { config } from '../../config/index.js';
 import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.js';
-import { getStaffCompanyScope, resolveCompanyFilter } from '../../utils/staff-scope.js';
+import { getStaffCompanyScope, resolveCompanyFilter, isCompanyInScope } from '../../utils/staff-scope.js';
+import { calculateSlaDueDates, isSlaMet } from '../../utils/sla.js';
 
 /**
  * Ticket kapandıktan sonra public takip linkinin ne kadar geçerli kalacağı.
@@ -169,15 +170,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       where: { id: body.categoryId },
     });
 
-    let slaResponseDue: Date | undefined;
-    let slaResolveDue: Date | undefined;
-
-    if (category?.slaResponseMinutes) {
-      slaResponseDue = new Date(Date.now() + category.slaResponseMinutes * 60 * 1000);
-    }
-    if (category?.slaResolutionMinutes) {
-      slaResolveDue = new Date(Date.now() + category.slaResolutionMinutes * 60 * 1000);
-    }
+    const { slaResponseDue, slaResolveDue } = calculateSlaDueDates(category);
 
     // Create ticket with custom fields
     const ticket = await app.prisma.ticket.create({
@@ -414,6 +407,14 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
     }
 
+    // Şirket kapsamı — GET /:id bunu yapıyordu, PUT yapmıyordu. Yani kapsam dışı
+    // bir ticket okunamıyor ama id'si bilindiğinde DEĞİŞTİRİLEBİLİYORDU: durum,
+    // öncelik ve atama. Yazma yetkisi okuma yetkisinden geniş olamaz.
+    const scopeIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
+    if (!isCompanyInScope(scopeIds, currentTicket.companyId)) {
+      return reply.status(403).send({ success: false, error: 'Bu talebe erişim yetkiniz yok' });
+    }
+
     const historyEntries: any[] = [];
     const updateData: any = {};
 
@@ -430,15 +431,11 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       // Track first response and resolution
       if (!currentTicket.firstRespondedAt && body.status === TicketStatus.in_progress) {
         updateData.firstRespondedAt = new Date();
-        updateData.slaResponseMet = currentTicket.slaResponseDue
-          ? new Date() <= currentTicket.slaResponseDue
-          : null;
+        updateData.slaResponseMet = isSlaMet(currentTicket.slaResponseDue, new Date());
       }
       if (body.status === TicketStatus.resolved) {
         updateData.resolvedAt = new Date();
-        updateData.slaResolveMet = currentTicket.slaResolveDue
-          ? new Date() <= currentTicket.slaResolveDue
-          : null;
+        updateData.slaResolveMet = isSlaMet(currentTicket.slaResolveDue, new Date());
       }
       if (body.status === TicketStatus.closed) {
         updateData.closedAt = new Date();
@@ -560,6 +557,13 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
     }
 
+    // Şirket kapsamı — bu uç da kapsamsızdı: kapsam dışı bir ticket'a dosya
+    // eklenebiliyordu ve ek, o ticket'ın public takip linkinden servis ediliyor.
+    const scopeIds = await getStaffCompanyScope(app.prisma, request.staffUser!.id, request.staffUser!.role);
+    if (!isCompanyInScope(scopeIds, ticket.companyId)) {
+      return reply.status(403).send({ success: false, error: 'Bu talebe erişim yetkiniz yok' });
+    }
+
     const file = await request.file();
     if (!file) {
       return reply.status(400).send({ success: false, error: 'Dosya gerekli' });
@@ -569,7 +573,31 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(400).send({ success: false, error: 'Desteklenmeyen dosya türü' });
     }
 
+    // Ticket başına kota. Dosya başına 25 MB sınırı vardı ama toplam yoktu:
+    // aynı ticket'a sınırsız ek yüklenip disk şişirilebiliyordu.
+    const existing = await app.prisma.attachment.aggregate({
+      where: { ticketId: id },
+      _count: true,
+      _sum: { fileSize: true },
+    });
+    if (existing._count >= ATTACHMENT_LIMITS.maxCount) {
+      return reply.status(400).send({
+        success: false,
+        error: `Bir talebe en fazla ${ATTACHMENT_LIMITS.maxCount} dosya eklenebilir`,
+      });
+    }
+
     const buffer = await file.toBuffer();
+
+    const totalAfter = (existing._sum.fileSize ?? 0) + buffer.length;
+    if (totalAfter > ATTACHMENT_LIMITS.maxTotalBytes) {
+      const mb = Math.floor(ATTACHMENT_LIMITS.maxTotalBytes / (1024 * 1024));
+      return reply.status(400).send({
+        success: false,
+        error: `Talep başına toplam ek boyutu ${mb} MB'ı aşamaz`,
+      });
+    }
+
     const saved = await saveFile(buffer, file.filename, id, file.mimetype);
 
     const attachment = await app.prisma.attachment.create({

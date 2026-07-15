@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { mkdtemp, rm, readdir } from 'fs/promises';
+import { mkdtemp, rm, readdir, writeFile, mkdir, readFile } from 'fs/promises';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { join, basename } from 'path';
 
 /**
  * Dosya yükleme — uzantı ve MIME.
@@ -134,5 +134,97 @@ describe('saveLogo', () => {
     const saved = await saveLogo(Buffer.from('x'), 'logo.png', 'co1', 'image/png');
     expect(saved.url.startsWith('/branding/co1/')).toBe(true);
     expect(saved.url.endsWith('.png')).toBe(true);
+  });
+});
+
+/**
+ * Logo değiştirme — disk sızıntısı.
+ *
+ * Dosya adı her yüklemede rastgele (nanoid), yani yeni logo eskisinin ÜZERİNE
+ * yazmaz. Temizlik olmadan her yeniden yükleme diskte kalıcı bir dosya bırakıyordu
+ * ve o dosya `/branding` public ucundan süresizce erişilebiliyordu — DB'de artık
+ * referansı olmasa bile.
+ */
+describe('saveLogo — eski logoyu temizler', () => {
+  it('yeniden yükleme eski dosyayı diskte BIRAKMAZ', async () => {
+    const { saveLogo } = await storage();
+    const brandingDir = join(dir, 'branding', 'cleanup-co');
+
+    const first = await saveLogo(Buffer.from('eski'), 'a.png', 'cleanup-co', 'image/png');
+    expect(await readdir(brandingDir)).toHaveLength(1);
+
+    const second = await saveLogo(Buffer.from('yeni'), 'b.png', 'cleanup-co', 'image/png');
+
+    const remaining = await readdir(brandingDir);
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]).toBe(second.url.split('/').pop());
+    // Eski dosya gerçekten gitti — URL'si artık bir dosyaya çözülmüyor.
+    expect(remaining).not.toContain(first.url.split('/').pop());
+  });
+
+  it('önceden birikmiş yetimleri de toplar', async () => {
+    const { saveLogo } = await storage();
+    const brandingDir = join(dir, 'branding', 'orphan-co');
+
+    await saveLogo(Buffer.from('1'), 'a.png', 'orphan-co', 'image/png');
+    // Temizlik yokmuş gibi elle yetim bırak (eski sürümün ürettiği durum).
+    await writeFile(join(brandingDir, 'yetim.png'), Buffer.from('eski'));
+    expect(await readdir(brandingDir)).toHaveLength(2);
+
+    await saveLogo(Buffer.from('2'), 'b.png', 'orphan-co', 'image/png');
+
+    expect(await readdir(brandingDir)).toHaveLength(1);
+  });
+
+  it('şirketleri birbirinden ayırır — biri diğerinin logosunu silmez', async () => {
+    const { saveLogo } = await storage();
+    await saveLogo(Buffer.from('a'), 'a.png', 'iso-a', 'image/png');
+    await saveLogo(Buffer.from('b'), 'b.png', 'iso-b', 'image/png');
+
+    expect(await readdir(join(dir, 'branding', 'iso-a'))).toHaveLength(1);
+    expect(await readdir(join(dir, 'branding', 'iso-b'))).toHaveLength(1);
+  });
+});
+
+/**
+ * `deleteFile` kapsama kontrolü.
+ *
+ * `join(UPLOAD_DIR, filePath)` `../` segmentlerini sadeleştirir: doğrulanmamış bir
+ * `filePath` upload dizininin dışına çıkıp rastgele dosya sildirebilir. Bugün tüm
+ * çağıranlar sabit yol veriyor — bu testler bunun yarın da doğru kalmasını sağlar.
+ */
+describe('deleteFile', () => {
+  it('upload dizini içindeki dosyayı siler', async () => {
+    const { deleteFile } = await storage();
+    await mkdir(join(dir, 'del'), { recursive: true });
+    await writeFile(join(dir, 'del', 'x.txt'), 'x');
+
+    await deleteFile('del/x.txt');
+
+    expect(await readdir(join(dir, 'del'))).toHaveLength(0);
+  });
+
+  it('dizin dışına çıkan yolu REDDEDER', async () => {
+    const { deleteFile } = await storage();
+    const victim = join(dir, '..', `kurban-${Date.now()}.txt`);
+    await writeFile(victim, 'silinmemeli');
+
+    try {
+      await expect(deleteFile(`../${basename(victim)}`)).rejects.toThrow(/upload dizininin dışında/);
+      // Dosya hâlâ duruyor.
+      await expect(readFile(victim, 'utf8')).resolves.toBe('silinmemeli');
+    } finally {
+      await rm(victim, { force: true });
+    }
+  });
+
+  it('mutlak yolu REDDEDER', async () => {
+    const { deleteFile } = await storage();
+    await expect(deleteFile('/etc/passwd')).rejects.toThrow(/upload dizininin dışında/);
+  });
+
+  it('olmayan dosyada sessizce geçer', async () => {
+    const { deleteFile } = await storage();
+    await expect(deleteFile('yok/olmayan.txt')).resolves.toBeUndefined();
   });
 });
