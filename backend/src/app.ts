@@ -6,6 +6,8 @@ import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
 import { join } from 'path';
 import { config } from './config/index.js';
 import { prismaPlugin } from './plugins/prisma.js';
@@ -85,6 +87,33 @@ export async function buildApp() {
     root: config.UPLOAD_DIR,
     prefix: '/uploads/',
     decorateReply: false,
+  });
+
+  // API dokümantasyonu — /docs
+  //
+  // NOT: Route'lar fastify'ın `schema:` alanını kullanmaz; input validation
+  // handler içinde Zod ile yapılır (`schema.parse(request.body)`). Bu yüzden
+  // Swagger request/response gövdelerini gösteremez — sadece endpoint listesi
+  // (method + path) üretir. Gövde formatları için ilgili modülün Zod şemasına bak.
+  await app.register(swagger, {
+    openapi: {
+      info: {
+        title: 'IT Ticket System API',
+        description:
+          'Endpoint listesi. Frontend bu API\'ye /api/* öneki ile erişir (nginx rewrite eder); ' +
+          'buradaki yollar backend\'in gördüğü ham yollardır.',
+        version: '1.0.0',
+      },
+      components: {
+        securitySchemes: {
+          bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+        },
+      },
+    },
+  });
+  await app.register(swaggerUi, {
+    routePrefix: '/docs',
+    uiConfig: { docExpansion: 'list', deepLinking: true },
   });
 
   // Health check

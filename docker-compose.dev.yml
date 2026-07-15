@@ -4,11 +4,17 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
+    environment:
+      # .env'deki NODE_ENV=production'ı ezer: okunabilir log, açık hata
+      # detayları ve CORS'ta localhost origin'leri.
+      NODE_ENV: development
     volumes:
       - ./backend/src:/app/src
       - ./backend/prisma:/app/prisma
       - backend_node_modules:/app/node_modules
-    command: npx tsx watch src/server.ts
+    # Şemayı uygula, sonra watch modunda başlat. migrate deploy idempotent'tir —
+    # her restart'ta güvenle çalışır, uygulanmış migration'ları atlar.
+    command: sh -c "npx prisma migrate deploy && npx tsx watch src/server.ts"
 
   frontend:
     build:

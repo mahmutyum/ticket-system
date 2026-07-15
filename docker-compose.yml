@@ -3,7 +3,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: sh -c "npx prisma db push --accept-data-loss && node dist/server.js"
+    # Başlatma komutu backend/Dockerfile CMD'sinde: prisma migrate deploy && node dist/server.js
+    # (Migration'lar backend/prisma/migrations/ altında versiyonlanır.)
     expose:
       - "4000"
     env_file:
