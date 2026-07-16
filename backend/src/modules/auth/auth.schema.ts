@@ -56,3 +56,33 @@ export const refreshResponseSchema = z.object({
   success: z.literal(true),
   data: z.object({ accessToken: z.string() }),
 });
+
+export const sessionsResponseSchema = z.object({
+  success: z.literal(true),
+  data: z.array(z.object({
+    sid: z.string(),
+    current: z.boolean(),
+    // Redis TTL, süresi olmayan/kaybolan anahtar için -1/-2 dönebilir.
+    expiresInSeconds: z.number().int(),
+  })),
+});
+
+export const revokedSessionsResponseSchema = z.object({
+  success: z.literal(true),
+  data: z.object({ revoked: z.number().int().nonnegative() }),
+});
+
+export const mfaSetupResponseSchema = z.object({
+  success: z.literal(true),
+  data: z.object({ secret: z.string(), uri: z.string() }),
+});
+
+export const lookupResponseSchema = z.object({
+  success: z.literal(true),
+  data: z.object({
+    id: z.string(),
+    email: z.string().email(),
+    fullName: z.string(),
+    companyId: z.string().nullable(),
+  }).nullable(),
+});

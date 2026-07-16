@@ -1,8 +1,8 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import bcrypt from 'bcrypt';
 import type Redis from 'ioredis';
-import { staffLoginSchema, emailLookupSchema, refreshTokenSchema, changePasswordSchema, mfaVerifySchema, mfaCodeSchema, disableMfaSchema, loginResponseSchema, refreshResponseSchema } from './auth.schema.js';
-import { commonErrorResponses } from '../../utils/api-schema.js';
+import { staffLoginSchema, emailLookupSchema, refreshTokenSchema, changePasswordSchema, mfaVerifySchema, mfaCodeSchema, disableMfaSchema, loginResponseSchema, refreshResponseSchema, sessionsResponseSchema, revokedSessionsResponseSchema, mfaSetupResponseSchema, lookupResponseSchema } from './auth.schema.js';
+import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
 import {
   generateTokens,
   verifyRefreshToken,
@@ -246,7 +246,11 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
   // Staff logout — YALNIZCA bu oturumu kapatır, diğer cihazlar etkilenmez.
   app.post('/staff/logout', {
     preValidation: [app.authenticate],
-    schema: { tags: ['Auth'], summary: 'Geçerli personel oturumunu kapatır' },
+    schema: {
+      tags: ['Auth'],
+      summary: 'Geçerli personel oturumunu kapatır',
+      response: { 200: successResponseSchema, ...commonErrorResponses },
+    },
   }, async (request, reply) => {
     const { id, sid } = request.staffUser!;
     await app.redis.del(refreshKey(id, sid));
@@ -257,7 +261,11 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
 
   app.get('/staff/sessions', {
     preValidation: [app.authenticate],
-    schema: { tags: ['Auth'], summary: 'Aktif personel oturumlarını listeler' },
+    schema: {
+      tags: ['Auth'],
+      summary: 'Aktif personel oturumlarını listeler',
+      response: { 200: sessionsResponseSchema, ...commonErrorResponses },
+    },
   }, async (request, reply) => {
     const { id, sid } = request.staffUser!;
     const keys = await sessionKeys(app.redis, id);
@@ -271,7 +279,11 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
 
   app.delete('/staff/sessions/others', {
     preValidation: [app.authenticate],
-    schema: { tags: ['Auth'], summary: 'Geçerli oturum dışındaki oturumları kapatır' },
+    schema: {
+      tags: ['Auth'],
+      summary: 'Geçerli oturum dışındaki oturumları kapatır',
+      response: { 200: revokedSessionsResponseSchema, ...commonErrorResponses },
+    },
   }, async (request, reply) => {
     const { id, sid } = request.staffUser!;
     const keys = (await sessionKeys(app.redis, id)).filter((key) => !key.endsWith(`:${sid}`));
@@ -286,7 +298,12 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
 
   app.post('/staff/change-password', {
     preValidation: [app.authenticate],
-    schema: { body: changePasswordSchema, tags: ['Auth'], summary: 'Personel parolasını değiştirir' },
+    schema: {
+      body: changePasswordSchema,
+      tags: ['Auth'],
+      summary: 'Personel parolasını değiştirir',
+      response: { 200: successResponseSchema, ...commonErrorResponses },
+    },
   }, async (request, reply) => {
     const body = request.body;
     const staff = await app.prisma.staff.findUnique({ where: { id: request.staffUser!.id } });
@@ -308,7 +325,11 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
 
   app.post('/staff/mfa/setup', {
     preValidation: [app.authenticate],
-    schema: { tags: ['Auth'], summary: 'MFA kurulum sırrı oluşturur' },
+    schema: {
+      tags: ['Auth'],
+      summary: 'MFA kurulum sırrı oluşturur',
+      response: { 200: mfaSetupResponseSchema, ...commonErrorResponses },
+    },
   }, async (request, reply) => {
     const staff = await app.prisma.staff.findUnique({ where: { id: request.staffUser!.id } });
     if (!staff) return reply.status(404).send({ success: false, error: 'Personel bulunamadı' });
@@ -319,7 +340,12 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
 
   app.post('/staff/mfa/enable', {
     preValidation: [app.authenticate],
-    schema: { body: mfaCodeSchema, tags: ['Auth'], summary: 'MFA korumasını etkinleştirir' },
+    schema: {
+      body: mfaCodeSchema,
+      tags: ['Auth'],
+      summary: 'MFA korumasını etkinleştirir',
+      response: { 200: successResponseSchema, ...commonErrorResponses },
+    },
   }, async (request, reply) => {
     const { code } = request.body;
     const pending = await app.redis.get(mfaSetupKey(request.staffUser!.id));
@@ -334,7 +360,12 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
 
   app.post('/staff/mfa/disable', {
     preValidation: [app.authenticate],
-    schema: { body: disableMfaSchema, tags: ['Auth'], summary: 'MFA korumasını devre dışı bırakır' },
+    schema: {
+      body: disableMfaSchema,
+      tags: ['Auth'],
+      summary: 'MFA korumasını devre dışı bırakır',
+      response: { 200: successResponseSchema, ...commonErrorResponses },
+    },
   }, async (request, reply) => {
     const body = request.body;
     const staff = await app.prisma.staff.findUnique({ where: { id: request.staffUser!.id } });
@@ -362,7 +393,12 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
    */
   app.post('/lookup', {
     preValidation: [app.authenticate],
-    schema: { body: emailLookupSchema, tags: ['Auth'], summary: 'E-posta için kullanıcı bilgisini getirir' },
+    schema: {
+      body: emailLookupSchema,
+      tags: ['Auth'],
+      summary: 'E-posta için kullanıcı bilgisini getirir',
+      response: { 200: lookupResponseSchema, ...commonErrorResponses },
+    },
     config: { rateLimit: { max: 30, timeWindow: '5 minutes' } },
   }, async (request, reply) => {
     const body = request.body;
