@@ -9,6 +9,7 @@ interface StaffUser {
   department?: string;
   avatarUrl?: string;
   mfaEnabled?: boolean;
+  locale?: string;
 }
 
 interface AuthState {

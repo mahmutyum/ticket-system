@@ -13,6 +13,7 @@ import { getStaffCompanyScope, resolveCompanyFilter, isCompanyInScope } from '..
 import { calculateSlaDueDates, isSlaMet } from '../../utils/sla.js';
 import { commonErrorResponses } from '../../utils/api-schema.js';
 import { t } from '../../i18n/index.js';
+import { priorityLabel } from '../../i18n/labels.js';
 
 /**
  * Ticket kapandıktan sonra public takip linkinin ne kadar geçerli kalacağı.
@@ -309,7 +310,7 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
         ticketNumber,
         userName: body.fullName,
         subject: body.subject,
-        priority: body.priority,
+        priority: priorityLabel(body.locale, body.priority),
         trackingUrl,
       },
       ticketId: ticket.id,

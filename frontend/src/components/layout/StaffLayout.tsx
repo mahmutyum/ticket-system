@@ -17,7 +17,7 @@ import {
   ShieldCheck,
   ShieldAlert,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../stores/auth.store';
 import { useTheme } from '../theme-context';
@@ -44,9 +44,21 @@ export default function StaffLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, logout, mfaWarningEnabled } = useAuthStore();
   const { theme, toggle } = useTheme();
+
+  // Personel arayüz dilini değiştirdiğinde bildirim dilini (staff.locale) senkronla:
+  // böylece e-posta/SMS bildirimleri panelde kullanılan dilde gider. Yalnızca
+  // gerçekten farklıysa istek atılır.
+  useEffect(() => {
+    const uiLang = i18n.language?.startsWith('tr') ? 'tr' : 'en';
+    if (user && user.locale && user.locale !== uiLang) {
+      api.patch('/auth/staff/preferences', { locale: uiLang })
+        .then(() => useAuthStore.getState().setUser({ ...user, locale: uiLang }))
+        .catch(() => { /* sessizce geç — bir sonraki değişimde tekrar denenir */ });
+    }
+  }, [i18n.language, user]);
   // Ayrıcalıklı hesap (kasa erişimi) MFA kurmamışsa uyar — zorunluluk değil.
   const showMfaWarning =
     mfaWarningEnabled &&

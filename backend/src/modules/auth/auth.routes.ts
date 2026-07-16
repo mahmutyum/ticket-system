@@ -1,7 +1,7 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import bcrypt from 'bcrypt';
 import type Redis from 'ioredis';
-import { staffLoginSchema, emailLookupSchema, refreshTokenSchema, changePasswordSchema, mfaVerifySchema, mfaCodeSchema, disableMfaSchema, loginResponseSchema, refreshResponseSchema, sessionsResponseSchema, revokedSessionsResponseSchema, mfaSetupResponseSchema, lookupResponseSchema } from './auth.schema.js';
+import { staffLoginSchema, emailLookupSchema, refreshTokenSchema, changePasswordSchema, mfaVerifySchema, mfaCodeSchema, disableMfaSchema, loginResponseSchema, refreshResponseSchema, sessionsResponseSchema, revokedSessionsResponseSchema, mfaSetupResponseSchema, lookupResponseSchema, updateLocaleSchema } from './auth.schema.js';
 import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
 import {
   generateTokens,
@@ -149,6 +149,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
             department: staff.department,
             avatarUrl: staff.avatarUrl,
             mfaEnabled: staff.mfaEnabled,
+            locale: staff.locale,
           },
           mfaWarningEnabled: config.MFA_WARNING_ENABLED,
         },
@@ -179,7 +180,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
       httpOnly: true, secure: config.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: REFRESH_TTL_SECONDS,
     }).send({ success: true, data: { accessToken: tokens.accessToken, user: {
       id: staff.id, email: staff.email, fullName: staff.fullName, role: staff.role,
-      department: staff.department, avatarUrl: staff.avatarUrl, mfaEnabled: staff.mfaEnabled,
+      department: staff.department, avatarUrl: staff.avatarUrl, mfaEnabled: staff.mfaEnabled, locale: staff.locale,
     }, mfaWarningEnabled: config.MFA_WARNING_ENABLED } });
   });
 
@@ -250,6 +251,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
               department: staff.department,
               avatarUrl: staff.avatarUrl,
               mfaEnabled: staff.mfaEnabled,
+              locale: staff.locale,
             },
             mfaWarningEnabled: config.MFA_WARNING_ENABLED,
           },
@@ -257,6 +259,24 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     } catch {
       return reply.status(401).send({ success: false, error: t(request, 'auth.refresh_token_invalid') });
     }
+  });
+
+  // Personel bildirim dili tercihi. Frontend, UI dili değiştiğinde bunu senkronlar;
+  // böylece e-posta/SMS bildirimleri personelin panelde kullandığı dilde gider.
+  app.patch('/staff/preferences', {
+    preValidation: [app.authenticate],
+    schema: {
+      body: updateLocaleSchema,
+      tags: ['Auth'],
+      summary: 'Personel bildirim dilini günceller',
+      response: { 200: successResponseSchema, ...commonErrorResponses },
+    },
+  }, async (request, reply) => {
+    await app.prisma.staff.update({
+      where: { id: request.staffUser!.id },
+      data: { locale: request.body.locale },
+    });
+    reply.send({ success: true });
   });
 
   // Staff logout — YALNIZCA bu oturumu kapatır, diğer cihazlar etkilenmez.

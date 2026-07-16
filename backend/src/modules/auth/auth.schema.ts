@@ -44,7 +44,11 @@ const staffProfileSchema = z.object({
   avatarUrl: z.string().nullable(),
   // Frontend, ayrıcalıklı hesaplar için MFA uyarısını buna göre gösterir.
   mfaEnabled: z.boolean(),
+  // Bildirim (e-posta/SMS) dili — frontend UI diliyle senkron tutar.
+  locale: z.string(),
 });
+
+export const updateLocaleSchema = z.object({ locale: z.enum(['tr', 'en']) });
 
 export const loginResponseSchema = z.object({
   success: z.literal(true),

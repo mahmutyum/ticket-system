@@ -2,12 +2,11 @@ import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { Prisma, OnsiteType, OnsiteStatus } from '@prisma/client';
 import { queueEmail } from '../../jobs/queue.js';
-import { ONSITE_TYPE_LABELS } from '../../config/constants.js';
 import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
 import { createAuditLog } from '../../middleware/audit.js';
-import { formatTrDateTime } from '../../utils/format.js';
 import { commonErrorResponses } from '../../utils/api-schema.js';
 import { t } from '../../i18n/index.js';
+import { onsiteTypeLabel, onsiteScheduledNote, onsiteCancelledTypeLabel, onsiteCancelledNote, onsiteUpdatedNote, formatDateTime } from '../../i18n/labels.js';
 
 const onsiteCreateSchema = z.object({
   ticketId: z.string().cuid(),
@@ -72,7 +71,7 @@ export const onsiteRoutes: FastifyPluginAsyncZod = async (app) => {
 
     const ticket = await app.prisma.ticket.findUnique({
       where: { id: body.ticketId },
-      select: { id: true, companyId: true, createdByEmail: true, accessToken: true, createdBy: { select: { fullName: true } } },
+      select: { id: true, companyId: true, createdByEmail: true, accessToken: true, locale: true, createdBy: { select: { fullName: true } } },
     });
 
     if (!ticket) {
@@ -108,21 +107,14 @@ export const onsiteRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     });
 
-    // Notify employee
-    const scheduledDate = formatTrDateTime(body.scheduledAt);
-    const supportType = ONSITE_TYPE_LABELS[body.type] || body.type;
+    // Notify employee — talep sahibinin diline göre.
+    const scheduledDate = formatDateTime(ticket.locale, body.scheduledAt);
+    const supportType = onsiteTypeLabel(ticket.locale, body.type);
     const locationInfo = body.roomInfo
       ? `${onsite.location.name} - ${body.roomInfo}`
       : onsite.location.name;
 
-    let extraNote: string;
-    if (body.type === 'come_to_it_room') {
-      extraNote = `Lütfen belirtilen saatte IT odasına (${body.roomInfo || locationInfo}) geliniz.`;
-    } else if (body.type === 'meeting_room') {
-      extraNote = `Lütfen belirtilen saatte toplantı odasına (${body.roomInfo || locationInfo}) geliniz.`;
-    } else {
-      extraNote = 'IT ekibi belirtilen saatte size gelecektir.';
-    }
+    const extraNote = onsiteScheduledNote(ticket.locale, body.type, body.roomInfo || locationInfo);
 
     await queueEmail({
       to: ticket.createdByEmail,
@@ -261,11 +253,12 @@ export const onsiteRoutes: FastifyPluginAsyncZod = async (app) => {
     if (body.scheduledAt || body.status === 'cancelled') {
       const ticket = await app.prisma.ticket.findUnique({
         where: { id: onsite.ticket.id },
-        select: { companyId: true, createdByEmail: true, accessToken: true, createdBy: { select: { fullName: true } } },
+        select: { companyId: true, createdByEmail: true, accessToken: true, locale: true, createdBy: { select: { fullName: true } } },
       });
 
       if (ticket) {
-        const scheduledDate = formatTrDateTime(body.scheduledAt || onsite.scheduledAt);
+        const cancelled = body.status === 'cancelled';
+        const scheduledDate = formatDateTime(ticket.locale, body.scheduledAt || onsite.scheduledAt);
 
         await queueEmail({
           to: ticket.createdByEmail,
@@ -274,11 +267,9 @@ export const onsiteRoutes: FastifyPluginAsyncZod = async (app) => {
             ticketNumber: onsite.ticket.ticketNumber,
             userName: ticket.createdBy?.fullName || ticket.createdByEmail,
             scheduledAt: scheduledDate,
-            supportType: body.status === 'cancelled' ? 'İPTAL EDİLDİ' : ONSITE_TYPE_LABELS[onsite.type] || onsite.type,
+            supportType: cancelled ? onsiteCancelledTypeLabel(ticket.locale) : onsiteTypeLabel(ticket.locale, onsite.type),
             locationInfo: onsite.location.name,
-            extraNote: body.status === 'cancelled'
-              ? 'Yerinde destek randevunuz iptal edilmiştir.'
-              : 'Yerinde destek randevunuz güncellendi.',
+            extraNote: cancelled ? onsiteCancelledNote(ticket.locale) : onsiteUpdatedNote(ticket.locale),
           },
           ticketId: onsite.ticket.id,
           companyId: ticket.companyId,
