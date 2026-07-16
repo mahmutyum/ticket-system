@@ -9,7 +9,7 @@ import {
   companyPayload, companyToForm, emptyCompanyForm, emptyLocationForm,
   emptySmtpForm, GROUP_TYPES,
 } from './company-management';
-import { LocationFormModal } from './CompanyManagementModals';
+import { LocationFormModal, SmtpConfigModal } from './CompanyManagementModals';
 
 export default function CompanyManagementPage() {
   const queryClient = useQueryClient();
@@ -343,83 +343,16 @@ export default function CompanyManagementPage() {
 
       {/* SMTP Config Modal */}
       {showSmtpForm && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="glass-strong rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold flex items-center gap-2">
-                <Mail className="w-5 h-5" /> SMTP Ayarları — {smtpCompanyName}
-              </h2>
-            </div>
-            <p className="text-xs text-gray-500 mb-4">
-              Boş bırakılırsa global SMTP ayarları kullanılır. Her şirket kendi SMTP sunucusuyla email gönderebilir.
-            </p>
-
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1">SMTP Sunucu *</label>
-                  <input type="text" className="input-field" value={smtpForm.host} onChange={e => setSmtpForm({ ...smtpForm, host: e.target.value })} placeholder="smtp.company.com" />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Port</label>
-                    <input type="number" className="input-field" value={smtpForm.port} onChange={e => setSmtpForm({ ...smtpForm, port: parseInt(e.target.value) || 587 })} />
-                  </div>
-                  <div className="flex items-end pb-1">
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input type="checkbox" checked={smtpForm.secure} onChange={e => setSmtpForm({ ...smtpForm, secure: e.target.checked })} className="rounded" />
-                      SSL/TLS
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Kullanıcı *</label>
-                  <input type="text" className="input-field" value={smtpForm.user} onChange={e => setSmtpForm({ ...smtpForm, user: e.target.value })} placeholder="noreply@company.com" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Şifre *</label>
-                  <input type="password" className="input-field" value={smtpForm.pass} onChange={e => setSmtpForm({ ...smtpForm, pass: e.target.value })} placeholder="••••••••" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Gönderen Adı *</label>
-                  <input type="text" className="input-field" value={smtpForm.fromName} onChange={e => setSmtpForm({ ...smtpForm, fromName: e.target.value })} placeholder="ABC IT Destek" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Gönderen Email *</label>
-                  <input type="email" className="input-field" value={smtpForm.fromEmail} onChange={e => setSmtpForm({ ...smtpForm, fromEmail: e.target.value })} placeholder="it@company.com" />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="checkbox" checked={smtpForm.isActive} onChange={e => setSmtpForm({ ...smtpForm, isActive: e.target.checked })} className="rounded" />
-                  Aktif (pasifse global SMTP kullanılır)
-                </label>
-              </div>
-
-              <div className="flex gap-2 pt-3 border-t">
-                <button onClick={handleTestSmtp} disabled={smtpTesting} className="btn-secondary flex items-center gap-2 text-sm">
-                  {smtpTesting ? 'Test ediliyor...' : 'Bağlantı Test Et'}
-                </button>
-                <div className="flex-1" />
-                <button onClick={handleDeleteSmtp} className="btn-danger text-sm flex items-center gap-1">
-                  <Trash2 className="w-3 h-3" /> Kaldır
-                </button>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button onClick={handleSaveSmtp} className="btn-primary flex-1">Kaydet</button>
-                <button onClick={() => setShowSmtpForm(false)} className="btn-secondary flex-1">İptal</button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <SmtpConfigModal
+          companyName={smtpCompanyName}
+          form={smtpForm}
+          setForm={setSmtpForm}
+          testing={smtpTesting}
+          onTest={handleTestSmtp}
+          onDelete={handleDeleteSmtp}
+          onSave={handleSaveSmtp}
+          onClose={() => setShowSmtpForm(false)}
+        />
       )}
 
       {/* Companies list */}
