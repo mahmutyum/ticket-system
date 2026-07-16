@@ -1,28 +1,33 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import PublicLayout from './components/layout/PublicLayout';
 import StaffLayout from './components/layout/StaffLayout';
-import HomePage from './pages/public/HomePage';
-import CreateTicketPage from './pages/public/CreateTicketPage';
-import TrackTicketPage from './pages/public/TrackTicketPage';
-import TicketStatusPage from './pages/public/TicketStatusPage';
-import LoginPage from './pages/staff/LoginPage';
-import DashboardPage from './pages/staff/DashboardPage';
-import TicketListPage from './pages/staff/TicketListPage';
-import TicketDetailPage from './pages/staff/TicketDetailPage';
-import StaffManagementPage from './pages/staff/StaffManagementPage';
-import CompanyManagementPage from './pages/staff/CompanyManagementPage';
-import OnsiteSupportPage from './pages/staff/OnsiteSupportPage';
-import ReportsPage from './pages/staff/ReportsPage';
-import TemplatesPage from './pages/staff/TemplatesPage';
-import TasksPage from './pages/staff/TasksPage';
-import TaskDetailPage from './pages/staff/TaskDetailPage';
-import PasswordsPage from './pages/staff/PasswordsPage';
-import AccountPage from './pages/staff/AccountPage';
 import { useAuthStore } from './stores/auth.store';
 import { initializeAuth } from './api/client';
 import { ThemeProvider } from './components/ThemeProvider';
 import { BrandingProvider } from './components/BrandingProvider';
+
+const HomePage = lazy(() => import('./pages/public/HomePage'));
+const CreateTicketPage = lazy(() => import('./pages/public/CreateTicketPage'));
+const TrackTicketPage = lazy(() => import('./pages/public/TrackTicketPage'));
+const TicketStatusPage = lazy(() => import('./pages/public/TicketStatusPage'));
+const LoginPage = lazy(() => import('./pages/staff/LoginPage'));
+const DashboardPage = lazy(() => import('./pages/staff/DashboardPage'));
+const TicketListPage = lazy(() => import('./pages/staff/TicketListPage'));
+const TicketDetailPage = lazy(() => import('./pages/staff/TicketDetailPage'));
+const StaffManagementPage = lazy(() => import('./pages/staff/StaffManagementPage'));
+const CompanyManagementPage = lazy(() => import('./pages/staff/CompanyManagementPage'));
+const OnsiteSupportPage = lazy(() => import('./pages/staff/OnsiteSupportPage'));
+const ReportsPage = lazy(() => import('./pages/staff/ReportsPage'));
+const TemplatesPage = lazy(() => import('./pages/staff/TemplatesPage'));
+const TasksPage = lazy(() => import('./pages/staff/TasksPage'));
+const TaskDetailPage = lazy(() => import('./pages/staff/TaskDetailPage'));
+const PasswordsPage = lazy(() => import('./pages/staff/PasswordsPage'));
+const AccountPage = lazy(() => import('./pages/staff/AccountPage'));
+
+function PageLoader() {
+  return <div className="min-h-48 flex items-center justify-center text-sm text-muted">Sayfa yükleniyor…</div>;
+}
 
 function ProtectedRoute({ children, allowedRoles }: { 
   children: React.ReactNode; 
@@ -67,7 +72,7 @@ export default function App() {
     <ThemeProvider>
       <BrandingProvider>
         <AuthLoader>
-          <Routes>
+          <Suspense fallback={<PageLoader />}><Routes>
         {/* Public routes */}
         <Route element={<PublicLayout />}>
           <Route path="/" element={<HomePage />} />
@@ -137,7 +142,7 @@ export default function App() {
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          </Routes></Suspense>
         </AuthLoader>
       </BrandingProvider>
     </ThemeProvider>

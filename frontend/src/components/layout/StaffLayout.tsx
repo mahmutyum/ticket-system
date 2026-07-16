@@ -20,8 +20,11 @@ import { useState } from 'react';
 import { useAuthStore } from '../../stores/auth.store';
 import { useTheme } from '../ThemeProvider';
 import api from '../../api/client';
+import type { LucideIcon } from 'lucide-react';
 
-const navItems = [
+type NavItem = { path: string; label: string; icon: LucideIcon; roles?: string[] };
+
+const navItems: NavItem[] = [
   { path: '/staff', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/staff/tickets', label: 'Talepler', icon: Ticket },
   { path: '/staff/tasks', label: 'Görevler', icon: ClipboardList },
@@ -85,7 +88,7 @@ export default function StaffLayout() {
         </div>
 
         <nav className="flex-1 overflow-y-auto mt-4 px-3 space-y-1">
-          {navItems.filter((item) => !(item as any).roles || (item as any).roles.includes(user?.role)).map((item) => {
+          {navItems.filter((item) => !item.roles || (user && item.roles.includes(user.role))).map((item) => {
             const isActive = location.pathname === item.path ||
               (item.path !== '/staff' && location.pathname.startsWith(item.path));
             return (

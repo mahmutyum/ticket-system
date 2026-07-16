@@ -87,6 +87,12 @@ jobs:
       - name: Build
         run: npx vite build
 
+      - name: Başlangıç JS bütçesi
+        run: |
+          ENTRY_BYTES=$(find dist/assets -name 'index-*.js' -exec wc -c {} \; | awk '{sum += $1} END {print sum}')
+          echo "Entry JS: ${ENTRY_BYTES} bytes"
+          test "$ENTRY_BYTES" -le 500000
+
       - name: Bağımlılık açıkları (production)
         run: npm audit --omit=dev --audit-level=low
 
