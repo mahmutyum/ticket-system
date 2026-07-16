@@ -14,7 +14,7 @@ const COMPANY_ID = 'company-1';
 function scopedPrisma() {
   const taskFindMany = vi.fn(async () => []);
   const onsiteFindMany = vi.fn(async () => []);
-  const ticketFindMany = vi.fn(async () => []);
+  const ticketFindMany = vi.fn<(args: unknown) => Promise<Record<string, unknown>[]>>(async () => []);
   const ticketCount = vi.fn(async () => 0);
   const notificationFindMany = vi.fn(async () => []);
   const notificationCount = vi.fn(async () => 0);
@@ -152,5 +152,35 @@ describe('görev ve onsite şirket kapsamı', () => {
     expect(notificationFindMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { ticket: { companyId: { in: [COMPANY_ID] } } },
     }));
+  });
+
+  it('dashboard bana atananlar cevabı public accessToken yayınlamaz', async () => {
+    const { prisma, ticketFindMany } = scopedPrisma();
+    ticketFindMany.mockResolvedValueOnce([{
+      id: 'ticket-1',
+      ticketNumber: 'TKT-2026-00001',
+      subject: 'Yazıcı',
+      status: 'open',
+      priority: 'medium',
+      createdByEmail: 'user@example.com',
+      createdAt: new Date('2026-07-16T10:00:00Z'),
+      updatedAt: new Date('2026-07-16T10:00:00Z'),
+      accessToken: 'public-bearer-secret',
+      company: { name: 'ACME' },
+      category: { name: 'Donanım' },
+    }]);
+    const app = buildTestApp(prisma);
+    const { dashboardRoutes } = await import('../../src/modules/dashboard/dashboard.routes.js');
+    app.register(dashboardRoutes, { prefix: '/dashboard' });
+    await app.ready();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/dashboard/my-tickets',
+      headers: authHeader(StaffRole.it_manager, MANAGER_ID),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().data[0]).not.toHaveProperty('accessToken');
   });
 });

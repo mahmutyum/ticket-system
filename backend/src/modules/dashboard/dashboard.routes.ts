@@ -1,7 +1,8 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { Prisma, Priority, TicketStatus } from '@prisma/client';
-import { getStaffCompanyScope, companyWhereClause , resolveCompanyFilter } from '../../utils/staff-scope.js';
+import { getStaffCompanyScope, companyWhereClause, resolveCompanyFilter } from '../../utils/staff-scope.js';
+import { commonErrorResponses } from '../../utils/api-schema.js';
 
 const dashboardFilterSchema = z.object({
   companyId: z.string().optional(),
@@ -12,12 +13,59 @@ const dashboardFilterSchema = z.object({
   dateTo: z.string().optional(),
   onlyMine: z.enum(['true', 'false']).optional(),
 });
+const ticketCardSchema = z.object({
+  id: z.string(),
+  ticketNumber: z.string(),
+  subject: z.string(),
+  status: z.nativeEnum(TicketStatus),
+  priority: z.nativeEnum(Priority),
+  createdAt: z.date(),
+});
+const dashboardStatsSchema = z.object({
+  success: z.literal(true),
+  data: z.object({
+    summary: z.object({
+      totalOpen: z.number().int(),
+      totalInProgress: z.number().int(),
+      todayCreated: z.number().int(),
+      slaViolations: z.number().int(),
+      myOpen: z.number().int(),
+    }),
+    byStatus: z.array(z.object({ status: z.nativeEnum(TicketStatus), count: z.number().int() })),
+    byPriority: z.array(z.object({ priority: z.nativeEnum(Priority), count: z.number().int() })),
+    byCompany: z.array(z.object({ companyId: z.string(), companyName: z.string(), count: z.number().int() })),
+    recentTickets: z.array(ticketCardSchema.extend({
+      company: z.object({ name: z.string() }),
+      assignedTo: z.object({ fullName: z.string() }).nullable(),
+    })),
+    accessibleCompanies: z.array(z.object({ id: z.string(), name: z.string() })),
+  }),
+});
+const slaResponseSchema = z.object({
+  success: z.literal(true),
+  data: z.object({
+    totalWithSla: z.number().int(),
+    response: z.object({ met: z.number().int(), violated: z.number().int(), complianceRate: z.number().int() }),
+    resolution: z.object({ met: z.number().int(), violated: z.number().int(), complianceRate: z.number().int() }),
+  }),
+});
+const myTicketSchema = ticketCardSchema.extend({
+  createdByEmail: z.string().email(),
+  updatedAt: z.date(),
+  company: z.object({ name: z.string() }),
+  category: z.object({ name: z.string() }),
+});
 
 export const dashboardRoutes: FastifyPluginAsyncZod = async (app) => {
   // Dashboard stats — with filters and company scoping
   app.get('/stats', {
     preValidation: [app.authenticate],
-    schema: { querystring: dashboardFilterSchema, tags: ['Dashboard'], summary: 'Dashboard istatistiklerini getir' },
+    schema: {
+      querystring: dashboardFilterSchema,
+      tags: ['Dashboard'],
+      summary: 'Dashboard istatistiklerini getir',
+      response: { 200: dashboardStatsSchema, ...commonErrorResponses },
+    },
   }, async (request, reply) => {
     const staffUser = request.staffUser!;
     const query = request.query;
@@ -142,7 +190,11 @@ export const dashboardRoutes: FastifyPluginAsyncZod = async (app) => {
   // SLA report — scoped
   app.get('/sla', {
     preValidation: [app.requireRole('admin', 'it_manager')],
-    schema: { tags: ['Dashboard'], summary: 'SLA özetini getir' },
+    schema: {
+      tags: ['Dashboard'],
+      summary: 'SLA özetini getir',
+      response: { 200: slaResponseSchema, ...commonErrorResponses },
+    },
   }, async (request, reply) => {
     const staffUser = request.staffUser!;
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
@@ -181,7 +233,14 @@ export const dashboardRoutes: FastifyPluginAsyncZod = async (app) => {
   // My assigned tickets
   app.get('/my-tickets', {
     preValidation: [app.authenticate],
-    schema: { tags: ['Dashboard'], summary: 'Bana atanan açık ticketları getir' },
+    schema: {
+      tags: ['Dashboard'],
+      summary: 'Bana atanan açık ticketları getir',
+      response: {
+        200: z.object({ success: z.literal(true), data: z.array(myTicketSchema) }),
+        ...commonErrorResponses,
+      },
+    },
   }, async (request, reply) => {
     const staffUser = request.staffUser!;
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
@@ -197,7 +256,15 @@ export const dashboardRoutes: FastifyPluginAsyncZod = async (app) => {
         { priority: 'desc' },
         { createdAt: 'asc' },
       ],
-      include: {
+      select: {
+        id: true,
+        ticketNumber: true,
+        subject: true,
+        status: true,
+        priority: true,
+        createdByEmail: true,
+        createdAt: true,
+        updatedAt: true,
         company: { select: { name: true } },
         category: { select: { name: true } },
       },
