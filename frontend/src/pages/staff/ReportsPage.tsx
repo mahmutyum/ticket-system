@@ -9,6 +9,7 @@ import {
   LineChart, Line,
 } from 'recharts';
 import api from '../../api/client';
+import type { Category, Company, DashboardStats, Staff } from '../../types';
 
 type Period = 'daily' | 'weekly' | 'monthly';
 type SlaPeriod = 'weekly' | 'monthly';
@@ -21,6 +22,45 @@ interface Filters {
   categoryId: string;
   assignedToId: string;
   priority: string;
+}
+
+interface OverviewBucket {
+  bucket: string;
+  created: number;
+  resolved: number;
+  inProgress: number;
+  overdue: number;
+}
+
+interface StaffPerformance {
+  id: string;
+  fullName: string;
+  role: string;
+  totalAssigned: number;
+  resolved: number;
+  open: number;
+  slaResponseRate: number | null;
+  slaResolveRate: number | null;
+  avgResolutionHours: number | null;
+}
+
+interface CategoryBreakdown {
+  categoryId: string;
+  categoryName: string;
+  count: number;
+}
+
+interface SlaTrendBucket {
+  bucket: string;
+  total: number;
+  responseRate: number | null;
+  resolveRate: number | null;
+}
+
+interface SlaSummary {
+  totalWithSla: number;
+  response: { met: number; violated: number; complianceRate: number };
+  resolution: { met: number; violated: number; complianceRate: number };
 }
 
 const PRIORITIES = [
@@ -94,56 +134,56 @@ export default function ReportsPage() {
   );
 
   // Dropdown verileri
-  const { data: companies } = useQuery({
+  const { data: companies } = useQuery<Company[]>({
     queryKey: ['companies-list'],
-    queryFn: async () => (await api.get('/companies')).data.data as any[],
+    queryFn: async () => (await api.get('/companies')).data.data,
   });
-  const { data: categories } = useQuery({
+  const { data: categories } = useQuery<Category[]>({
     queryKey: ['categories-list'],
-    queryFn: async () => (await api.get('/categories')).data.data as any[],
+    queryFn: async () => (await api.get('/categories')).data.data,
   });
-  const { data: staffList } = useQuery({
+  const { data: staffList } = useQuery<Staff[]>({
     queryKey: ['staff-list'],
-    queryFn: async () => (await api.get('/staff')).data.data as any[],
+    queryFn: async () => (await api.get('/staff')).data.data,
   });
 
   // Genel istatistikler
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<DashboardStats>({
     queryKey: ['dashboard-stats'],
     queryFn: async () => (await api.get('/dashboard/stats')).data.data,
   });
-  const { data: sla } = useQuery({
+  const { data: sla } = useQuery<SlaSummary>({
     queryKey: ['sla-report'],
     queryFn: async () => (await api.get('/dashboard/sla')).data.data,
   });
 
   // Overview zaman serisi
-  const { data: overview, isLoading: overviewLoading } = useQuery({
+  const { data: overview, isLoading: overviewLoading } = useQuery<OverviewBucket[]>({
     queryKey: ['reports-overview', baseQS, period],
     queryFn: async () =>
-      (await api.get(`/reports/overview?${buildQS(filters, { period })}`)).data.data as any[],
+      (await api.get(`/reports/overview?${buildQS(filters, { period })}`)).data.data,
     enabled: tab === 'overview',
   });
 
   // Staff performance
-  const { data: staffPerf } = useQuery({
+  const { data: staffPerf } = useQuery<StaffPerformance[]>({
     queryKey: ['staff-performance', baseQS],
-    queryFn: async () => (await api.get(`/reports/staff-performance?${baseQS}`)).data.data as any[],
+    queryFn: async () => (await api.get(`/reports/staff-performance?${baseQS}`)).data.data,
     enabled: tab === 'staff',
   });
 
   // Category breakdown
-  const { data: categoryBreakdown } = useQuery({
+  const { data: categoryBreakdown } = useQuery<CategoryBreakdown[]>({
     queryKey: ['category-breakdown', baseQS],
-    queryFn: async () => (await api.get(`/reports/categories?${baseQS}`)).data.data as any[],
+    queryFn: async () => (await api.get(`/reports/categories?${baseQS}`)).data.data,
     enabled: tab === 'category',
   });
 
   // SLA trend
-  const { data: slaTrend, isLoading: slaTrendLoading } = useQuery({
+  const { data: slaTrend, isLoading: slaTrendLoading } = useQuery<SlaTrendBucket[]>({
     queryKey: ['reports-sla-trends', baseQS, slaPeriod],
     queryFn: async () =>
-      (await api.get(`/reports/sla-trends?${buildQS(filters, { period: slaPeriod })}`)).data.data as any[],
+      (await api.get(`/reports/sla-trends?${buildQS(filters, { period: slaPeriod })}`)).data.data,
     enabled: tab === 'sla',
   });
 
@@ -450,7 +490,7 @@ export default function ReportsPage() {
             ) : (
               <div className="space-y-2">
                 {categoryBreakdown.map((item) => {
-                  const total = categoryBreakdown.reduce((s: number, i: any) => s + i.count, 0);
+                  const total = categoryBreakdown.reduce((sum, category) => sum + category.count, 0);
                   const pct = total > 0 ? Math.round((item.count / total) * 100) : 0;
                   return (
                     <div key={item.categoryId} className="flex items-center gap-3">
@@ -473,7 +513,7 @@ export default function ReportsPage() {
               <p className="text-sm text-muted">Veri yok</p>
             ) : (
               <div className="space-y-2">
-                {stats.byCompany.map((item: any) => (
+                {stats.byCompany.map(item => (
                   <div key={item.companyId} className="flex items-center justify-between py-1">
                     <span className="text-sm">{item.companyName}</span>
                     <span className="text-sm font-bold">{item.count}</span>
@@ -487,8 +527,8 @@ export default function ReportsPage() {
             <div className="card lg:col-span-2">
               <h3 className="font-semibold mb-4">Duruma Göre</h3>
               <div className="space-y-2">
-                {stats.byStatus.map((item: any) => {
-                  const total = stats.byStatus.reduce((s: number, i: any) => s + i.count, 0);
+                {stats.byStatus.map(item => {
+                  const total = stats.byStatus.reduce((sum, status) => sum + status.count, 0);
                   const pct = total > 0 ? Math.round((item.count / total) * 100) : 0;
                   return (
                     <div key={item.status} className="flex items-center gap-3">
