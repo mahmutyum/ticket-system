@@ -116,3 +116,58 @@ test('kasa parolası yalnızca açık reveal etkileşimiyle gösterilir', async 
   await expect(page.getByText('very-secret-password')).toBeVisible();
   expect(revealCalls).toBe(1);
 });
+
+test('public ticket yaşam döngüsü yanıt, dosya ve yetkili indirme linkini korur', async ({ page }) => {
+  const token = 'public-token-1234567890';
+  await page.route('**/api/**', (route) => route.fulfill({
+    contentType: 'application/json', body: JSON.stringify({ success: true, data: {} }),
+  }));
+  await page.route(`**/api/public/ticket/${token}`, (route) => route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({
+      success: true,
+      data: {
+        id: 'ticket-1', ticketNumber: 'TKT-2026-00001', subject: 'Yazıcı çalışmıyor',
+        description: 'Kağıt sıkışması oluşuyor', priority: 'medium', status: 'open',
+        createdAt: '2026-07-16T10:00:00Z', updatedAt: '2026-07-16T10:00:00Z',
+        company: { name: 'ACME' }, location: { name: 'Merkez' }, category: { name: 'Donanım' },
+        assignedTo: { fullName: 'Teknik Personel' }, customValues: [], notes: [],
+        history: [{
+          id: 'history-1', action: 'ticket_created', field: null, oldValue: null,
+          newValue: 'open', createdAt: '2026-07-16T10:00:00Z',
+        }],
+        attachments: [{ id: 'attachment-1', fileName: 'log.txt', fileSize: 1024, createdAt: '2026-07-16T10:00:00Z' }],
+        onsiteSupport: [],
+      },
+    }),
+  }));
+
+  let replyBody: unknown;
+  await page.route(`**/api/public/ticket/${token}/reply`, (route) => {
+    replyBody = route.request().postDataJSON();
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: true }) });
+  });
+  let uploadCalls = 0;
+  await page.route(`**/api/public/ticket/${token}/attachments`, async (route) => {
+    uploadCalls += 1;
+    await expect(route.request().headerValue('content-type')).resolves.toContain('multipart/form-data');
+    return route.fulfill({
+      status: 201, contentType: 'application/json',
+      body: JSON.stringify({ success: true, data: { id: 'attachment-2', fileName: 'new.txt', fileSize: 3 } }),
+    });
+  });
+
+  await page.goto(`/ticket/${token}`);
+  await expect(page.getByText('TKT-2026-00001')).toBeVisible();
+  const downloadLink = page.getByRole('link', { name: /log\.txt/ });
+  await expect(downloadLink).toHaveAttribute('href', `/api/attachments/attachment-1?token=${token}`);
+
+  await page.getByPlaceholder('Mesajınızı yazın...').fill('Sorun devam ediyor');
+  await page.getByRole('button', { name: 'Gönder' }).click();
+  await expect.poll(() => replyBody).toEqual({ content: 'Sorun devam ediyor' });
+
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'new.txt', mimeType: 'text/plain', buffer: Buffer.from('abc'),
+  });
+  await expect.poll(() => uploadCalls).toBe(1);
+});
