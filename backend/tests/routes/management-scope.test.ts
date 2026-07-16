@@ -14,14 +14,18 @@ const COMPANY_ID = 'company-1';
 function scopedPrisma() {
   const taskFindMany = vi.fn(async () => []);
   const onsiteFindMany = vi.fn(async () => []);
+  const ticketFindMany = vi.fn(async () => []);
+  const ticketCount = vi.fn(async () => 0);
   return {
     prisma: {
       staffCompany: { findMany: vi.fn(async () => [{ companyId: COMPANY_ID }]) },
       task: { findMany: taskFindMany },
       onsiteSupport: { findMany: onsiteFindMany },
+      ticket: { findMany: ticketFindMany, count: ticketCount },
     },
     taskFindMany,
     onsiteFindMany,
+    ticketFindMany,
   };
 }
 
@@ -83,5 +87,47 @@ describe('görev ve onsite şirket kapsamı', () => {
     expect(onsiteFindMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { ticket: { companyId: { in: [COMPANY_ID] } } },
     }));
+  });
+
+  it('it_manager kapsam dışı şirket filtresiyle rapor verisi okuyamaz', async () => {
+    const { prisma, ticketFindMany } = scopedPrisma();
+    const app = buildTestApp(prisma);
+    const { reportRoutes } = await import('../../src/modules/reports/reports.routes.js');
+    app.register(reportRoutes, { prefix: '/reports' });
+    await app.ready();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/reports/tickets?companyId=other-company',
+      headers: authHeader(StaffRole.it_manager, MANAGER_ID),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(ticketFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { companyId: { in: [] } },
+    }));
+  });
+
+  it('it_staff şablonları yönetemez, it_manager yeni e-posta şablonu oluşturamaz', async () => {
+    const { prisma } = scopedPrisma();
+    const app = buildTestApp(prisma);
+    const { templateRoutes } = await import('../../src/modules/templates/templates.routes.js');
+    app.register(templateRoutes, { prefix: '/templates' });
+    await app.ready();
+
+    const listResponse = await app.inject({
+      method: 'GET',
+      url: '/templates/email',
+      headers: authHeader(StaffRole.it_staff),
+    });
+    const createResponse = await app.inject({
+      method: 'POST',
+      url: '/templates/email',
+      headers: authHeader(StaffRole.it_manager, MANAGER_ID),
+      payload: {},
+    });
+
+    expect(listResponse.statusCode).toBe(403);
+    expect(createResponse.statusCode).toBe(403);
   });
 });
