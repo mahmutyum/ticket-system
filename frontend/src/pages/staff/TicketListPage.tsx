@@ -1,13 +1,16 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Search, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, X, SlidersHorizontal, TicketIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
-import { STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS } from '../../types';
+import { STATUS_LABELS, PRIORITY_LABELS } from '../../types';
 import type { Ticket, PaginatedResponse, Staff } from '../../types';
 import { useStaffSSE } from '../../hooks/useSSE';
 import { useAuthStore } from '../../stores/auth.store';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { EmptyState, SkeletonRows } from '../../components/ui/AsyncState';
+import { PriorityBadge, StatusBadge } from '../../components/ui/Badge';
 
 interface BulkResult {
   updated: number;
@@ -116,16 +119,26 @@ export default function TicketListPage() {
 
   const hasBulkChange = bulkStatus || bulkPriority || bulkAssignee;
   const canApply = canBulk && selectedIds.size > 0 && hasBulkChange && !bulkMutation.isPending;
+  const hasFilters = Boolean(search || statusFilter || priorityFilter);
+
+  const clearFilters = () => {
+    setSearch('');
+    setStatusFilter('');
+    setPriorityFilter('');
+    setPage(1);
+  };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Talepler</h1>
-      </div>
+      <PageHeader eyebrow="Destek kuyruğu" title="Talepler" description="Gelen talepleri filtrele, önceliklendir ve ekip içinde yönlendir." />
 
       {/* Filters */}
       <div className="card">
-        <div className="flex flex-wrap gap-3">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2"><SlidersHorizontal className="h-4 w-4 text-primary-600" /><h2 className="text-sm font-semibold">Arama ve filtreler</h2></div>
+          {hasFilters && <button type="button" onClick={clearFilters} className="text-sm font-medium text-primary-600 hover:text-primary-700">Tümünü temizle</button>}
+        </div>
+        <div className="grid gap-3 md:grid-cols-[minmax(260px,1fr)_200px_200px]">
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -139,7 +152,7 @@ export default function TicketListPage() {
             </div>
           </div>
           <select
-            className="input-field w-auto"
+            className="input-field"
             value={statusFilter}
             onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
           >
@@ -149,7 +162,7 @@ export default function TicketListPage() {
             ))}
           </select>
           <select
-            className="input-field w-auto"
+            className="input-field"
             value={priorityFilter}
             onChange={e => { setPriorityFilter(e.target.value); setPage(1); }}
           >
@@ -163,9 +176,9 @@ export default function TicketListPage() {
 
       {/* Bulk action toolbar */}
       {canBulk && selectedIds.size > 0 && (
-        <div className="card bg-blue-50 border border-blue-200">
+        <div className="card border-primary-200 bg-primary-50 shadow-none dark:border-primary-500/20 dark:bg-primary-500/10">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-medium text-blue-900">
+            <span className="text-sm font-semibold text-primary-900 dark:text-primary-100">
               {selectedIds.size} talep seçildi
             </span>
             <select
@@ -221,13 +234,29 @@ export default function TicketListPage() {
       {/* Table */}
       <div className="card p-0 overflow-hidden">
         {isLoading ? (
-          <div className="text-center py-12 text-gray-400">Yükleniyor...</div>
+          <SkeletonRows rows={7} />
         ) : tickets.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">Talep bulunamadı</div>
+          <EmptyState icon={TicketIcon} title="Talep bulunamadı" description={hasFilters ? 'Arama veya filtreleri değiştirerek tekrar deneyin.' : 'Destek kuyruğunda henüz bir talep yok.'} />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="divide-y divide-gray-100 md:hidden dark:divide-slate-800">
+            {tickets.map((ticket) => (
+              <div key={ticket.id} className="p-4">
+                <div className="flex items-start gap-3">
+                  {canBulk && <input type="checkbox" className="mt-1" checked={selectedIds.has(ticket.id)} onChange={() => toggleOne(ticket.id)} aria-label={`${ticket.ticketNumber} seç`} />}
+                  <Link to={`/staff/tickets/${ticket.id}`} className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2"><span className="font-mono text-xs font-semibold text-primary-600">{ticket.ticketNumber}</span><span className="whitespace-nowrap text-xs text-muted">{new Date(ticket.createdAt).toLocaleDateString('tr-TR')}</span></div>
+                    <h3 className="mt-1 truncate font-semibold">{ticket.subject}</h3>
+                    <p className="mt-1 truncate text-sm text-muted">{ticket.company.name} · {ticket.category.name}</p>
+                    <div className="mt-3 flex flex-wrap gap-2"><StatusBadge status={ticket.status} /><PriorityBadge priority={ticket.priority} /></div>
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="sticky top-0 z-[1]">
                 <tr className="bg-gray-50 dark:bg-slate-800/50 text-left text-gray-500">
                   {canBulk && (
                     <th className="px-4 py-3 w-10">
@@ -279,14 +308,10 @@ export default function TicketListPage() {
                     <td className="px-4 py-3 text-gray-500">{ticket.company.name}</td>
                     <td className="px-4 py-3 text-gray-500">{ticket.category.name}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[ticket.status] || ''}`}>
-                        {STATUS_LABELS[ticket.status] || ticket.status}
-                      </span>
+                      <StatusBadge status={ticket.status} />
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PRIORITY_COLORS[ticket.priority] || ''}`}>
-                        {PRIORITY_LABELS[ticket.priority] || ticket.priority}
-                      </span>
+                      <PriorityBadge priority={ticket.priority} />
                     </td>
                     <td className="px-4 py-3 text-gray-500">
                       {ticket.assignedTo?.fullName || <span className="text-gray-300">-</span>}
@@ -300,6 +325,7 @@ export default function TicketListPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {/* Pagination */}
@@ -312,7 +338,8 @@ export default function TicketListPage() {
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="p-1 rounded hover:bg-gray-200 disabled:opacity-30"
+                className="icon-button min-h-9 min-w-9 disabled:opacity-30"
+                aria-label="Önceki sayfa"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
@@ -322,7 +349,8 @@ export default function TicketListPage() {
               <button
                 onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
                 disabled={page === pagination.totalPages}
-                className="p-1 rounded hover:bg-gray-200 disabled:opacity-30"
+                className="icon-button min-h-9 min-w-9 disabled:opacity-30"
+                aria-label="Sonraki sayfa"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>

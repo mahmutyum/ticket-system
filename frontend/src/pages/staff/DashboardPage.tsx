@@ -5,8 +5,11 @@ import {
   AlertCircle, Clock, TrendingUp, User, Filter, X,
 } from 'lucide-react';
 import api from '../../api/client';
-import { STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, type DashboardStats } from '../../types';
+import { STATUS_LABELS, type DashboardStats } from '../../types';
 import { useStaffSSE } from '../../hooks/useSSE';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { EmptyState, SkeletonRows } from '../../components/ui/AsyncState';
+import { PriorityBadge, StatusBadge } from '../../components/ui/Badge';
 
 export default function DashboardPage() {
   const queryClient = useQueryClient();
@@ -39,23 +42,25 @@ export default function DashboardPage() {
   };
 
   if (isLoading || !stats) {
-    return <div className="text-center py-12 text-gray-400">Yükleniyor...</div>;
+    return <div className="card overflow-hidden p-0"><SkeletonRows rows={6} /></div>;
   }
 
   const summaryCards = [
-    { label: 'Açık Talepler', value: stats.summary.totalOpen, icon: AlertCircle, color: 'text-blue-600 bg-blue-100' },
-    { label: 'İşlemde', value: stats.summary.totalInProgress, icon: Clock, color: 'text-yellow-600 bg-yellow-100' },
-    { label: 'Bugün Açılan', value: stats.summary.todayCreated, icon: TrendingUp, color: 'text-green-600 bg-green-100' },
-    { label: 'SLA İhlali', value: stats.summary.slaViolations, icon: AlertCircle, color: 'text-red-600 bg-red-100' },
-    { label: 'Bana Atanan', value: stats.summary.myOpen, icon: User, color: 'text-purple-600 bg-purple-100' },
+    { label: 'Açık Talepler', hint: 'Aktif iş yükü', value: stats.summary.totalOpen, icon: AlertCircle, color: 'text-blue-700 bg-blue-100 dark:bg-blue-500/15 dark:text-blue-300' },
+    { label: 'İşlemde', hint: 'Üzerinde çalışılıyor', value: stats.summary.totalInProgress, icon: Clock, color: 'text-amber-700 bg-amber-100 dark:bg-amber-500/15 dark:text-amber-300' },
+    { label: 'Bugün Açılan', hint: 'Son 24 saat', value: stats.summary.todayCreated, icon: TrendingUp, color: 'text-emerald-700 bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300' },
+    { label: 'SLA İhlali', hint: 'Öncelik bekliyor', value: stats.summary.slaViolations, icon: AlertCircle, color: 'text-red-700 bg-red-100 dark:bg-red-500/15 dark:text-red-300' },
+    { label: 'Bana Atanan', hint: 'Kişisel kuyruğun', value: stats.summary.myOpen, icon: User, color: 'text-violet-700 bg-violet-100 dark:bg-violet-500/15 dark:text-violet-300' },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Header with filters */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <div className="flex items-center gap-2">
+      <PageHeader
+        eyebrow="Operasyon özeti"
+        title="Dashboard"
+        description="Destek kuyruğunu, SLA risklerini ve ekip iş yükünü tek bakışta izle."
+        actions={
+          <>
           {hasFilters && (
             <button onClick={clearFilters} className="btn-secondary text-xs flex items-center gap-1">
               <X className="w-3 h-3" /> Filtreleri Temizle
@@ -67,12 +72,13 @@ export default function DashboardPage() {
           >
             <Filter className="w-4 h-4" /> Filtrele
           </button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Filter panel */}
       {showFilters && (
-        <div className="card bg-gray-50 dark:bg-slate-800/50">
+        <div className="card surface-2 shadow-none">
           <div className="flex flex-wrap gap-4 items-end">
             <div className="min-w-[180px]">
               <label className="block text-xs font-medium text-gray-500 mb-1">Şirket</label>
@@ -101,15 +107,16 @@ export default function DashboardPage() {
       )}
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {summaryCards.map(card => (
-          <div key={card.label} className="card flex items-center gap-4">
-            <div className={`p-3 rounded-xl ${card.color}`}>
+          <div key={card.label} className="card flex items-center gap-4 overflow-hidden relative">
+            <div className={`p-3 rounded-2xl ${card.color}`}>
               <card.icon className="w-6 h-6" />
             </div>
-            <div>
-              <p className="text-2xl font-bold">{card.value}</p>
-              <p className="text-sm text-gray-500">{card.label}</p>
+            <div className="min-w-0">
+              <p className="text-2xl font-bold tracking-tight">{card.value}</p>
+              <p className="text-sm font-semibold">{card.label}</p>
+              <p className="truncate text-xs text-muted">{card.hint}</p>
             </div>
           </div>
         ))}
@@ -129,9 +136,7 @@ export default function DashboardPage() {
                   onClick={() => { setStatus(item.status); setShowFilters(true); }}
                   className="flex items-center gap-3 w-full hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-lg px-2 py-1 -mx-2 transition-colors"
                 >
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium min-w-[80px] text-center ${STATUS_COLORS[item.status] || 'bg-gray-100'}`}>
-                    {STATUS_LABELS[item.status] || item.status}
-                  </span>
+                  <StatusBadge status={item.status} />
                   <div className="flex-1 bg-gray-100 rounded-full h-2">
                     <div className="bg-primary-500 h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
                   </div>
@@ -172,7 +177,7 @@ export default function DashboardPage() {
           </Link>
         </div>
         {stats.recentTickets.length === 0 ? (
-          <p className="text-sm text-gray-400 py-4 text-center">Filtre kriterlerine uygun talep yok</p>
+          <EmptyState title="Talep bulunamadı" description="Seçili filtrelerle eşleşen yakın tarihli talep yok." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -198,11 +203,9 @@ export default function DashboardPage() {
                     <td className="py-2 max-w-[200px] truncate">{ticket.subject}</td>
                     <td className="py-2 text-gray-500">{ticket.company.name}</td>
                     <td className="py-2">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[ticket.status] || ''}`}>
-                        {STATUS_LABELS[ticket.status] || ticket.status}
-                      </span>
+                      <StatusBadge status={ticket.status} />
                     </td>
-                    <td className="py-2 text-xs">{PRIORITY_LABELS[ticket.priority] || ticket.priority}</td>
+                    <td className="py-2"><PriorityBadge priority={ticket.priority} /></td>
                     <td className="py-2 text-gray-500">{ticket.assignedTo?.fullName || '-'}</td>
                     <td className="py-2 text-gray-400 text-xs">
                       {new Date(ticket.createdAt).toLocaleDateString('tr-TR')}

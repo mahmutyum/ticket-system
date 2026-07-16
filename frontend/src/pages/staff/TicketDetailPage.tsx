@@ -8,11 +8,14 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../api/client';
 import {
-  STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS,
+  STATUS_LABELS, PRIORITY_LABELS,
 } from '../../types';
 import type { CannedResponse, Staff, Ticket } from '../../types';
 import { downloadAttachment } from '../../utils/download';
 import TicketTimeline from './tickets/TicketTimeline';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { SkeletonRows } from '../../components/ui/AsyncState';
+import { PriorityBadge, StatusBadge } from '../../components/ui/Badge';
 
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -113,46 +116,34 @@ export default function TicketDetailPage() {
   };
 
   if (isLoading || !ticket) {
-    return <div className="text-center py-12 text-gray-400">Yükleniyor...</div>;
+    return <div className="card overflow-hidden p-0"><SkeletonRows rows={8} /></div>;
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link to="/staff/tickets" className="p-2 hover:bg-gray-200 rounded-lg">
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-sm text-primary-600">{ticket.ticketNumber}</span>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[ticket.status]}`}>
-              {STATUS_LABELS[ticket.status]}
-            </span>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PRIORITY_COLORS[ticket.priority]}`}>
-              {PRIORITY_LABELS[ticket.priority]}
-            </span>
-          </div>
-          <h1 className="text-xl font-bold mt-1">{ticket.subject}</h1>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow={ticket.ticketNumber}
+        title={ticket.subject}
+        description={`${ticket.company?.name} · ${ticket.category?.name} · ${new Date(ticket.createdAt).toLocaleString('tr-TR')}`}
+        actions={<><StatusBadge status={ticket.status} /><PriorityBadge priority={ticket.priority} /><Link to="/staff/tickets" className="icon-button" aria-label="Talep listesine dön"><ArrowLeft className="w-5 h-5" /></Link></>}
+      />
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main content - 2 cols */}
         <div className="lg:col-span-2 space-y-6">
           {/* Description */}
           <div className="card">
-            <h3 className="text-sm font-semibold text-gray-500 mb-2">Açıklama</h3>
+            <h2 className="mb-3 text-base font-semibold">Talep açıklaması</h2>
             <p className="text-gray-800 dark:text-slate-200 whitespace-pre-wrap">{ticket.description}</p>
           </div>
 
           {/* Custom fields */}
           {(ticket.customValues?.length ?? 0) > 0 && (
             <div className="card">
-              <h3 className="text-sm font-semibold text-gray-500 mb-3">Ek Bilgiler</h3>
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <h2 className="mb-3 text-base font-semibold">Ek bilgiler</h2>
+              <div className="grid gap-3 text-sm sm:grid-cols-2">
                 {ticket.customValues?.map(cv => (
-                  <div key={cv.id} className="bg-gray-50 dark:bg-slate-800/50 rounded-lg p-3">
+                  <div key={cv.id} className="surface-2 rounded-xl p-3">
                     <span className="text-gray-500 text-xs">{cv.customField?.fieldLabel}</span>
                     <p className="font-medium mt-0.5">{cv.value}</p>
                   </div>
@@ -164,12 +155,12 @@ export default function TicketDetailPage() {
           {/* Attachments */}
           <div className="card">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-500 flex items-center gap-2">
+              <h2 className="font-semibold flex items-center gap-2">
                 <Paperclip className="w-4 h-4" /> Dosyalar
                 {(ticket.attachments?.length ?? 0) > 0 && (
                   <span className="bg-gray-200 text-gray-600 dark:text-slate-400 text-xs px-1.5 rounded-full">{ticket.attachments?.length}</span>
                 )}
-              </h3>
+              </h2>
               <label className={`btn-secondary text-xs flex items-center gap-1 cursor-pointer ${uploading ? 'opacity-50' : ''}`}>
                 <Upload className="w-3 h-3" />
                 {uploading ? 'Yükleniyor...' : 'Dosya Ekle'}
@@ -198,13 +189,13 @@ export default function TicketDetailPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-400">Henüz dosya eklenmemiş</p>
+              <p className="rounded-xl surface-2 px-4 py-6 text-center text-sm text-muted">Henüz dosya eklenmemiş</p>
             )}
           </div>
 
           {/* Timeline */}
           <div className="card">
-            <h3 className="text-sm font-semibold text-gray-500 mb-4">Zaman Çizelgesi</h3>
+            <h2 className="mb-4 text-base font-semibold">Aktivite ve notlar</h2>
             <TicketTimeline history={ticket.history} notes={ticket.notes} />
 
             {/* Add note form */}
@@ -219,7 +210,7 @@ export default function TicketDetailPage() {
                   Hazır Yanıtlar {showCanned ? '▲' : '▼'}
                 </button>
                 {showCanned && cannedResponses && (
-                  <div className="absolute z-10 bg-white border rounded-lg shadow-lg p-2 w-full max-h-48 overflow-y-auto">
+                  <div className="absolute z-10 w-full max-h-48 overflow-y-auto rounded-xl border border-subtle bg-white p-2 shadow-lg dark:bg-slate-900">
                     {cannedResponses.map(cr => (
                       <button
                         key={cr.id}
@@ -235,8 +226,8 @@ export default function TicketDetailPage() {
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-4 mb-2">
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <div className="grid grid-cols-2 gap-2 mb-2 rounded-xl surface-2 p-1">
+                <label className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm cursor-pointer ${!isInternal ? 'bg-white shadow-sm dark:bg-slate-700' : ''}`}>
                   <input
                     type="radio"
                     checked={!isInternal}
@@ -245,7 +236,7 @@ export default function TicketDetailPage() {
                   />
                   <MessageSquare className="w-4 h-4" /> Public Not
                 </label>
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <label className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm cursor-pointer ${isInternal ? 'bg-amber-100 text-amber-900 shadow-sm dark:bg-amber-500/20 dark:text-amber-200' : ''}`}>
                   <input
                     type="radio"
                     checked={isInternal}
@@ -256,7 +247,7 @@ export default function TicketDetailPage() {
                 </label>
               </div>
               <textarea
-                className={`input-field min-h-[80px] ${isInternal ? 'border-yellow-300 bg-yellow-50' : ''}`}
+                className={`input-field min-h-[100px] ${isInternal ? 'border-amber-300 bg-amber-50 dark:border-amber-500/50 dark:bg-amber-500/10' : ''}`}
                 value={noteContent}
                 onChange={e => setNoteContent(e.target.value)}
                 placeholder={isInternal ? 'Sadece IT ekibinin göreceği not...' : 'Not ekle...'}
@@ -270,10 +261,10 @@ export default function TicketDetailPage() {
         </div>
 
         {/* Sidebar - 1 col */}
-        <div className="space-y-4">
+        <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           {/* Ticket info */}
           <div className="card space-y-4">
-            <h3 className="font-semibold text-sm text-gray-500">Talep Bilgileri</h3>
+            <h2 className="font-semibold">Talep bilgileri</h2>
 
             <div className="space-y-3 text-sm">
               <div className="flex items-center gap-2">
@@ -320,7 +311,7 @@ export default function TicketDetailPage() {
 
           {/* Actions */}
           <div className="card space-y-4">
-            <h3 className="font-semibold text-sm text-gray-500">İşlemler</h3>
+            <div><h2 className="font-semibold">Hızlı işlemler</h2><p className="mt-1 text-xs text-muted">Değişiklikler anında kaydedilir.</p></div>
 
             <div>
               <label className="text-xs text-gray-500 block mb-1">Durum</label>
@@ -365,14 +356,14 @@ export default function TicketDetailPage() {
 
           {/* Onsite support */}
           <div className="card space-y-3">
-            <h3 className="font-semibold text-sm text-gray-500 flex items-center gap-2">
+            <h2 className="font-semibold flex items-center gap-2">
               <MapPin className="w-4 h-4" /> Yerinde Destek
-            </h3>
+            </h2>
 
             {(ticket.onsiteSupport?.length ?? 0) > 0 && (
               <div className="space-y-2 text-xs">
                 {ticket.onsiteSupport?.map(os => (
-                  <div key={os.id} className="bg-orange-50 rounded p-2">
+                  <div key={os.id} className="rounded-xl bg-orange-50 p-3 dark:bg-orange-500/10">
                     <div className="font-medium">{os.type === 'come_to_it_room' ? 'IT Odasına Gelin' : os.type === 'meeting_room' ? 'Toplantı Odası' : 'Yerinde Müdahale'}</div>
                     <div className="text-gray-500">{new Date(os.scheduledAt).toLocaleString('tr-TR')}</div>
                     <div className="text-gray-500">{os.location?.name}</div>
@@ -467,7 +458,7 @@ export default function TicketDetailPage() {
           {/* SLA info */}
           {(ticket.slaResponseDue || ticket.slaResolveDue) && (
             <div className="card space-y-2 text-sm">
-              <h3 className="font-semibold text-sm text-gray-500">SLA</h3>
+              <h2 className="font-semibold">SLA hedefleri</h2>
               {ticket.slaResponseDue && (
                 <div className="flex justify-between">
                   <span className="text-gray-500">Yanıt Süresi:</span>

@@ -43,6 +43,9 @@ export default function StaffLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const { theme, toggle } = useTheme();
+  const currentItem = navItems
+    .filter((item) => !item.roles || (user && item.roles.includes(user.role)))
+    .find((item) => location.pathname === item.path || (item.path !== '/staff' && location.pathname.startsWith(item.path)));
 
   const handleLogout = async () => {
     try {
@@ -143,15 +146,19 @@ export default function StaffLayout() {
         <header className="sticky top-0 z-10 glass border-b border-subtle px-4 py-3 flex items-center gap-4 lg:px-6">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden text-gray-600 dark:text-slate-300"
+            className="icon-button border-0 lg:hidden"
+            aria-label={sidebarOpen ? 'Menüyü kapat' : 'Menüyü aç'}
           >
             {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
-          <div className="flex-1" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">{currentItem?.label ?? 'Yönetim Paneli'}</p>
+            <p className="hidden text-xs text-muted sm:block">IT Destek / {currentItem?.label ?? 'Genel'}</p>
+          </div>
           <button
             onClick={toggle}
             aria-label="Tema değiştir"
-            className="p-2 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
+            className="icon-button"
           >
             {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
@@ -161,8 +168,8 @@ export default function StaffLayout() {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-4 lg:p-6 overflow-auto">
-          <Outlet />
+        <main className="flex-1 overflow-auto p-4 sm:p-5 lg:p-8">
+          <div className="mx-auto w-full max-w-[1600px]"><Outlet /></div>
         </main>
       </div>
     </div>
