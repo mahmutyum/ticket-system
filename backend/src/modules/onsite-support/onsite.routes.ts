@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { Prisma, OnsiteType, OnsiteStatus } from '@prisma/client';
 import { queueEmail } from '../../jobs/queue.js';
@@ -33,13 +33,13 @@ const onsiteListQuerySchema = z.object({
 });
 const calendarQuerySchema = z.object({ week: z.string().datetime().optional() });
 
-export const onsiteRoutes: FastifyPluginAsync = async (app) => {
+export const onsiteRoutes: FastifyPluginAsyncZod = async (app) => {
   // Create onsite support
   app.post('/', {
     preValidation: [app.authenticate],
     schema: { body: onsiteCreateSchema, tags: ['Onsite Support'], summary: 'Yerinde destek randevusu oluştur' },
   }, async (request, reply) => {
-    const body = onsiteCreateSchema.parse(request.body);
+    const body = request.body;
     const staffUser = request.staffUser!;
 
     const ticket = await app.prisma.ticket.findUnique({
@@ -119,7 +119,7 @@ export const onsiteRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.authenticate],
     schema: { querystring: onsiteListQuerySchema, tags: ['Onsite Support'], summary: 'Yerinde destek randevularını listele' },
   }, async (request, reply) => {
-    const query = onsiteListQuerySchema.parse(request.query);
+    const query = request.query;
     const staffUser = request.staffUser!;
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
@@ -159,8 +159,8 @@ export const onsiteRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.authenticate],
     schema: { params: idParamsSchema, body: onsiteUpdateSchema, tags: ['Onsite Support'], summary: 'Yerinde destek randevusunu güncelle' },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const body = onsiteUpdateSchema.parse(request.body);
+    const { id } = request.params;
+    const body = request.body;
     const staffUser = request.staffUser!;
 
     const existing = await app.prisma.onsiteSupport.findUnique({
@@ -249,7 +249,7 @@ export const onsiteRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.authenticate],
     schema: { querystring: calendarQuerySchema, tags: ['Onsite Support'], summary: 'Haftalık yerinde destek takvimini getir' },
   }, async (request, reply) => {
-    const { week } = calendarQuerySchema.parse(request.query);
+    const { week } = request.query;
     const staffUser = request.staffUser!;
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
