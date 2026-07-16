@@ -159,6 +159,39 @@ export interface OnsiteSupport {
   ticket?: { ticketNumber: string; subject: string; createdBy?: { fullName: string; phone?: string }; createdByEmail?: string };
 }
 
+export interface TaskAssignee {
+  assignedAt?: string;
+  staff: Pick<Staff, 'id' | 'fullName' | 'email' | 'avatarUrl'>;
+}
+
+export interface TaskComment {
+  id: string;
+  content: string;
+  createdAt: string;
+  createdBy: Pick<Staff, 'id' | 'fullName' | 'role'>;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  priority: string;
+  status: string;
+  dueDate?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: Pick<Staff, 'id' | 'fullName' | 'email'>;
+  location?: {
+    id: string;
+    name: string;
+    company: Pick<Company, 'id' | 'name'>;
+  } | null;
+  assignees: TaskAssignee[];
+  comments?: TaskComment[];
+  _count?: { comments: number };
+}
+
 export interface SmtpConfig {
   id: string;
   companyId: string;

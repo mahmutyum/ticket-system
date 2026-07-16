@@ -7,6 +7,8 @@ import api from '../../api/client';
 import { useAuthStore } from '../../stores/auth.store';
 // Öncelik sözlüğü ticket'larla ORTAK — burada kopyalama, tek kaynaktan al.
 import { PRIORITY_LABELS as PRIORITY_LABEL, PRIORITY_COLORS as PRIORITY_COLOR, PRIORITY_WEIGHT } from '../../types';
+import type { Company, Location, Staff, Task } from '../../types';
+import { getApiError } from '../../utils/api-error';
 
 // Durum sözlüğü göreve özgüdür (ticket'ın 9 durumundan farklı).
 const STATUS_LABEL: Record<string, string> = {
@@ -26,6 +28,16 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 type SortKey = 'dueDate' | 'priority' | 'createdAt' | 'title';
+type TaskScope = 'all' | 'assigned' | 'created';
+
+interface TaskPayload {
+  title: string;
+  description: string;
+  priority: string;
+  assigneeIds: string[];
+  locationId?: string;
+  dueDate: string | null;
+}
 
 const SORT_LABEL: Record<SortKey, string> = {
   dueDate: 'Bitiş tarihi (yakın önce)',
@@ -34,7 +46,7 @@ const SORT_LABEL: Record<SortKey, string> = {
   title: 'Başlık (A-Z)',
 };
 
-const isOverdue = (t: any) =>
+const isOverdue = (t: Task) =>
   !!t.dueDate && t.status !== 'done' && t.status !== 'cancelled' && new Date(t.dueDate) < new Date();
 
 /** Türkçe'ye duyarlı arama — 'İ/ı' İngilizce toLowerCase ile bozulur. */
@@ -73,7 +85,7 @@ export default function TasksPage() {
 
   // scope ve statusFilter sunucuya gider; aşağıdakiler istemci tarafında uygulanır
   // (liste sayfalanmadığı için tamamı zaten bellekte).
-  const [scope, setScope] = useState<'all' | 'assigned' | 'created'>(isManager ? 'all' : 'assigned');
+  const [scope, setScope] = useState<TaskScope>(isManager ? 'all' : 'assigned');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('');
   const [priorityFilter, setPriorityFilter] = useState<string>('');
@@ -85,10 +97,10 @@ export default function TasksPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
 
-  const { data: tasks, isLoading } = useQuery({
+  const { data: tasks, isLoading } = useQuery<Task[]>({
     queryKey: ['tasks', scope, statusFilter],
     queryFn: async () => {
-      const params: any = {};
+      const params: Record<string, string> = {};
       if (scope !== 'all') params.scope = scope;
       if (statusFilter) params.status = statusFilter;
       const qs = new URLSearchParams(params).toString();
@@ -96,19 +108,19 @@ export default function TasksPage() {
     },
   });
 
-  const { data: staffList } = useQuery({
+  const { data: staffList } = useQuery<Staff[]>({
     queryKey: ['staff-all'],
     queryFn: async () => (await api.get('/staff')).data.data,
     enabled: isManager,
   });
 
-  const { data: companies } = useQuery({
+  const { data: companies } = useQuery<Company[]>({
     queryKey: ['companies-active'],
     queryFn: async () => (await api.get('/companies')).data.data,
     enabled: isManager,
   });
 
-  const { data: locations } = useQuery({
+  const { data: locations } = useQuery<Location[]>({
     queryKey: ['locations-by-company', form.companyId],
     queryFn: async () => (await api.get(`/companies/${form.companyId}/locations`)).data.data,
     enabled: isManager && !!form.companyId,
@@ -127,15 +139,14 @@ export default function TasksPage() {
       return;
     }
     try {
-      const payload: any = {
+      const payload: TaskPayload = {
         title: form.title,
         description: form.description,
         priority: form.priority,
         assigneeIds: form.assigneeIds,
+        dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : null,
       };
       if (form.locationId) payload.locationId = form.locationId;
-      if (form.dueDate) payload.dueDate = new Date(form.dueDate).toISOString();
-      else payload.dueDate = null;
 
       if (editId) {
         await api.put(`/tasks/${editId}`, payload);
@@ -148,19 +159,19 @@ export default function TasksPage() {
       setShowForm(false);
       setEditId(null);
       setForm(emptyForm);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'İşlem başarısız');
+    } catch (err: unknown) {
+      toast.error(getApiError(err, 'İşlem başarısız'));
     }
   };
 
-  const handleEdit = (t: any) => {
+  const handleEdit = (t: Task) => {
     setEditId(t.id);
     setForm({
       title: t.title,
       description: t.description,
       priority: t.priority,
       dueDate: t.dueDate ? new Date(t.dueDate).toISOString().slice(0, 16) : '',
-      assigneeIds: t.assignees.map((a: any) => a.staff.id),
+      assigneeIds: t.assignees.map(a => a.staff.id),
       companyId: t.location?.company?.id || '',
       locationId: t.location?.id || '',
     });
@@ -203,26 +214,25 @@ export default function TasksPage() {
     const list = tasks || [];
     return {
       total: list.length,
-      open: list.filter((t: any) => t.status === 'open').length,
-      inProgress: list.filter((t: any) => t.status === 'in_progress').length,
-      done: list.filter((t: any) => t.status === 'done').length,
+      open: list.filter(t => t.status === 'open').length,
+      inProgress: list.filter(t => t.status === 'in_progress').length,
+      done: list.filter(t => t.status === 'done').length,
       overdue: list.filter(isOverdue).length,
     };
   }, [tasks]);
 
   const visible = useMemo(() => {
     const q = tr(search.trim());
-    const rows = (tasks || []).filter((t: any) => {
-      if (assigneeFilter && !t.assignees?.some((a: any) => a.staff.id === assigneeFilter)) return false;
+    const rows = (tasks || []).filter(t => {
+      if (assigneeFilter && !t.assignees?.some(a => a.staff.id === assigneeFilter)) return false;
       if (priorityFilter && t.priority !== priorityFilter) return false;
       if (overdueOnly && !isOverdue(t)) return false;
       if (!q) return true;
       return [t.title, t.description, t.location?.name, t.location?.company?.name]
-        .filter(Boolean)
-        .some((f: string) => tr(String(f)).includes(q));
+        .some(f => typeof f === 'string' && tr(f).includes(q));
     });
 
-    return [...rows].sort((a: any, b: any) => {
+    return [...rows].sort((a, b) => {
       switch (sortKey) {
         case 'dueDate':
           // Bitiş tarihi olmayanlar sona; geciken görevler doğal olarak başa gelir.
@@ -308,7 +318,7 @@ export default function TasksPage() {
           <select
             className="input-field w-auto"
             value={scope}
-            onChange={e => setScope(e.target.value as any)}
+              onChange={e => setScope(e.target.value as TaskScope)}
           >
             <option value="all">Tüm Görevler</option>
             <option value="assigned">Bana Atananlar</option>
@@ -324,7 +334,7 @@ export default function TasksPage() {
             onChange={e => setAssigneeFilter(e.target.value)}
           >
             <option value="">Tüm personel</option>
-            {(staffList || []).filter((s: any) => s.isActive).map((s: any) => (
+                {(staffList || []).filter(s => s.isActive).map(s => (
               <option key={s.id} value={s.id}>{s.fullName}</option>
             ))}
           </select>
@@ -395,7 +405,7 @@ export default function TasksPage() {
                     required={!editId}
                   >
                     <option value="">Şirket seçin</option>
-                    {companies?.map((c: any) => (
+                    {companies?.map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
@@ -410,7 +420,7 @@ export default function TasksPage() {
                     disabled={!form.companyId}
                   >
                     <option value="">{form.companyId ? 'Lokasyon seçin' : 'Önce şirket seçin'}</option>
-                    {locations?.map((l: any) => (
+                    {locations?.map(l => (
                       <option key={l.id} value={l.id}>{l.name}</option>
                     ))}
                   </select>
@@ -419,7 +429,7 @@ export default function TasksPage() {
               <div>
                 <label className="block text-sm font-medium mb-1">Atanan Personeller * ({form.assigneeIds.length} seçili)</label>
                 <div className="border rounded-lg max-h-60 overflow-y-auto p-2 space-y-1">
-                  {staffList?.filter((s: any) => s.isActive).map((s: any) => (
+                  {staffList?.filter(s => s.isActive).map(s => (
                     <label key={s.id} className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-colors ${form.assigneeIds.includes(s.id) ? 'bg-primary-50 border border-primary-300' : 'hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>
                       <input
                         type="checkbox"
@@ -460,7 +470,7 @@ export default function TasksPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {visible.map((t: any) => {
+          {visible.map(t => {
             const days = daysOpen(t.createdAt, t.completedAt);
             const overdue = isOverdue(t);
             return (
@@ -480,10 +490,10 @@ export default function TasksPage() {
                       {t.dueDate && <span>Bitiş: {new Date(t.dueDate).toLocaleDateString('tr-TR')}</span>}
                       <span>Oluşturan: {t.createdBy.fullName}</span>
                       {t.location && <span>Lokasyon: {t.location.company?.name} — {t.location.name}</span>}
-                      {t._count?.comments > 0 && <span>{t._count.comments} yorum</span>}
+                      {(t._count?.comments ?? 0) > 0 && <span>{t._count?.comments} yorum</span>}
                     </div>
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {t.assignees.map((a: any) => (
+                      {t.assignees.map(a => (
                         <span
                           key={a.staff.id}
                           className={`text-xs px-2 py-0.5 rounded-full cursor-default ${

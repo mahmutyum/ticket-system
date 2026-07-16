@@ -8,6 +8,7 @@ import { getApiError } from '../../utils/api-error';
 import { useAuthStore } from '../../stores/auth.store';
 // Öncelik sözlüğü ticket'larla ORTAK — burada kopyalama, tek kaynaktan al.
 import { PRIORITY_LABELS as PRIORITY_LABEL, PRIORITY_COLORS as PRIORITY_COLOR } from '../../types';
+import type { Task } from '../../types';
 
 const STATUS_LABEL: Record<string, string> = {
   open: 'Açık',
@@ -36,7 +37,7 @@ export default function TaskDetailPage() {
   const [comment, setComment] = useState('');
   const [sending, setSending] = useState(false);
 
-  const { data: task, isLoading } = useQuery({
+  const { data: task, isLoading } = useQuery<Task>({
     queryKey: ['task', id],
     queryFn: async () => (await api.get(`/tasks/${id}`)).data.data,
     enabled: !!id,
@@ -75,7 +76,7 @@ export default function TaskDetailPage() {
   const days = daysOpen(task.createdAt, task.completedAt);
   const overdue = task.dueDate && task.status !== 'done' && task.status !== 'cancelled' && new Date(task.dueDate) < new Date();
   const isManager = user?.role === 'admin' || user?.role === 'it_manager';
-  const isAssignee = task.assignees.some((a: any) => a.staff.id === user?.id);
+  const isAssignee = task.assignees.some(a => a.staff.id === user?.id);
 
   return (
     <div className="space-y-4 max-w-4xl">
@@ -139,7 +140,7 @@ export default function TaskDetailPage() {
           <div>
             <div className="text-xs text-gray-500 flex items-center gap-1 mb-2"><Users className="w-3.5 h-3.5" />Atanan Personeller ({task.assignees.length})</div>
             <div className="flex flex-wrap gap-1">
-              {task.assignees.map((a: any) => (
+              {task.assignees.map(a => (
                 <span key={a.staff.id} className="text-xs bg-primary-50 text-primary-700 px-2 py-1 rounded-full">
                   {a.staff.fullName}
                 </span>
@@ -167,7 +168,7 @@ export default function TaskDetailPage() {
         <h2 className="text-lg font-semibold mb-4">Yorumlar ({task.comments?.length || 0})</h2>
 
         <div className="space-y-3 mb-4">
-          {task.comments?.length ? task.comments.map((c: any) => (
+          {task.comments?.length ? task.comments.map(c => (
             <div key={c.id} className="border-l-2 border-primary-300 pl-3 py-1">
               <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                 <span className="font-medium text-gray-700 dark:text-slate-300">{c.createdBy.fullName}</span>

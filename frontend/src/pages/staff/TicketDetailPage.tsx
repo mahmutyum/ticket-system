@@ -10,7 +10,12 @@ import api from '../../api/client';
 import {
   STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS,
 } from '../../types';
+import type { CannedResponse, Staff, Ticket, TicketHistory, TicketNote } from '../../types';
 import { downloadAttachment } from '../../utils/download';
+
+type TimelineItem =
+  | (TicketHistory & { _type: 'history'; _time: string })
+  | (TicketNote & { _type: 'note'; _time: string });
 
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -23,14 +28,14 @@ export default function TicketDetailPage() {
   const [showOnsiteForm, setShowOnsiteForm] = useState(false);
   const [onsiteForm, setOnsiteForm] = useState({ type: 'come_to_it_room', scheduledAt: '', durationMin: 15, roomInfo: '', notes: '' });
 
-  const { data: ticket, isLoading } = useQuery({
+  const { data: ticket, isLoading } = useQuery<Ticket>({
     queryKey: ['ticket', id],
     queryFn: async () => (await api.get(`/tickets/${id}`)).data.data,
     enabled: !!id,
   });
 
   // Staff list filtered by ticket's company
-  const { data: staffList } = useQuery({
+  const { data: staffList } = useQuery<Staff[]>({
     queryKey: ['staff-list', ticket?.companyId],
     queryFn: async () => {
       const params = ticket?.companyId ? `?companyId=${ticket.companyId}` : '';
@@ -39,7 +44,7 @@ export default function TicketDetailPage() {
     enabled: !!ticket,
   });
 
-  const { data: cannedResponses } = useQuery({
+  const { data: cannedResponses } = useQuery<CannedResponse[]>({
     queryKey: ['canned-responses'],
     queryFn: async () => (await api.get('/templates/canned')).data.data,
   });
@@ -115,9 +120,9 @@ export default function TicketDetailPage() {
   }
 
   // Merge notes and history into timeline
-  const timeline = [
-    ...(ticket.history || []).map((h: any) => ({ ...h, _type: 'history', _time: h.createdAt })),
-    ...(ticket.notes || []).map((n: any) => ({ ...n, _type: 'note', _time: n.createdAt })),
+  const timeline: TimelineItem[] = [
+    ...(ticket.history || []).map(h => ({ ...h, _type: 'history' as const, _time: h.createdAt })),
+    ...(ticket.notes || []).map(n => ({ ...n, _type: 'note' as const, _time: n.createdAt })),
   ].sort((a, b) => new Date(a._time).getTime() - new Date(b._time).getTime());
 
   return (
@@ -151,13 +156,13 @@ export default function TicketDetailPage() {
           </div>
 
           {/* Custom fields */}
-          {ticket.customValues?.length > 0 && (
+          {(ticket.customValues?.length ?? 0) > 0 && (
             <div className="card">
               <h3 className="text-sm font-semibold text-gray-500 mb-3">Ek Bilgiler</h3>
               <div className="grid grid-cols-2 gap-3 text-sm">
-                {ticket.customValues.map((cv: any) => (
+                {ticket.customValues?.map(cv => (
                   <div key={cv.id} className="bg-gray-50 dark:bg-slate-800/50 rounded-lg p-3">
-                    <span className="text-gray-500 text-xs">{cv.customField.fieldLabel}</span>
+                    <span className="text-gray-500 text-xs">{cv.customField?.fieldLabel}</span>
                     <p className="font-medium mt-0.5">{cv.value}</p>
                   </div>
                 ))}
@@ -170,8 +175,8 @@ export default function TicketDetailPage() {
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-gray-500 flex items-center gap-2">
                 <Paperclip className="w-4 h-4" /> Dosyalar
-                {ticket.attachments?.length > 0 && (
-                  <span className="bg-gray-200 text-gray-600 dark:text-slate-400 text-xs px-1.5 rounded-full">{ticket.attachments.length}</span>
+                {(ticket.attachments?.length ?? 0) > 0 && (
+                  <span className="bg-gray-200 text-gray-600 dark:text-slate-400 text-xs px-1.5 rounded-full">{ticket.attachments?.length}</span>
                 )}
               </h3>
               <label className={`btn-secondary text-xs flex items-center gap-1 cursor-pointer ${uploading ? 'opacity-50' : ''}`}>
@@ -180,9 +185,9 @@ export default function TicketDetailPage() {
                 <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} />
               </label>
             </div>
-            {ticket.attachments?.length > 0 ? (
+            {(ticket.attachments?.length ?? 0) > 0 ? (
               <div className="space-y-2">
-                {ticket.attachments.map((att: any) => (
+                {ticket.attachments?.map(att => (
                   <button
                     key={att.id}
                     type="button"
@@ -210,7 +215,7 @@ export default function TicketDetailPage() {
           <div className="card">
             <h3 className="text-sm font-semibold text-gray-500 mb-4">Zaman Çizelgesi</h3>
             <div className="space-y-4">
-              {timeline.map((item: any, _i: number) => {
+              {timeline.map(item => {
                 if (item._type === 'note') {
                   return (
                     <div key={`note-${item.id}`} className={`rounded-lg p-4 ${item.isInternal ? 'bg-yellow-50 border border-yellow-200' : 'bg-primary-50 border border-primary-200'}`}>
@@ -248,7 +253,7 @@ export default function TicketDetailPage() {
                       {item.createdBy && <span className="text-xs ml-2">({item.createdBy.fullName})</span>}
                       <span className="ml-2">
                         {item.action === 'ticket_created' && 'Talep oluşturuldu'}
-                        {item.action === 'status_changed' && `Durum: ${STATUS_LABELS[item.oldValue] || item.oldValue} → ${STATUS_LABELS[item.newValue] || item.newValue}`}
+                        {item.action === 'status_changed' && `Durum: ${STATUS_LABELS[item.oldValue ?? ''] || item.oldValue} → ${STATUS_LABELS[item.newValue ?? ''] || item.newValue}`}
                         {item.action === 'priority_changed' && `Öncelik: ${item.oldValue} → ${item.newValue}`}
                         {item.action === 'assigned' && 'Talep atandı'}
                         {item.action === 'user_reply' && `Kullanıcı yanıtı: ${item.newValue}`}
@@ -273,7 +278,7 @@ export default function TicketDetailPage() {
                 </button>
                 {showCanned && cannedResponses && (
                   <div className="absolute z-10 bg-white border rounded-lg shadow-lg p-2 w-full max-h-48 overflow-y-auto">
-                    {cannedResponses.map((cr: any) => (
+                    {cannedResponses.map(cr => (
                       <button
                         key={cr.id}
                         type="button"
@@ -409,7 +414,7 @@ export default function TicketDetailPage() {
                 onChange={e => handleAssign(e.target.value || null)}
               >
                 <option value="">Atanmamış</option>
-                {staffList?.map((s: any) => (
+                {staffList?.map(s => (
                   <option key={s.id} value={s.id}>{s.fullName}</option>
                 ))}
               </select>
@@ -422,9 +427,9 @@ export default function TicketDetailPage() {
               <MapPin className="w-4 h-4" /> Yerinde Destek
             </h3>
 
-            {ticket.onsiteSupport?.length > 0 && (
+            {(ticket.onsiteSupport?.length ?? 0) > 0 && (
               <div className="space-y-2 text-xs">
-                {ticket.onsiteSupport.map((os: any) => (
+                {ticket.onsiteSupport?.map(os => (
                   <div key={os.id} className="bg-orange-50 rounded p-2">
                     <div className="font-medium">{os.type === 'come_to_it_room' ? 'IT Odasına Gelin' : os.type === 'meeting_room' ? 'Toplantı Odası' : 'Yerinde Müdahale'}</div>
                     <div className="text-gray-500">{new Date(os.scheduledAt).toLocaleString('tr-TR')}</div>
