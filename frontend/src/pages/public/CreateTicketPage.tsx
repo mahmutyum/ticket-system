@@ -105,14 +105,14 @@ export default function CreateTicketPage() {
     if (companies.length === 1 && !form.companyId) {
       update({ companyId: companies[0].id });
     }
-  }, [companies]);
+  }, [companies, form.companyId]);
 
   // Auto-select single location
   useEffect(() => {
     if (locations && locations.length === 1 && !form.locationId) {
       update({ locationId: locations[0].id });
     }
-  }, [locations]);
+  }, [locations, form.locationId]);
 
   // Fetch categories for selected company
   const { data: categories } = useQuery<Category[]>({

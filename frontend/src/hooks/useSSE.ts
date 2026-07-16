@@ -3,9 +3,9 @@ import { useAuthStore } from '../stores/auth.store';
 import api from '../api/client';
 
 interface SSEOptions {
-  onTicketCreated?: (data: any) => void;
-  onTicketUpdated?: (data: any) => void;
-  onNoteAdded?: (data: any) => void;
+  onTicketCreated?: (data: unknown) => void;
+  onTicketUpdated?: (data: unknown) => void;
+  onNoteAdded?: (data: unknown) => void;
   enabled?: boolean;
 }
 
@@ -79,7 +79,7 @@ export function useStaffSSE(options: SSEOptions) {
   }, [enabled, token, connect]);
 }
 
-export function useTicketSSE(accessToken: string | undefined, onUpdate?: (data: any) => void) {
+export function useTicketSSE(accessToken: string | undefined, onUpdate?: (data: unknown) => void) {
   const eventSourceRef = useRef<EventSource | null>(null);
   const retriesRef = useRef(0);
 

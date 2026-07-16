@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { MapPin, User, ChevronLeft, ChevronRight, CalendarDays, X, Clock, Hash } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
+import type { OnsiteSupport } from '../../types';
 
 const TYPE_LABELS: Record<string, string> = {
   come_to_it_room: 'IT Odasına Gelin',
@@ -37,10 +38,11 @@ const HOUR_HEIGHT = 80; // px
 const TOTAL_HOURS = TIMELINE_END_HOUR - TIMELINE_START_HOUR;
 const DEFAULT_DURATION_MIN = 15;
 
-type LayoutItem = { event: any; col: number; cols: number };
+type CalendarEvent = OnsiteSupport & { ticket?: { ticketNumber: string; subject: string; createdBy?: { fullName: string; phone?: string }; createdByEmail?: string } };
+type LayoutItem = { event: CalendarEvent; col: number; cols: number };
 
 // Bir event'in dakika cinsinden süresi: scheduledEnd varsa ondan, yoksa varsayılan.
-function eventDurationMin(e: any, fallback = DEFAULT_DURATION_MIN): number {
+function eventDurationMin(e: CalendarEvent, fallback = DEFAULT_DURATION_MIN): number {
   if (!e.scheduledEnd) return fallback;
   const ms = new Date(e.scheduledEnd).getTime() - new Date(e.scheduledAt).getTime();
   const min = Math.round(ms / 60000);
@@ -49,7 +51,7 @@ function eventDurationMin(e: any, fallback = DEFAULT_DURATION_MIN): number {
 
 // Interval-overlap lane atama: aynı anda örtüşen event'leri ayrı kolonlara yerleştirir.
 // Paralel randevular normaldir; çakışma uyarısı yok.
-function computeLayout(events: any[]): LayoutItem[] {
+function computeLayout(events: CalendarEvent[]): LayoutItem[] {
   if (events.length === 0) return [];
   const items = events
     .map((e) => {
@@ -160,14 +162,14 @@ export default function OnsiteSupportPage() {
     }
   };
 
-  const eventsForDay = (day: Date) => {
-    if (!data?.events) return [] as any[];
-    return (data.events as any[])
+  const eventsForDay = useCallback((day: Date) => {
+    if (!data?.events) return [];
+    return (data.events as CalendarEvent[])
       .filter((e) => sameDay(new Date(e.scheduledAt), day))
       .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
-  };
+  }, [data?.events]);
 
-  const selectedDayEvents = useMemo(() => eventsForDay(selectedDate), [data, selectedDate]);
+  const selectedDayEvents = useMemo(() => eventsForDay(selectedDate), [eventsForDay, selectedDate]);
 
   // Interval-overlap lane atama (15 dk varsayılan süre)
   const layout = useMemo(() => computeLayout(selectedDayEvents), [selectedDayEvents]);

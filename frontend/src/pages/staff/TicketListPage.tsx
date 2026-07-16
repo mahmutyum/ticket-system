@@ -53,7 +53,7 @@ export default function TicketListPage() {
     enabled: canBulk,
   });
 
-  const tickets = data?.data || [];
+  const tickets = useMemo(() => data?.data || [], [data?.data]);
   const pagination = data?.pagination;
 
   const allOnPageSelected = useMemo(
