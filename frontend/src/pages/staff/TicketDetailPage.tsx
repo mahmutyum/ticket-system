@@ -10,12 +10,9 @@ import api from '../../api/client';
 import {
   STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS,
 } from '../../types';
-import type { CannedResponse, Staff, Ticket, TicketHistory, TicketNote } from '../../types';
+import type { CannedResponse, Staff, Ticket } from '../../types';
 import { downloadAttachment } from '../../utils/download';
-
-type TimelineItem =
-  | (TicketHistory & { _type: 'history'; _time: string })
-  | (TicketNote & { _type: 'note'; _time: string });
+import TicketTimeline from './tickets/TicketTimeline';
 
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -119,12 +116,6 @@ export default function TicketDetailPage() {
     return <div className="text-center py-12 text-gray-400">Yükleniyor...</div>;
   }
 
-  // Merge notes and history into timeline
-  const timeline: TimelineItem[] = [
-    ...(ticket.history || []).map(h => ({ ...h, _type: 'history' as const, _time: h.createdAt })),
-    ...(ticket.notes || []).map(n => ({ ...n, _type: 'note' as const, _time: n.createdAt })),
-  ].sort((a, b) => new Date(a._time).getTime() - new Date(b._time).getTime());
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -214,56 +205,7 @@ export default function TicketDetailPage() {
           {/* Timeline */}
           <div className="card">
             <h3 className="text-sm font-semibold text-gray-500 mb-4">Zaman Çizelgesi</h3>
-            <div className="space-y-4">
-              {timeline.map(item => {
-                if (item._type === 'note') {
-                  return (
-                    <div key={`note-${item.id}`} className={`rounded-lg p-4 ${item.isInternal ? 'bg-yellow-50 border border-yellow-200' : 'bg-primary-50 border border-primary-200'}`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        {item.isInternal ? (
-                          <Lock className="w-4 h-4 text-yellow-600" />
-                        ) : (
-                          <MessageSquare className="w-4 h-4 text-primary-600" />
-                        )}
-                        <span className="font-medium text-sm">
-                          {item.createdBy?.fullName}
-                        </span>
-                        {item.isInternal && (
-                          <span className="text-xs bg-yellow-200 text-yellow-700 px-1.5 py-0.5 rounded">
-                            Dahili Not
-                          </span>
-                        )}
-                        <span className="text-xs text-gray-400 ml-auto">
-                          {new Date(item.createdAt).toLocaleString('tr-TR')}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-700 dark:text-slate-300">{item.content}</p>
-                    </div>
-                  );
-                }
-
-                // History entry
-                return (
-                  <div key={`hist-${item.id}`} className="flex gap-3 text-sm text-gray-500">
-                    <div className="w-2 h-2 rounded-full bg-gray-300 mt-1.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <span className="text-xs text-gray-400">
-                        {new Date(item.createdAt).toLocaleString('tr-TR')}
-                      </span>
-                      {item.createdBy && <span className="text-xs ml-2">({item.createdBy.fullName})</span>}
-                      <span className="ml-2">
-                        {item.action === 'ticket_created' && 'Talep oluşturuldu'}
-                        {item.action === 'status_changed' && `Durum: ${STATUS_LABELS[item.oldValue ?? ''] || item.oldValue} → ${STATUS_LABELS[item.newValue ?? ''] || item.newValue}`}
-                        {item.action === 'priority_changed' && `Öncelik: ${item.oldValue} → ${item.newValue}`}
-                        {item.action === 'assigned' && 'Talep atandı'}
-                        {item.action === 'user_reply' && `Kullanıcı yanıtı: ${item.newValue}`}
-                        {item.action === 'onsite_scheduled' && 'Yerinde destek planlandı'}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <TicketTimeline history={ticket.history} notes={ticket.notes} />
 
             {/* Add note form */}
             <form onSubmit={handleAddNote} className="mt-6 pt-4 border-t space-y-3">
