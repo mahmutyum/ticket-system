@@ -12,6 +12,9 @@ const reportFilterSchema = paginationSchema.extend({
   status: z.string().optional(),
   priority: z.string().optional(),
 });
+const commonReportFilterSchema = reportFilterSchema.omit({ page: true, limit: true });
+const overviewFilterSchema = commonReportFilterSchema.extend({ period: z.enum(['daily', 'weekly', 'monthly']).optional() });
+const slaTrendFilterSchema = commonReportFilterSchema.extend({ period: z.enum(['weekly', 'monthly']).optional() });
 
 type CommonFilters = {
   dateFrom?: string;
@@ -78,7 +81,8 @@ export function csvEscape(value: string | null | undefined): string {
 export const reportRoutes: FastifyPluginAsync = async (app) => {
   // Ticket report with date filtering and aggregation
   app.get('/tickets', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { querystring: reportFilterSchema, tags: ['Reports'], summary: 'Ticket raporunu getir' },
   }, async (request, reply) => {
     const query = reportFilterSchema.parse(request.query);
     const { skip, take } = paginate(query);
@@ -118,9 +122,10 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
 
   // Staff performance report
   app.get('/staff-performance', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { querystring: commonReportFilterSchema, tags: ['Reports'], summary: 'Personel performans raporunu getir' },
   }, async (request, reply) => {
-    const query = request.query as CommonFilters;
+    const query = commonReportFilterSchema.parse(request.query);
     const staffUser = request.staffUser!;
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
@@ -182,9 +187,10 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
 
   // Category breakdown report
   app.get('/categories', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { querystring: commonReportFilterSchema, tags: ['Reports'], summary: 'Kategori dağılım raporunu getir' },
   }, async (request, reply) => {
-    const query = request.query as CommonFilters;
+    const query = commonReportFilterSchema.parse(request.query);
     const staffUser = request.staffUser!;
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
@@ -216,9 +222,10 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
 
   // CSV export
   app.get('/export/csv', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { querystring: commonReportFilterSchema, tags: ['Reports'], summary: 'Ticket raporunu CSV dışa aktar' },
   }, async (request, reply) => {
-    const query = request.query as CommonFilters;
+    const query = commonReportFilterSchema.parse(request.query);
     const staffUser = request.staffUser!;
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
@@ -262,9 +269,10 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
 
   // Zaman serisi overview: günlük / haftalık / aylık bucket'larda created/resolved/inProgress/overdue
   app.get('/overview', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { querystring: overviewFilterSchema, tags: ['Reports'], summary: 'Rapor zaman serisini getir' },
   }, async (request, reply) => {
-    const query = request.query as CommonFilters & { period?: 'daily' | 'weekly' | 'monthly' };
+    const query = overviewFilterSchema.parse(request.query);
     const period = query.period === 'weekly' ? 'week' : query.period === 'monthly' ? 'month' : 'day';
     const staffUser = request.staffUser!;
 
@@ -325,9 +333,10 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
 
   // SLA trend serisi
   app.get('/sla-trends', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { querystring: slaTrendFilterSchema, tags: ['Reports'], summary: 'SLA trend raporunu getir' },
   }, async (request, reply) => {
-    const query = request.query as CommonFilters & { period?: 'weekly' | 'monthly' };
+    const query = slaTrendFilterSchema.parse(request.query);
     const period = query.period === 'monthly' ? 'month' : 'week';
     const staffUser = request.staffUser!;
 

@@ -10,11 +10,13 @@ const notificationFilterSchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(50),
 });
+const idParamsSchema = z.object({ id: z.string().min(1).max(128) });
 
 export const notificationRoutes: FastifyPluginAsync = async (app) => {
   // List notifications with proper filtering and pagination
   app.get('/', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { querystring: notificationFilterSchema, tags: ['Notifications'], summary: 'Bildirimleri filtreleyerek listele' },
   }, async (request, reply) => {
     const query = notificationFilterSchema.parse(request.query);
 
@@ -50,7 +52,8 @@ export const notificationRoutes: FastifyPluginAsync = async (app) => {
 
   // Retry failed notification — actually re-queue the job
   app.post('/:id/retry', {
-    preHandler: [app.requireRole('admin')],
+    preValidation: [app.requireRole('admin')],
+    schema: { params: idParamsSchema, tags: ['Notifications'], summary: 'Başarısız bildirimi yeniden kuyruğa al' },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
 
@@ -95,7 +98,8 @@ export const notificationRoutes: FastifyPluginAsync = async (app) => {
 
   // Notification stats
   app.get('/stats', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { tags: ['Notifications'], summary: 'Bildirim istatistiklerini getir' },
   }, async (request, reply) => {
     const [pending, sent, failed] = await Promise.all([
       app.prisma.notification.count({ where: { status: 'pending' } }),

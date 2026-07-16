@@ -21,12 +21,17 @@ const cannedResponseSchema = z.object({
   category: z.string().optional(),
   sortOrder: z.number().int().default(0),
 });
+const idParamsSchema = z.object({ id: z.string().min(1).max(128) });
+const emailTemplateUpdateSchema = emailTemplateSchema.partial();
+const smsTemplateUpdateSchema = smsTemplateSchema.partial();
+const cannedResponseUpdateSchema = cannedResponseSchema.partial();
 
 export const templateRoutes: FastifyPluginAsync = async (app) => {
   // ==================== EMAIL TEMPLATES ====================
 
   app.get('/email', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { tags: ['Templates'], summary: 'E-posta şablonlarını listele' },
   }, async (request, reply) => {
     const templates = await app.prisma.emailTemplate.findMany({
       orderBy: { slug: 'asc' },
@@ -35,7 +40,8 @@ export const templateRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.get('/email/:id', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { params: idParamsSchema, tags: ['Templates'], summary: 'E-posta şablonunu getir' },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const template = await app.prisma.emailTemplate.findUnique({ where: { id } });
@@ -46,7 +52,8 @@ export const templateRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.post('/email', {
-    preHandler: [app.requireRole('admin')],
+    preValidation: [app.requireRole('admin')],
+    schema: { body: emailTemplateSchema, tags: ['Templates'], summary: 'E-posta şablonu oluştur' },
   }, async (request, reply) => {
     const body = emailTemplateSchema.parse(request.body);
     const template = await app.prisma.emailTemplate.create({
@@ -56,10 +63,11 @@ export const templateRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.put('/email/:id', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { params: idParamsSchema, body: emailTemplateUpdateSchema, tags: ['Templates'], summary: 'E-posta şablonunu güncelle' },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const body = emailTemplateSchema.partial().parse(request.body);
+    const body = emailTemplateUpdateSchema.parse(request.body);
     const template = await app.prisma.emailTemplate.update({
       where: { id },
       data: { ...body, variables: body.variables },
@@ -68,7 +76,8 @@ export const templateRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.delete('/email/:id', {
-    preHandler: [app.requireRole('admin')],
+    preValidation: [app.requireRole('admin')],
+    schema: { params: idParamsSchema, tags: ['Templates'], summary: 'E-posta şablonunu sil' },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     await app.prisma.emailTemplate.delete({ where: { id } });
@@ -78,7 +87,8 @@ export const templateRoutes: FastifyPluginAsync = async (app) => {
   // ==================== SMS TEMPLATES ====================
 
   app.get('/sms', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { tags: ['Templates'], summary: 'SMS şablonlarını listele' },
   }, async (request, reply) => {
     const templates = await app.prisma.smsTemplate.findMany({
       orderBy: { slug: 'asc' },
@@ -87,7 +97,8 @@ export const templateRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.post('/sms', {
-    preHandler: [app.requireRole('admin')],
+    preValidation: [app.requireRole('admin')],
+    schema: { body: smsTemplateSchema, tags: ['Templates'], summary: 'SMS şablonu oluştur' },
   }, async (request, reply) => {
     const body = smsTemplateSchema.parse(request.body);
     const template = await app.prisma.smsTemplate.create({
@@ -97,10 +108,11 @@ export const templateRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.put('/sms/:id', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { params: idParamsSchema, body: smsTemplateUpdateSchema, tags: ['Templates'], summary: 'SMS şablonunu güncelle' },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const body = smsTemplateSchema.partial().parse(request.body);
+    const body = smsTemplateUpdateSchema.parse(request.body);
     const template = await app.prisma.smsTemplate.update({
       where: { id },
       data: { ...body, variables: body.variables },
@@ -109,7 +121,8 @@ export const templateRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.delete('/sms/:id', {
-    preHandler: [app.requireRole('admin')],
+    preValidation: [app.requireRole('admin')],
+    schema: { params: idParamsSchema, tags: ['Templates'], summary: 'SMS şablonunu sil' },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     await app.prisma.smsTemplate.delete({ where: { id } });
@@ -119,7 +132,8 @@ export const templateRoutes: FastifyPluginAsync = async (app) => {
   // ==================== CANNED RESPONSES ====================
 
   app.get('/canned', {
-    preHandler: [app.authenticate],
+    preValidation: [app.authenticate],
+    schema: { tags: ['Templates'], summary: 'Hazır yanıtları listele' },
   }, async (request, reply) => {
     const responses = await app.prisma.cannedResponse.findMany({
       orderBy: [{ category: 'asc' }, { sortOrder: 'asc' }],
@@ -128,7 +142,8 @@ export const templateRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.post('/canned', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { body: cannedResponseSchema, tags: ['Templates'], summary: 'Hazır yanıt oluştur' },
   }, async (request, reply) => {
     const body = cannedResponseSchema.parse(request.body);
     const response = await app.prisma.cannedResponse.create({ data: body });
@@ -136,16 +151,18 @@ export const templateRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.put('/canned/:id', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { params: idParamsSchema, body: cannedResponseUpdateSchema, tags: ['Templates'], summary: 'Hazır yanıtı güncelle' },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const body = cannedResponseSchema.partial().parse(request.body);
+    const body = cannedResponseUpdateSchema.parse(request.body);
     const response = await app.prisma.cannedResponse.update({ where: { id }, data: body });
     reply.send({ success: true, data: response });
   });
 
   app.delete('/canned/:id', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { params: idParamsSchema, tags: ['Templates'], summary: 'Hazır yanıtı sil' },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     await app.prisma.cannedResponse.delete({ where: { id } });

@@ -25,11 +25,19 @@ const onsiteUpdateSchema = z.object({
   notes: z.string().optional(),
   roomInfo: z.string().optional(),
 });
+const idParamsSchema = z.object({ id: z.string().min(1).max(128) });
+const onsiteListQuerySchema = z.object({
+  status: z.nativeEnum(OnsiteStatus).optional(),
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+});
+const calendarQuerySchema = z.object({ week: z.string().datetime().optional() });
 
 export const onsiteRoutes: FastifyPluginAsync = async (app) => {
   // Create onsite support
   app.post('/', {
-    preHandler: [app.authenticate],
+    preValidation: [app.authenticate],
+    schema: { body: onsiteCreateSchema, tags: ['Onsite Support'], summary: 'Yerinde destek randevusu oluştur' },
   }, async (request, reply) => {
     const body = onsiteCreateSchema.parse(request.body);
     const staffUser = request.staffUser!;
@@ -108,9 +116,10 @@ export const onsiteRoutes: FastifyPluginAsync = async (app) => {
 
   // List onsite support
   app.get('/', {
-    preHandler: [app.authenticate],
+    preValidation: [app.authenticate],
+    schema: { querystring: onsiteListQuerySchema, tags: ['Onsite Support'], summary: 'Yerinde destek randevularını listele' },
   }, async (request, reply) => {
-    const query = request.query as { status?: string; from?: string; to?: string };
+    const query = onsiteListQuerySchema.parse(request.query);
     const staffUser = request.staffUser!;
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
@@ -147,7 +156,8 @@ export const onsiteRoutes: FastifyPluginAsync = async (app) => {
 
   // Update onsite support
   app.put('/:id', {
-    preHandler: [app.authenticate],
+    preValidation: [app.authenticate],
+    schema: { params: idParamsSchema, body: onsiteUpdateSchema, tags: ['Onsite Support'], summary: 'Yerinde destek randevusunu güncelle' },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = onsiteUpdateSchema.parse(request.body);
@@ -232,9 +242,10 @@ export const onsiteRoutes: FastifyPluginAsync = async (app) => {
 
   // Calendar view
   app.get('/calendar', {
-    preHandler: [app.authenticate],
+    preValidation: [app.authenticate],
+    schema: { querystring: calendarQuerySchema, tags: ['Onsite Support'], summary: 'Haftalık yerinde destek takvimini getir' },
   }, async (request, reply) => {
-    const { week } = request.query as { week?: string };
+    const { week } = calendarQuerySchema.parse(request.query);
     const staffUser = request.staffUser!;
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
