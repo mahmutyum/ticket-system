@@ -1,7 +1,8 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { createAuditLog } from '../../middleware/audit.js';
 import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
+import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
 
 const categoryCreateSchema = z.object({
   companyId: z.string().cuid().nullable().optional(),
@@ -19,12 +20,35 @@ const categoryUpdateSchema = categoryCreateSchema.partial().extend({
 });
 const idParamsSchema = z.object({ id: z.string().min(1).max(128) });
 const reorderSchema = z.array(z.object({ id: z.string().cuid(), sortOrder: z.number().int() }));
+const categorySummarySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  companyId: z.string().nullable(),
+});
+const categorySchema = categorySummarySchema.extend({
+  description: z.string().nullable(),
+  parentId: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+  slaResponseMinutes: z.number().int().nullable(),
+  slaResolutionMinutes: z.number().int().nullable(),
+  autoAssignTo: z.string().nullable(),
+  createdAt: z.date(),
+});
+const categoryResponseSchema = z.object({ success: z.literal(true), data: categorySchema });
 
-export const categoryRoutes: FastifyPluginAsync = async (app) => {
+export const categoryRoutes: FastifyPluginAsyncZod = async (app) => {
   // Staff: tüm aktif kategorileri listele (raporlar filtre dropdown'ı için)
   app.get('/', {
     preValidation: [app.authenticate],
-    schema: { tags: ['Categories'], summary: 'Aktif kategorileri listele' },
+    schema: {
+      tags: ['Categories'],
+      summary: 'Aktif kategorileri listele',
+      response: {
+        200: z.object({ success: z.literal(true), data: z.array(categorySummarySchema) }),
+        ...commonErrorResponses,
+      },
+    },
   }, async (_request, reply) => {
     const categories = await app.prisma.category.findMany({
       where: { isActive: true },
@@ -37,9 +61,14 @@ export const categoryRoutes: FastifyPluginAsync = async (app) => {
   // Admin: Reorder — MUST be before /:id
   app.put('/reorder', {
     preValidation: [app.requireRole('admin', 'it_manager')],
-    schema: { body: reorderSchema, tags: ['Categories'], summary: 'Kategori sırasını güncelle' },
+    schema: {
+      body: reorderSchema,
+      tags: ['Categories'],
+      summary: 'Kategori sırasını güncelle',
+      response: { 200: successResponseSchema, ...commonErrorResponses },
+    },
   }, async (request, reply) => {
-    const body = reorderSchema.parse(request.body);
+    const body = request.body;
 
     // Sıralanan kategorilerin TAMAMI kapsam içinde olmalı — id listesi
     // istemciden geliyor ve şirket bilgisi taşımıyor.
@@ -83,9 +112,14 @@ export const categoryRoutes: FastifyPluginAsync = async (app) => {
   // Admin: Create category
   app.post('/', {
     preValidation: [app.requireRole('admin', 'it_manager')],
-    schema: { body: categoryCreateSchema, tags: ['Categories'], summary: 'Kategori oluştur' },
+    schema: {
+      body: categoryCreateSchema,
+      tags: ['Categories'],
+      summary: 'Kategori oluştur',
+      response: { 201: categoryResponseSchema, ...commonErrorResponses },
+    },
   }, async (request, reply) => {
-    const body = categoryCreateSchema.parse(request.body);
+    const body = request.body;
     const staffUser = request.staffUser!;
 
     // companyId null ise "global" kategori (tüm şirketlere açık) — yalnızca admin.
@@ -103,10 +137,16 @@ export const categoryRoutes: FastifyPluginAsync = async (app) => {
   // Admin: Update category
   app.put('/:id', {
     preValidation: [app.requireRole('admin', 'it_manager')],
-    schema: { params: idParamsSchema, body: categoryUpdateSchema, tags: ['Categories'], summary: 'Kategori güncelle' },
+    schema: {
+      params: idParamsSchema,
+      body: categoryUpdateSchema,
+      tags: ['Categories'],
+      summary: 'Kategori güncelle',
+      response: { 200: categoryResponseSchema, ...commonErrorResponses },
+    },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const body = categoryUpdateSchema.parse(request.body);
+    const { id } = request.params;
+    const body = request.body;
     const staffUser = request.staffUser!;
 
     const existing = await app.prisma.category.findUnique({
@@ -136,9 +176,14 @@ export const categoryRoutes: FastifyPluginAsync = async (app) => {
   // Admin: Soft delete
   app.delete('/:id', {
     preValidation: [app.requireRole('admin')],
-    schema: { params: idParamsSchema, tags: ['Categories'], summary: 'Kategoriyi pasifleştir' },
+    schema: {
+      params: idParamsSchema,
+      tags: ['Categories'],
+      summary: 'Kategoriyi pasifleştir',
+      response: { 200: successResponseSchema, ...commonErrorResponses },
+    },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
     await app.prisma.category.update({
       where: { id },
       data: { isActive: false },

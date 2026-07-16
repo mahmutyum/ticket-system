@@ -1,6 +1,7 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
+import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
 
 const locationCreateSchema = z.object({
   companyId: z.string().cuid(),
@@ -15,14 +16,31 @@ const locationUpdateSchema = locationCreateSchema.partial().extend({
   isActive: z.boolean().optional(),
 });
 const idParamsSchema = z.object({ id: z.string().min(1).max(128) });
+const locationSchema = z.object({
+  id: z.string(),
+  companyId: z.string(),
+  name: z.string(),
+  address: z.string().nullable(),
+  phone: z.string().nullable(),
+  floor: z.string().nullable(),
+  itRoom: z.string().nullable(),
+  isActive: z.boolean(),
+  createdAt: z.date(),
+});
+const locationResponseSchema = z.object({ success: z.literal(true), data: locationSchema });
 
-export const locationRoutes: FastifyPluginAsync = async (app) => {
+export const locationRoutes: FastifyPluginAsyncZod = async (app) => {
   // Admin: Create location
   app.post('/', {
     preValidation: [app.requireRole('admin', 'it_manager')],
-    schema: { body: locationCreateSchema, tags: ['Locations'], summary: 'Lokasyon oluştur' },
+    schema: {
+      body: locationCreateSchema,
+      tags: ['Locations'],
+      summary: 'Lokasyon oluştur',
+      response: { 201: locationResponseSchema, ...commonErrorResponses },
+    },
   }, async (request, reply) => {
-    const body = locationCreateSchema.parse(request.body);
+    const body = request.body;
     const staffUser = request.staffUser!;
 
     // Gövdedeki companyId istemciden gelir — kapsam içinde olmalı.
@@ -38,10 +56,16 @@ export const locationRoutes: FastifyPluginAsync = async (app) => {
   // Admin: Update location
   app.put('/:id', {
     preValidation: [app.requireRole('admin', 'it_manager')],
-    schema: { params: idParamsSchema, body: locationUpdateSchema, tags: ['Locations'], summary: 'Lokasyon güncelle' },
+    schema: {
+      params: idParamsSchema,
+      body: locationUpdateSchema,
+      tags: ['Locations'],
+      summary: 'Lokasyon güncelle',
+      response: { 200: locationResponseSchema, ...commonErrorResponses },
+    },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const body = locationUpdateSchema.parse(request.body);
+    const { id } = request.params;
+    const body = request.body;
     const staffUser = request.staffUser!;
 
     const existing = await app.prisma.location.findUnique({
@@ -74,9 +98,14 @@ export const locationRoutes: FastifyPluginAsync = async (app) => {
   // Admin: Soft delete
   app.delete('/:id', {
     preValidation: [app.requireRole('admin')],
-    schema: { params: idParamsSchema, tags: ['Locations'], summary: 'Lokasyonu pasifleştir' },
+    schema: {
+      params: idParamsSchema,
+      tags: ['Locations'],
+      summary: 'Lokasyonu pasifleştir',
+      response: { 200: successResponseSchema, ...commonErrorResponses },
+    },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
     await app.prisma.location.update({
       where: { id },
       data: { isActive: false },
