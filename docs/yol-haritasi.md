@@ -17,17 +17,16 @@ Durum: 2026-07-16.
 | Entegrasyon | 🟢 Gerçek PostgreSQL + Redis testi mevcut |
 | CI | 🟡 Güvenlik tercihiyle yalnızca GitHub Actions'tan elle çalıştırılıyor |
 | API dokümantasyonu | 🟡 Request/path/query şemaları geniş ölçüde bağlı; response şemaları kısmi |
-| Kod kalitesi | 🟡 Backend 23, frontend 75 lint uyarısı; lint hatası yok |
+| Kod kalitesi | 🟢 Backend ve frontend lint temiz; gevşek `any` tipleri kaldırıldı |
 | Public repo hijyeni | 🟢 Yerel kontrol script'i, geniş ignore politikası ve yayın rehberi |
 
 ## Sıradaki çalışmalar
 
 ### 1. Kod kalitesi
 
-- Backend'deki `any` kullanımlarını Prisma/Fastify tipleriyle değiştir.
-- Frontend API cevaplarını ortak domain tiplerine bağla.
 - Büyük yönetim sayfalarını davranış değiştirmeden küçük bileşen ve hook'lara ayır.
-- Fast Refresh uyarısı veren provider yardımcılarını ayrı modüllere taşı.
+- Domain tipleri ve provider yardımcıları tamamlandı; yeni API tüketimlerinde aynı
+  tipli React Query desenini koru.
 
 ### 2. OpenAPI sözleşmesi
 
