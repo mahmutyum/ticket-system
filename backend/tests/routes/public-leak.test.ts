@@ -27,10 +27,18 @@ const TICKET = {
   id: 't1',
   ticketNumber: 'TKT-2026-00001',
   subject: 'Yazıcı',
+  description: 'Yazıcı çalışmıyor',
+  priority: 'medium',
   status: 'open',
   companyId: 'co-1',
   accessToken: 'tok',
   createdByEmail: 'user@co.com',
+  createdAt: new Date('2026-07-16T10:00:00Z'),
+  updatedAt: new Date('2026-07-16T10:00:00Z'),
+  company: { name: 'ACME' },
+  location: { name: 'Merkez' },
+  category: { name: 'Donanım' },
+  assignedTo: null,
   notes: [],
   history: [],
   attachments: [],
@@ -58,6 +66,11 @@ describe('GET /public/ticket/:accessToken — iç veri sızıntısı', () => {
 
     const res = await app.inject({ method: 'GET', url: '/public/ticket/tok' });
     expect(res.statusCode).toBe(200);
+
+    const body = res.json();
+    expect(body.data).not.toHaveProperty('accessToken');
+    expect(body.data).not.toHaveProperty('createdByEmail');
+    expect(body.data).not.toHaveProperty('companyId');
 
     const select = findUnique.mock.calls[0][0].select ?? findUnique.mock.calls[0][0].include;
     expect(select.history.where).toEqual({ action: { not: 'internal_note_added' } });

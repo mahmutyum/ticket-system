@@ -4,6 +4,7 @@ import { broadcastToStaff } from '../../services/sse.service.js';
 import { queueEmail } from '../../jobs/queue.js';
 import { saveFile, isAllowedMimeType } from '../../services/storage.service.js';
 import { requiredText, emailSchema, LIMITS } from '../../utils/validation.js';
+import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
 
 /**
  * Public takip linkinin süresi dolmuş mu?
@@ -29,6 +30,73 @@ const ticketTrackSchema = z.object({
   email: emailSchema,
 });
 
+const publicTicketSchema = z.object({
+  id: z.string(),
+  ticketNumber: z.string(),
+  subject: z.string(),
+  description: z.string(),
+  priority: z.string(),
+  status: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  company: z.object({ name: z.string() }),
+  location: z.object({ name: z.string() }),
+  category: z.object({ name: z.string() }),
+  assignedTo: z.object({ fullName: z.string() }).nullable(),
+  customValues: z.array(z.object({
+    id: z.string(),
+    value: z.string(),
+    customField: z.object({ fieldLabel: z.string() }),
+  })),
+  notes: z.array(z.object({
+    id: z.string(),
+    content: z.string(),
+    createdAt: z.date(),
+    createdBy: z.object({ fullName: z.string() }),
+  })),
+  history: z.array(z.object({
+    id: z.string(),
+    action: z.string(),
+    field: z.string().nullable(),
+    oldValue: z.string().nullable(),
+    newValue: z.string().nullable(),
+    createdAt: z.date(),
+  })),
+  attachments: z.array(z.object({
+    id: z.string(),
+    fileName: z.string(),
+    fileSize: z.number().int(),
+    createdAt: z.date(),
+  })),
+  onsiteSupport: z.array(z.object({
+    type: z.string(),
+    scheduledAt: z.date(),
+    scheduledEnd: z.date().nullable(),
+    roomInfo: z.string().nullable(),
+    status: z.string(),
+  })),
+});
+
+const publicTicketResponseSchema = z.object({
+  success: z.literal(true),
+  data: publicTicketSchema,
+});
+
+const publicAttachmentResponseSchema = z.object({
+  success: z.literal(true),
+  data: z.object({
+    id: z.string(),
+    fileName: z.string(),
+    fileSize: z.number().int(),
+    createdAt: z.date(),
+  }),
+});
+
+const trackResponseSchema = z.object({
+  success: z.literal(true),
+  data: z.object({ accessToken: z.string() }),
+});
+
 export const publicRoutes: FastifyPluginAsync = async (app) => {
   // Public: View ticket by access token
   app.get('/ticket/:accessToken', {
@@ -36,13 +104,23 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
       tags: ['Public Tickets'],
       summary: 'Erişim anahtarıyla destek talebini getirir',
       params: accessTokenParamsSchema,
+      response: { 200: publicTicketResponseSchema, ...commonErrorResponses },
     },
   }, async (request, reply) => {
     const { accessToken } = request.params as { accessToken: string };
 
     const ticket = await app.prisma.ticket.findUnique({
       where: { accessToken },
-      include: {
+      select: {
+        id: true,
+        ticketNumber: true,
+        subject: true,
+        description: true,
+        priority: true,
+        status: true,
+        accessTokenExpiresAt: true,
+        createdAt: true,
+        updatedAt: true,
         company: { select: { name: true } },
         location: { select: { name: true } },
         category: { select: { name: true } },
@@ -73,7 +151,7 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
           },
         },
         attachments: {
-          select: { id: true, fileName: true, filePath: true, fileSize: true, createdAt: true },
+          select: { id: true, fileName: true, fileSize: true, createdAt: true },
         },
         onsiteSupport: {
           where: { status: { not: 'cancelled' } },
@@ -94,7 +172,8 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
     }
 
-    reply.send({ success: true, data: ticket });
+    const { accessTokenExpiresAt: _accessTokenExpiresAt, ...publicTicket } = ticket;
+    reply.send({ success: true, data: publicTicket });
   });
 
   // Public: Reply to ticket — with IT notification
@@ -104,6 +183,7 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
       summary: 'Destek talebine kullanıcı yanıtı ekler',
       params: accessTokenParamsSchema,
       body: publicReplySchema,
+      response: { 200: successResponseSchema, ...commonErrorResponses },
     },
     config: { rateLimit: { max: 20, timeWindow: '10 minutes' } },
   }, async (request, reply) => {
@@ -182,6 +262,7 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
       tags: ['Public Tickets'],
       summary: 'Destek talebine kullanıcı dosyası ekler',
       params: accessTokenParamsSchema,
+      response: { 201: publicAttachmentResponseSchema, ...commonErrorResponses },
     },
     config: { rateLimit: { max: 5, timeWindow: '1 minute' } },
   }, async (request, reply) => {
@@ -221,6 +302,7 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
         mimeType: file.mimetype,
         uploadedBy: ticket.createdByEmail,
       },
+      select: { id: true, fileName: true, fileSize: true, createdAt: true },
     });
 
     reply.status(201).send({ success: true, data: attachment });
@@ -232,6 +314,7 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
       tags: ['Public Tickets'],
       summary: 'Talep numarası ve e-postayla erişim anahtarını getirir',
       body: ticketTrackSchema,
+      response: { 200: trackResponseSchema, ...commonErrorResponses },
     },
     config: { rateLimit: { max: 10, timeWindow: '5 minutes' } },
   }, async (request, reply) => {
