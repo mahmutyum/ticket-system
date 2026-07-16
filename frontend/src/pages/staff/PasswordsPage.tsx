@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import api from '../../api/client';
 import { useAuthStore } from '../../stores/auth.store';
 import { getApiError } from '../../utils/api-error';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 type Entry = {
   id: string; title: string; category?: string | null; url?: string | null;
@@ -226,22 +227,16 @@ export default function PasswordsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Şifreler</h1>
-          <p className="text-sm text-muted">
-            {isAdmin
-              ? 'Tüm kayıtlar. Her görüntüleme denetim kaydına yazılır.'
-              : 'Yetkili olduğunuz şirketlerin kayıtları. Her görüntüleme denetim kaydına yazılır.'}
-          </p>
-        </div>
+      <PageHeader eyebrow="Güvenli kasa" title="Şifreler" description={isAdmin
+        ? 'Tüm kayıtlar. Her görüntüleme denetim kaydına yazılır.'
+        : 'Yetkili olduğunuz şirketlerin kayıtları. Her görüntüleme denetim kaydına yazılır.'} actions={
         <button onClick={openCreate} className="btn-primary text-sm flex items-center gap-1">
           <Plus className="w-4 h-4" /> Yeni Kayıt
         </button>
-      </div>
+      } />
 
       {/* Filtreler */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="card flex flex-wrap items-center gap-2 p-4">
         <label className="relative block flex-1 min-w-[200px] max-w-sm">
           <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
           <input

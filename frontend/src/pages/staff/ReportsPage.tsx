@@ -11,6 +11,7 @@ import {
 import api from '../../api/client';
 import type { Category, Company, DashboardStats, Staff } from '../../types';
 import ReportFiltersPanel from './reports/ReportFilters';
+import { PageHeader } from '../../components/ui/PageHeader';
 import {
   EMPTY_REPORT_FILTERS, buildReportQuery,
   type CategoryBreakdown, type OverviewBucket, type Period, type ReportFilters,
@@ -98,12 +99,11 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold">Raporlar & İstatistikler</h1>
+      <PageHeader eyebrow="Analiz merkezi" title="Raporlar ve istatistikler" description="Talep hacmini, ekip performansını ve SLA eğilimlerini karşılaştır." actions={
         <button onClick={handleExport} className="btn-primary flex items-center gap-2">
           <Download className="w-4 h-4" /> CSV İndir
         </button>
-      </div>
+      } />
 
       <ReportFiltersPanel
         filters={filters}

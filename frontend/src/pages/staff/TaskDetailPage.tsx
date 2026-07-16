@@ -9,6 +9,8 @@ import { useAuthStore } from '../../stores/auth.store';
 // Öncelik sözlüğü ticket'larla ORTAK — burada kopyalama, tek kaynaktan al.
 import { PRIORITY_LABELS as PRIORITY_LABEL, PRIORITY_COLORS as PRIORITY_COLOR } from '../../types';
 import type { Task } from '../../types';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { EmptyState, SkeletonRows } from '../../components/ui/AsyncState';
 
 const STATUS_LABEL: Record<string, string> = {
   open: 'Açık',
@@ -70,8 +72,8 @@ export default function TaskDetailPage() {
     }
   };
 
-  if (isLoading) return <div className="text-center py-12 text-gray-500">Yükleniyor...</div>;
-  if (!task) return <div className="text-center py-12 text-gray-500">Görev bulunamadı</div>;
+  if (isLoading) return <div className="card max-w-4xl overflow-hidden p-0"><SkeletonRows rows={6} /></div>;
+  if (!task) return <div className="card max-w-4xl"><EmptyState title="Görev bulunamadı" description="Görev silinmiş veya erişim kapsamınızın dışında olabilir." /></div>;
 
   const days = daysOpen(task.createdAt, task.completedAt);
   const overdue = task.dueDate && task.status !== 'done' && task.status !== 'cancelled' && new Date(task.dueDate) < new Date();
@@ -80,29 +82,17 @@ export default function TaskDetailPage() {
 
   return (
     <div className="space-y-4 max-w-4xl">
-      <Link to="/staff/tasks" className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400 hover:text-primary-600">
-        <ArrowLeft className="w-4 h-4" /> Görev Listesi
-      </Link>
+      <PageHeader eyebrow="Görev detayı" title={task.title} description={`${task.location?.company?.name ?? 'Genel'} · ${days} gündür açık`} actions={<><Link to="/staff/tasks" className="icon-button" aria-label="Görev listesine dön"><ArrowLeft className="w-4 h-4" /></Link>{(isManager || isAssignee) && <select className="input-field max-w-[180px]" value={task.status} onChange={e => handleStatus(e.target.value)}>{Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>}</>} />
 
       <div className="card p-6">
         <div className="flex items-start justify-between gap-4 flex-wrap mb-3">
           <div>
-            <h1 className="text-2xl font-bold mb-2">{task.title}</h1>
             <div className="flex items-center gap-2 flex-wrap">
               <span className={`px-2.5 py-1 rounded-full text-xs ${STATUS_COLOR[task.status]}`}>{STATUS_LABEL[task.status]}</span>
               <span className={`px-2.5 py-1 rounded-full text-xs ${PRIORITY_COLOR[task.priority]}`}>{PRIORITY_LABEL[task.priority]}</span>
               {overdue && <span className="px-2.5 py-1 rounded-full text-xs bg-red-100 text-red-700 flex items-center gap-1"><AlertCircle className="w-3 h-3" />Süresi Geçti</span>}
             </div>
           </div>
-          {(isManager || isAssignee) && (
-            <select
-              className="input-field max-w-[180px]"
-              value={task.status}
-              onChange={e => handleStatus(e.target.value)}
-            >
-              {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-          )}
         </div>
 
         <div className="prose max-w-none text-sm whitespace-pre-wrap text-gray-700 dark:text-slate-300 mb-4 bg-gray-50 dark:bg-slate-800/50 p-3 rounded-lg">

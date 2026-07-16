@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import api from '../../api/client';
 import { getApiError } from '../../utils/api-error';
 import type { Company, Staff } from '../../types';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 const ROLES = [
   { value: 'admin', label: 'Sistem Yöneticisi' },
@@ -124,15 +125,14 @@ export default function StaffManagementPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Personel Yönetimi</h1>
+      <PageHeader eyebrow="Yetki yönetimi" title="Personel" description="Ekip üyelerini, rollerini ve erişebilecekleri şirket kapsamlarını yönet." actions={
         <button
           onClick={() => { setShowForm(true); setEditId(null); setForm(emptyForm); }}
           className="btn-primary flex items-center gap-2"
         >
           <Plus className="w-4 h-4" /> Yeni Personel
         </button>
-      </div>
+      } />
 
       {/* Staff Form Modal */}
       {showForm && (
@@ -264,13 +264,13 @@ export default function StaffManagementPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
-                      <button onClick={() => openCompanyModal(staff)} className="p-1 hover:bg-purple-100 rounded" title="Şirket ataması">
+                      <button onClick={() => openCompanyModal(staff)} className="icon-button min-h-8 min-w-8 border-0" title="Şirket ataması" aria-label={`${staff.fullName} şirket ataması`}>
                         <Building2 className="w-4 h-4 text-purple-500" />
                       </button>
-                      <button onClick={() => handleEdit(staff)} className="p-1 hover:bg-gray-200 rounded" title="Düzenle">
+                      <button onClick={() => handleEdit(staff)} className="icon-button min-h-8 min-w-8 border-0" title="Düzenle" aria-label={`${staff.fullName} düzenle`}>
                         <Edit2 className="w-4 h-4 text-gray-500" />
                       </button>
-                      <button onClick={() => handleToggleActive(staff.id, staff.isActive)} className="p-1 hover:bg-gray-200 rounded" title={staff.isActive ? 'Deaktif et' : 'Aktif et'}>
+                      <button onClick={() => handleToggleActive(staff.id, staff.isActive)} className="icon-button min-h-8 min-w-8 border-0" title={staff.isActive ? 'Deaktif et' : 'Aktif et'} aria-label={`${staff.fullName} ${staff.isActive ? 'deaktif et' : 'aktif et'}`}>
                         {staff.isActive ? <UserX className="w-4 h-4 text-red-500" /> : <UserCheck className="w-4 h-4 text-green-500" />}
                       </button>
                     </div>

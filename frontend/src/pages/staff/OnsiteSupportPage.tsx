@@ -9,6 +9,7 @@ import {
   toInputDate, TOTAL_HOURS, TYPE_BAR_COLORS, TYPE_LABELS,
   type CalendarEvent, type CalendarResponse,
 } from './onsite-calendar';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 export default function OnsiteSupportPage() {
   const queryClient = useQueryClient();
@@ -79,11 +80,7 @@ export default function OnsiteSupportPage() {
   return (
     <div className="space-y-4">
       {/* Üst başlık + tarih kontrolleri */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Yerinde Destek Takvimi</h1>
-          <p className="text-sm text-muted capitalize">{longDateLabel}</p>
-        </div>
+      <PageHeader eyebrow="Saha operasyonu" title="Yerinde destek" description={`${longDateLabel} · Planlanan randevuları ve saha müdahalelerini yönet.`} actions={
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1">
             <button
@@ -121,7 +118,7 @@ export default function OnsiteSupportPage() {
             <CalendarDays className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </label>
         </div>
-      </div>
+      } />
 
       {/* Hafta şeridi — kompakt, doluluk rozetli */}
       <div className="card !p-3">

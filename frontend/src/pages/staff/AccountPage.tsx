@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
 import { useAuthStore } from '../../stores/auth.store';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 type Session = { sid: string; current: boolean; expiresInSeconds: number };
 
@@ -58,18 +59,18 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Hesap ve güvenlik</h1>
+    <div className="max-w-3xl space-y-6">
+      <PageHeader eyebrow="Kişisel güvenlik" title="Hesap ve güvenlik" description="Parolanı, iki aşamalı doğrulamayı ve aktif oturumlarını yönet." />
       <section className="card p-6">
         <h2 className="font-semibold mb-4">Şifre değiştir</h2>
         <form onSubmit={changePassword} className="space-y-4">
           <label className="block text-sm">Mevcut şifre
             <input type="password" autoComplete="current-password" required value={currentPassword}
-              onChange={(event) => setCurrentPassword(event.target.value)} className="input mt-1 w-full" />
+              onChange={(event) => setCurrentPassword(event.target.value)} className="input-field mt-1 w-full" />
           </label>
           <label className="block text-sm">Yeni şifre
             <input type="password" autoComplete="new-password" required minLength={12} value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)} className="input mt-1 w-full" />
+              onChange={(event) => setNewPassword(event.target.value)} className="input-field mt-1 w-full" />
           </label>
           <p className="text-xs text-muted">En az 12 karakter ve dört karakter sınıfından en az üçü.</p>
           <button disabled={busy} className="btn-primary">{busy ? 'Değiştiriliyor…' : 'Şifreyi değiştir'}</button>

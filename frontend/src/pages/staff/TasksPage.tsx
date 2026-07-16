@@ -10,6 +10,8 @@ import { PRIORITY_LABELS as PRIORITY_LABEL, PRIORITY_COLORS as PRIORITY_COLOR, P
 import type { Company, Location, Staff, Task } from '../../types';
 import { getApiError } from '../../utils/api-error';
 import TaskFilters from './tasks/TaskFilters';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { EmptyState, SkeletonRows } from '../../components/ui/AsyncState';
 import {
   EMPTY_TASK_FORM, TASK_STATUS_COLORS, TASK_STATUS_LABELS, isTaskOverdue, taskDaysOpen,
   type TaskFormState, type TaskPayload, type TaskScope, type TaskSortKey,
@@ -199,17 +201,14 @@ export default function TasksPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold">Görevler</h1>
-        {isManager && (
+      <PageHeader eyebrow="Ekip çalışması" title="Görevler" description="Ticket dışındaki ekip işlerini planla, ata ve sonuçlarını takip et." actions={isManager ? (
           <button
             onClick={() => { setShowForm(true); setEditId(null); setForm(EMPTY_TASK_FORM); }}
             className="btn-primary flex items-center gap-2"
           >
             <Plus className="w-4 h-4" /> Yeni Görev
           </button>
-        )}
-      </div>
+        ) : undefined} />
 
       {/* Stats — tıklanabilir filtre kısayolları */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -351,16 +350,13 @@ export default function TasksPage() {
 
       {/* List */}
       {isLoading ? (
-        <div className="text-center py-12 text-gray-500">Yükleniyor...</div>
+        <div className="card overflow-hidden p-0"><SkeletonRows rows={6} /></div>
       ) : !visible.length ? (
-        <div className="card p-12 text-center text-gray-500">
+        <div className="card">
           {tasks?.length ? (
-            <>
-              <p>Filtrelerle eşleşen görev yok.</p>
-              <button onClick={clearFilters} className="btn-secondary text-sm mt-3">Filtreleri temizle</button>
-            </>
+            <div className="text-center"><EmptyState title="Filtrelerle eşleşen görev yok" description="Arama ve filtre seçeneklerini değiştirerek tekrar deneyin." /><button onClick={clearFilters} className="btn-secondary text-sm -mt-8 mb-6">Filtreleri temizle</button></div>
           ) : (
-            'Görev bulunamadı'
+            <EmptyState title="Henüz görev yok" description="Ekip içi işleri takip etmek için ilk görevi oluşturun." />
           )}
         </div>
       ) : (

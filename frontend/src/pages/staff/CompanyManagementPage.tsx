@@ -10,6 +10,7 @@ import {
   emptySmtpForm, GROUP_TYPES,
 } from './company-management';
 import { CompanyFormModal, LocationFormModal, SmtpConfigModal } from './CompanyManagementModals';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 export default function CompanyManagementPage() {
   const queryClient = useQueryClient();
@@ -211,12 +212,11 @@ export default function CompanyManagementPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Şirket & Lokasyon Yönetimi</h1>
+      <PageHeader eyebrow="Organizasyon" title="Şirketler ve lokasyonlar" description="Şirket kapsamlarını, lokasyonları, marka ve SMTP yapılandırmalarını yönet." actions={
         <button onClick={() => { setShowForm(true); setEditId(null); setForm(emptyCompanyForm); }} className="btn-primary flex items-center gap-2">
           <Plus className="w-4 h-4" /> Yeni Şirket
         </button>
-      </div>
+      } />
 
       {/* Company Form Modal */}
       {showForm && (
@@ -260,7 +260,7 @@ export default function CompanyManagementPage() {
       <div className="space-y-4">
         {companies?.map(company => (
           <div key={company.id} className="card">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col gap-3 mb-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-3">
                 <Building2 className="w-5 h-5 text-primary-500" />
                 <div>
@@ -272,7 +272,7 @@ export default function CompanyManagementPage() {
                   </span>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => openSmtpForm(company.id, company.name)}
                   className={`btn-secondary text-xs flex items-center gap-1 ${company.smtpConfig ? 'ring-1 ring-green-300' : ''}`}
