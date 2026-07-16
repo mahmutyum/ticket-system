@@ -1,24 +1,7 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { useEffect, useState, ReactNode } from 'react';
 import axios from 'axios';
 import { applyPalette } from '../utils/color';
-
-interface Branding {
-  id: string;
-  name: string;
-  logo: string | null;
-  primaryColor: string | null;
-}
-
-interface BrandingContextValue {
-  branding: Branding | null;
-  loading: boolean;
-}
-
-const BrandingContext = createContext<BrandingContextValue>({ branding: null, loading: true });
-
-export function useBranding() {
-  return useContext(BrandingContext);
-}
+import { BrandingContext, type Branding } from './branding-context';
 
 export function BrandingProvider({ children }: { children: ReactNode }) {
   const [branding, setBranding] = useState<Branding | null>(null);

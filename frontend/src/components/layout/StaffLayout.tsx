@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuthStore } from '../../stores/auth.store';
-import { useTheme } from '../ThemeProvider';
+import { useTheme } from '../theme-context';
 import api from '../../api/client';
 import type { LucideIcon } from 'lucide-react';
 

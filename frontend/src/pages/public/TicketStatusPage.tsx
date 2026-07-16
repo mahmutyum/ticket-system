@@ -7,7 +7,7 @@ import {
   Clock, Building2, MapPin, Tag, User, Send,
   Calendar, MapPinned, Upload, Paperclip, FileText,
 } from 'lucide-react';
-import { STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS } from '../../types';
+import { STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, type Ticket } from '../../types';
 import { useTicketSSE } from '../../hooks/useSSE';
 import { useQueryClient } from '@tanstack/react-query';
 import { publicAttachmentUrl } from '../../utils/download';
@@ -19,7 +19,7 @@ export default function TicketStatusPage() {
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  const { data: ticket, isLoading, refetch } = useQuery({
+  const { data: ticket, isLoading, refetch } = useQuery<Ticket>({
     queryKey: ['public-ticket', accessToken],
     queryFn: async () => (await axios.get(`/api/public/ticket/${accessToken}`)).data.data,
     enabled: !!accessToken,
@@ -118,9 +118,9 @@ export default function TicketStatusPage() {
         <div className="card">
           <h3 className="text-sm font-semibold text-gray-500 mb-3">Ek Bilgiler</h3>
           <div className="grid grid-cols-2 gap-3 text-sm">
-            {ticket.customValues.map((cv: any) => (
+            {ticket.customValues.map(cv => (
               <div key={cv.id}>
-                <span className="text-gray-500">{cv.customField.fieldLabel}:</span>
+                <span className="text-gray-500">{cv.customField?.fieldLabel}:</span>
                 <span className="ml-2 font-medium">{cv.value}</span>
               </div>
             ))}
@@ -134,8 +134,8 @@ export default function TicketStatusPage() {
           <h3 className="text-sm font-semibold text-orange-600 mb-3 flex items-center gap-2">
             <MapPinned className="w-4 h-4" /> Yerinde Destek
           </h3>
-          {ticket.onsiteSupport.map((os: any, i: number) => (
-            <div key={i} className="text-sm space-y-1">
+          {ticket.onsiteSupport.map(os => (
+            <div key={os.id} className="text-sm space-y-1">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-gray-400" />
                 <span>{new Date(os.scheduledAt).toLocaleString('tr-TR')}</span>
@@ -154,7 +154,7 @@ export default function TicketStatusPage() {
       <div className="card">
         <h3 className="text-sm font-semibold text-gray-500 mb-4">Süreç Geçmişi</h3>
         <div className="space-y-4">
-          {ticket.history?.map((h: any) => (
+          {ticket.history?.map(h => (
             <div key={h.id || h.createdAt} className="flex gap-3 text-sm">
               <div className="w-2 h-2 rounded-full bg-gray-300 mt-1.5 flex-shrink-0" />
               <div className="flex-1">
@@ -162,7 +162,7 @@ export default function TicketStatusPage() {
                   {new Date(h.createdAt).toLocaleString('tr-TR')}
                 </span>
                 <span className="ml-2 text-gray-700">
-                  {h.action === 'status_changed' && `Durum değişti: ${STATUS_LABELS[h.oldValue] || h.oldValue} → ${STATUS_LABELS[h.newValue] || h.newValue}`}
+                  {h.action === 'status_changed' && `Durum değişti: ${STATUS_LABELS[h.oldValue ?? ''] || h.oldValue} → ${STATUS_LABELS[h.newValue ?? ''] || h.newValue}`}
                   {h.action === 'ticket_created' && 'Talep oluşturuldu'}
                   {h.action === 'assigned' && 'Talep atandı'}
                   {h.action === 'user_reply' && `Kullanıcı yanıtı: ${h.newValue}`}
@@ -174,7 +174,7 @@ export default function TicketStatusPage() {
           ))}
 
           {/* Public notes */}
-          {ticket.notes?.map((note: any) => (
+          {ticket.notes?.map(note => (
             <div key={note.id} className="flex gap-3 text-sm">
               <div className="w-2 h-2 rounded-full bg-primary-400 mt-1.5 flex-shrink-0" />
               <div className="flex-1 bg-primary-50 rounded-lg p-3">
@@ -192,13 +192,13 @@ export default function TicketStatusPage() {
       </div>
 
       {/* Attachments */}
-      {ticket.attachments?.length > 0 && (
+      {(ticket.attachments?.length ?? 0) > 0 && (
         <div className="card">
           <h3 className="text-sm font-semibold text-gray-500 mb-3 flex items-center gap-2">
             <Paperclip className="w-4 h-4" /> Dosyalar
           </h3>
           <div className="space-y-2">
-            {ticket.attachments.map((att: any) => (
+            {ticket.attachments?.map(att => (
               <a
                 key={att.id}
                 // Ekler artık yetki kontrollü /attachments/:id üzerinden gelir.

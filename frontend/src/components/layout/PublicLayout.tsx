@@ -1,7 +1,7 @@
 import { Outlet, Link } from 'react-router-dom';
 import { Headset, Moon, Sun } from 'lucide-react';
-import { useBranding } from '../BrandingProvider';
-import { useTheme } from '../ThemeProvider';
+import { useBranding } from '../branding-context';
+import { useTheme } from '../theme-context';
 
 export default function PublicLayout() {
   const { branding } = useBranding();

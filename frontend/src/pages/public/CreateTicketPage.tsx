@@ -24,10 +24,15 @@ interface FormData {
   customFields: Record<string, string>;
 }
 
+interface TicketCreationResult {
+  ticketNumber: string;
+  accessToken: string;
+}
+
 export default function CreateTicketPage() {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<TicketCreationResult | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [form, setForm] = useState<FormData>({
     email: '', fullName: '', phone: '', department: '',
