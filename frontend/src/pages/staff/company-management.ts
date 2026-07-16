@@ -1,0 +1,59 @@
+import type { Company } from '../../types';
+
+export const GROUP_TYPES = [
+  { value: 'call_center', label: 'Çağrı Merkezi' },
+  { value: 'corporate', label: 'Kurumsal' },
+  { value: 'warehouse', label: 'Depo / Lojistik' },
+  { value: 'retail', label: 'Mağaza / Perakende' },
+];
+
+export const emptySmtpForm = {
+  host: '', port: 587, secure: false, user: '', pass: '',
+  fromName: '', fromEmail: '', isActive: true,
+};
+
+export const emptyCompanyForm = {
+  name: '',
+  groupType: 'corporate',
+  allowedDomains: '',
+  portalDomains: '',
+  notificationEmail: '',
+  primaryColor: '',
+  logo: '',
+};
+
+export const emptyLocationForm = {
+  name: '', address: '', phone: '', floor: '', itRoom: '',
+};
+
+export type CompanyForm = typeof emptyCompanyForm;
+
+export function normalizeDomains(value: string): string[] {
+  return [...new Set(
+    value.split(',').map((domain) => domain.trim().toLowerCase()).filter(Boolean),
+  )];
+}
+
+export function companyPayload(form: CompanyForm) {
+  return {
+    name: form.name.trim(),
+    groupType: form.groupType,
+    allowedDomains: normalizeDomains(form.allowedDomains),
+    portalDomains: normalizeDomains(form.portalDomains),
+    notificationEmail: form.notificationEmail.trim() || null,
+    primaryColor: form.primaryColor.trim() || null,
+    logo: form.logo.trim() || null,
+  };
+}
+
+export function companyToForm(company: Company): CompanyForm {
+  return {
+    name: company.name,
+    groupType: company.groupType,
+    allowedDomains: (company.allowedDomains as string[] | undefined)?.join(', ') ?? '',
+    portalDomains: (company.portalDomains as string[] | undefined)?.join(', ') ?? '',
+    notificationEmail: company.notificationEmail ?? '',
+    primaryColor: company.primaryColor ?? '',
+    logo: company.logo ?? '',
+  };
+}

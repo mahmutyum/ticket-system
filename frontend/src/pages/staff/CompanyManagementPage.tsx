@@ -5,25 +5,10 @@ import toast from 'react-hot-toast';
 import api from '../../api/client';
 import { getApiError } from '../../utils/api-error';
 import type { Company, Location } from '../../types';
-
-const GROUP_TYPES = [
-  { value: 'call_center', label: 'Çağrı Merkezi' },
-  { value: 'corporate', label: 'Kurumsal' },
-  { value: 'warehouse', label: 'Depo / Lojistik' },
-  { value: 'retail', label: 'Mağaza / Perakende' },
-];
-
-const emptySmtpForm = { host: '', port: 587, secure: false, user: '', pass: '', fromName: '', fromEmail: '', isActive: true };
-
-const emptyCompanyForm = {
-  name: '',
-  groupType: 'corporate',
-  allowedDomains: '',
-  portalDomains: '',
-  notificationEmail: '',
-  primaryColor: '',
-  logo: '',
-};
+import {
+  companyPayload, companyToForm, emptyCompanyForm, emptyLocationForm,
+  emptySmtpForm, GROUP_TYPES,
+} from './company-management';
 
 export default function CompanyManagementPage() {
   const queryClient = useQueryClient();
@@ -36,7 +21,7 @@ export default function CompanyManagementPage() {
   const [showLocForm, setShowLocForm] = useState(false);
   const [locCompanyId, setLocCompanyId] = useState('');
   const [locEditId, setLocEditId] = useState<string | null>(null);
-  const [locForm, setLocForm] = useState({ name: '', address: '', phone: '', floor: '', itRoom: '' });
+  const [locForm, setLocForm] = useState(emptyLocationForm);
 
   // SMTP form
   const [showSmtpForm, setShowSmtpForm] = useState(false);
@@ -53,19 +38,7 @@ export default function CompanyManagementPage() {
   const handleSubmitCompany = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const payload = {
-        name: form.name,
-        groupType: form.groupType,
-        allowedDomains: form.allowedDomains
-          ? form.allowedDomains.split(',').map(d => d.trim().toLowerCase()).filter(Boolean)
-          : [],
-        portalDomains: form.portalDomains
-          ? form.portalDomains.split(',').map(d => d.trim().toLowerCase()).filter(Boolean)
-          : [],
-        notificationEmail: form.notificationEmail || null,
-        primaryColor: form.primaryColor || null,
-        logo: form.logo || null,
-      };
+      const payload = companyPayload(form);
       if (editId) {
         await api.put(`/companies/${editId}`, payload);
         toast.success('Şirket güncellendi');
@@ -124,7 +97,7 @@ export default function CompanyManagementPage() {
       queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
       setShowLocForm(false);
       setLocEditId(null);
-      setLocForm({ name: '', address: '', phone: '', floor: '', itRoom: '' });
+      setLocForm(emptyLocationForm);
     } catch (err: unknown) {
       toast.error(getApiError(err, 'Hata'));
     }
@@ -504,13 +477,13 @@ export default function CompanyManagementPage() {
                   ) : 'SMTP'}
                 </button>
                 <button
-                  onClick={() => { setLocCompanyId(company.id); setLocEditId(null); setShowLocForm(true); setLocForm({ name: '', address: '', phone: '', floor: '', itRoom: '' }); }}
+                  onClick={() => { setLocCompanyId(company.id); setLocEditId(null); setShowLocForm(true); setLocForm(emptyLocationForm); }}
                   className="btn-secondary text-xs flex items-center gap-1"
                 >
                   <MapPin className="w-3 h-3" /> Lokasyon Ekle
                 </button>
                 <button
-                  onClick={() => { setEditId(company.id); setForm({ name: company.name, groupType: company.groupType, allowedDomains: (company.allowedDomains as string[] || []).join(', '), portalDomains: (company.portalDomains as string[] || []).join(', '), notificationEmail: company.notificationEmail || '', primaryColor: company.primaryColor || '', logo: company.logo || '' }); setShowForm(true); }}
+                  onClick={() => { setEditId(company.id); setForm(companyToForm(company)); setShowForm(true); }}
                   className="p-1.5 hover:bg-gray-100 rounded"
                   title="Düzenle"
                 >
