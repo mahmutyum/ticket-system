@@ -1,6 +1,7 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
+import { t } from '../../i18n/index.js';
 
 const emailTemplateSchema = z.object({
   slug: z.string().min(1).regex(/^[a-z_]+$/),
@@ -73,7 +74,7 @@ export const templateRoutes: FastifyPluginAsyncZod = async (app) => {
     const { id } = request.params;
     const template = await app.prisma.emailTemplate.findUnique({ where: { id } });
     if (!template) {
-      return reply.status(404).send({ success: false, error: 'Şablon bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'templates.notFound') });
     }
     reply.send({ success: true, data: template });
   });

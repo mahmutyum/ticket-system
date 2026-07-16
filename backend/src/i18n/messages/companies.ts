@@ -1,0 +1,26 @@
+export const companiesMessages = {
+  tr: {
+    'companies.companyNotFound': 'Şirket bulunamadı',
+    'companies.smtpHostBlocked': 'SMTP sunucusu olarak dahili veya ayrılmış bir adres kullanılamaz',
+    'companies.smtpRemoved': 'SMTP yapılandırması kaldırıldı, global SMTP kullanılacak',
+    'companies.smtpTestSuccess': 'SMTP bağlantısı başarılı',
+    'companies.smtpTestFailed': 'SMTP bağlantısı başarısız. Sunucu adresi, port ve kimlik bilgilerini kontrol edin.',
+    'companies.companyForbidden': 'Bu şirket için yetkiniz yok',
+    'companies.fileNotFound': 'Dosya bulunamadı',
+    'companies.logoMimeNotAllowed': 'Sadece PNG, JPG, WEBP veya SVG yüklenebilir',
+    'companies.fileTooLarge': 'Dosya boyutu 2MB üzerinde olamaz',
+    'companies.fileMimeMismatch': 'Dosya içeriği belirtilen türle eşleşmiyor',
+  } as Record<string, string>,
+  en: {
+    'companies.companyNotFound': 'Company not found',
+    'companies.smtpHostBlocked': 'An internal or reserved address cannot be used as the SMTP server',
+    'companies.smtpRemoved': 'SMTP configuration removed, global SMTP will be used',
+    'companies.smtpTestSuccess': 'SMTP connection successful',
+    'companies.smtpTestFailed': 'SMTP connection failed. Check the server address, port and credentials.',
+    'companies.companyForbidden': 'You do not have permission for this company',
+    'companies.fileNotFound': 'File not found',
+    'companies.logoMimeNotAllowed': 'Only PNG, JPG, WEBP or SVG can be uploaded',
+    'companies.fileTooLarge': 'File size cannot exceed 2MB',
+    'companies.fileMimeMismatch': 'File content does not match the specified type',
+  } as Record<string, string>,
+};

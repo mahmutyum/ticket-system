@@ -12,6 +12,7 @@ import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.
 import { getStaffCompanyScope, resolveCompanyFilter, isCompanyInScope } from '../../utils/staff-scope.js';
 import { calculateSlaDueDates, isSlaMet } from '../../utils/sla.js';
 import { commonErrorResponses } from '../../utils/api-schema.js';
+import { t } from '../../i18n/index.js';
 
 /**
  * Ticket kapandıktan sonra public takip linkinin ne kadar geçerli kalacağı.
@@ -175,7 +176,7 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
     });
 
     if (!company) {
-      return reply.status(404).send({ success: false, error: 'Şirket bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'tickets.company_not_found') });
     }
 
     // Portal domain lock: if request comes from a portal domain mapped to a DIFFERENT company, block it
@@ -200,7 +201,7 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
       if (blocked) {
         return reply.status(403).send({
           success: false,
-          error: 'Bu portal üzerinden yalnızca ilgili şirket için talep oluşturabilirsiniz.',
+          error: t(request, 'tickets.portal_company_mismatch'),
         });
       }
     }
@@ -213,7 +214,7 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
       if (!domainAllowed) {
         return reply.status(400).send({
           success: false,
-          error: 'Bu email adresi ile destek talebi oluşturamazsınız.',
+          error: t(request, 'tickets.email_domain_not_allowed'),
         });
       }
     }
@@ -492,13 +493,13 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
     });
 
     if (!ticket) {
-      return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'tickets.ticket_not_found') });
     }
 
     // Company scope check
     const scopeIds = await getStaffCompanyScope(app.prisma, request.staffUser!.id, request.staffUser!.role);
     if (scopeIds && !scopeIds.includes(ticket.companyId)) {
-      return reply.status(403).send({ success: false, error: 'Bu talebe erişim yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'tickets.ticket_access_denied') });
     }
 
     const {
@@ -540,7 +541,7 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
 
     const currentTicket = await app.prisma.ticket.findUnique({ where: { id } });
     if (!currentTicket) {
-      return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'tickets.ticket_not_found') });
     }
 
     // Şirket kapsamı — GET /:id bunu yapıyordu, PUT yapmıyordu. Yani kapsam dışı
@@ -548,7 +549,7 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
     // öncelik ve atama. Yazma yetkisi okuma yetkisinden geniş olamaz.
     const scopeIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     if (!isCompanyInScope(scopeIds, currentTicket.companyId)) {
-      return reply.status(403).send({ success: false, error: 'Bu talebe erişim yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'tickets.ticket_access_denied') });
     }
 
     const historyEntries: Prisma.TicketHistoryUncheckedCreateWithoutTicketInput[] = [];
@@ -705,23 +706,23 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
 
     const ticket = await app.prisma.ticket.findUnique({ where: { id } });
     if (!ticket) {
-      return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'tickets.ticket_not_found') });
     }
 
     // Şirket kapsamı — bu uç da kapsamsızdı: kapsam dışı bir ticket'a dosya
     // eklenebiliyordu ve ek, o ticket'ın public takip linkinden servis ediliyor.
     const scopeIds = await getStaffCompanyScope(app.prisma, request.staffUser!.id, request.staffUser!.role);
     if (!isCompanyInScope(scopeIds, ticket.companyId)) {
-      return reply.status(403).send({ success: false, error: 'Bu talebe erişim yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'tickets.ticket_access_denied') });
     }
 
     const file = await request.file();
     if (!file) {
-      return reply.status(400).send({ success: false, error: 'Dosya gerekli' });
+      return reply.status(400).send({ success: false, error: t(request, 'tickets.file_required') });
     }
 
     if (!isAllowedMimeType(file.mimetype)) {
-      return reply.status(400).send({ success: false, error: 'Desteklenmeyen dosya türü' });
+      return reply.status(400).send({ success: false, error: t(request, 'tickets.unsupported_file_type') });
     }
 
     // Ticket başına kota. Dosya başına 25 MB sınırı vardı ama toplam yoktu:
@@ -734,7 +735,7 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
     if (existing._count >= ATTACHMENT_LIMITS.maxCount) {
       return reply.status(400).send({
         success: false,
-        error: `Bir talebe en fazla ${ATTACHMENT_LIMITS.maxCount} dosya eklenebilir`,
+        error: t(request, 'tickets.max_attachments', { count: ATTACHMENT_LIMITS.maxCount }),
       });
     }
 
@@ -743,7 +744,7 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
     // İçerik doğrulaması: beyan edilen MIME gerçek dosya imzasıyla tutarlı mı.
     // Tür karıştırma (image/png diyip başka içerik gönderme) diske yazılmadan durur.
     if (!isBufferConsistentWithMime(buffer, file.mimetype)) {
-      return reply.status(400).send({ success: false, error: 'Dosya içeriği belirtilen türle eşleşmiyor' });
+      return reply.status(400).send({ success: false, error: t(request, 'tickets.file_content_mismatch') });
     }
 
     const totalAfter = (existing._sum.fileSize ?? 0) + buffer.length;
@@ -751,7 +752,7 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
       const mb = Math.floor(ATTACHMENT_LIMITS.maxTotalBytes / (1024 * 1024));
       return reply.status(400).send({
         success: false,
-        error: `Talep başına toplam ek boyutu ${mb} MB'ı aşamaz`,
+        error: t(request, 'tickets.max_total_attachment_size', { mb }),
       });
     }
 

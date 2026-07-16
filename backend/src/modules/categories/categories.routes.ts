@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createAuditLog } from '../../middleware/audit.js';
 import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
 import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
+import { t } from '../../i18n/index.js';
 
 const categoryCreateSchema = z.object({
   companyId: z.string().cuid().nullable().optional(),
@@ -105,7 +106,7 @@ export const categoryRoutes: FastifyPluginAsyncZod = async (app) => {
       if (denied || targets.length !== body.length) {
         return reply.status(403).send({
           success: false,
-          error: 'Yetkili olmadığınız kategorileri sıralayamazsınız',
+          error: t(request, 'categories.reorderForbidden'),
         });
       }
     }
@@ -147,7 +148,7 @@ export const categoryRoutes: FastifyPluginAsyncZod = async (app) => {
     // companyId null ise "global" kategori (tüm şirketlere açık) — yalnızca admin.
     const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     if (!isCompanyInScope(scope, body.companyId)) {
-      return reply.status(403).send({ success: false, error: 'Bu şirket için yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'categories.companyForbidden') });
     }
 
     const category = await app.prisma.category.create({
@@ -175,16 +176,16 @@ export const categoryRoutes: FastifyPluginAsyncZod = async (app) => {
       where: { id },
       select: { id: true, companyId: true },
     });
-    if (!existing) return reply.status(404).send({ success: false, error: 'Kategori bulunamadı' });
+    if (!existing) return reply.status(404).send({ success: false, error: t(request, 'categories.notFound') });
 
     const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     if (!isCompanyInScope(scope, existing.companyId)) {
-      return reply.status(403).send({ success: false, error: 'Bu kategori için yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'categories.forbidden') });
     }
     if (body.companyId !== undefined && !isCompanyInScope(scope, body.companyId)) {
       return reply.status(403).send({
         success: false,
-        error: 'Kategoriyi yetkili olmadığınız bir şirkete taşıyamazsınız',
+        error: t(request, 'categories.moveForbidden'),
       });
     }
 

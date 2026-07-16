@@ -4,6 +4,7 @@ import { stat } from 'fs/promises';
 import { join, normalize } from 'path';
 import { config } from '../../config/index.js';
 import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
+import { t } from '../../i18n/index.js';
 import { z } from 'zod';
 
 const attachmentParamsSchema = z.object({ id: z.string().min(1).max(128) });
@@ -46,7 +47,7 @@ export const attachmentRoutes: FastifyPluginAsync = async (app) => {
     });
 
     if (!attachment) {
-      return reply.status(404).send({ success: false, error: 'Dosya bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'attachments.fileNotFound') });
     }
 
     // --- Yetki: ya geçerli public token, ya kapsam içindeki personel ---
@@ -74,7 +75,7 @@ export const attachmentRoutes: FastifyPluginAsync = async (app) => {
 
     if (!allowed) {
       // 404, 403 değil: bir ekin VARLIĞI bile bilgi sızdırır.
-      return reply.status(404).send({ success: false, error: 'Dosya bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'attachments.fileNotFound') });
     }
 
     // --- Dosyayı gönder ---
@@ -86,13 +87,13 @@ export const attachmentRoutes: FastifyPluginAsync = async (app) => {
     const root = normalize(config.UPLOAD_DIR);
     if (!fullPath.startsWith(root + '/')) {
       app.log.error({ filePath: attachment.filePath }, 'Ek yolu UPLOAD_DIR dışına çıkıyor');
-      return reply.status(404).send({ success: false, error: 'Dosya bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'attachments.fileNotFound') });
     }
 
     try {
       await stat(fullPath);
     } catch {
-      return reply.status(404).send({ success: false, error: 'Dosya bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'attachments.fileNotFound') });
     }
 
     // Kullanıcı içeriği: hiçbir koşulda belge olarak yorumlanmasın.
@@ -132,13 +133,13 @@ export const brandingRoutes: FastifyPluginAsync = async (app) => {
     const fullPath = normalize(join(config.UPLOAD_DIR, 'branding', companyId, file));
     const root = normalize(join(config.UPLOAD_DIR, 'branding'));
     if (!fullPath.startsWith(root + '/')) {
-      return reply.status(404).send({ success: false, error: 'Bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'attachments.notFound') });
     }
 
     try {
       await stat(fullPath);
     } catch {
-      return reply.status(404).send({ success: false, error: 'Bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'attachments.notFound') });
     }
 
     const ext = file.slice(file.lastIndexOf('.')).toLowerCase();
@@ -150,7 +151,7 @@ export const brandingRoutes: FastifyPluginAsync = async (app) => {
     const mime = types[ext];
     if (!mime) {
       // Allowlist dışı uzantı diske hiç yazılmamalı; yine de servis etme.
-      return reply.status(404).send({ success: false, error: 'Bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'attachments.notFound') });
     }
 
     reply

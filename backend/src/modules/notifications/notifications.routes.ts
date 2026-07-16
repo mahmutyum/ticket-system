@@ -4,6 +4,7 @@ import { Prisma, NotificationType, NotificationStatus } from '@prisma/client';
 import { queueEmail, queueSms } from '../../jobs/queue.js';
 import { getStaffCompanyScope } from '../../utils/staff-scope.js';
 import { commonErrorResponses } from '../../utils/api-schema.js';
+import { t } from '../../i18n/index.js';
 
 const notificationFilterSchema = z.object({
   status: z.nativeEnum(NotificationStatus).optional(),
@@ -109,11 +110,11 @@ export const notificationRoutes: FastifyPluginAsyncZod = async (app) => {
     });
 
     if (!notification) {
-      return reply.status(404).send({ success: false, error: 'Bildirim bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'notifications.notFound') });
     }
 
     if (notification.status !== 'failed') {
-      return reply.status(400).send({ success: false, error: 'Sadece başarısız bildirimler tekrar denenebilir' });
+      return reply.status(400).send({ success: false, error: t(request, 'notifications.onlyFailedRetry') });
     }
 
     // Reset status
@@ -139,7 +140,7 @@ export const notificationRoutes: FastifyPluginAsyncZod = async (app) => {
       });
     }
 
-    reply.send({ success: true, message: 'Bildirim tekrar kuyruğa eklendi' });
+    reply.send({ success: true, message: t(request, 'notifications.requeued') });
   });
 
   // Notification stats

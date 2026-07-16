@@ -33,6 +33,7 @@ import { taskRoutes } from './modules/tasks/tasks.routes.js';
 import { credentialRoutes } from './modules/credentials/credentials.routes.js';
 import { attachmentRoutes, brandingRoutes } from './modules/attachments/attachments.routes.js';
 import { registerMutationAuditHook } from './middleware/audit.js';
+import { t } from './i18n/index.js';
 
 export async function buildApp() {
   const app = Fastify({
@@ -195,7 +196,7 @@ export async function buildApp() {
     if (error instanceof ZodError) {
       return reply.status(400).send({
         success: false,
-        error: 'Geçersiz istek',
+        error: t(request, 'common.invalidRequest'),
         // Alan bazlı ayrıntı yalnızca geliştirmede — production'da şema yapısını
         // dışarı vermez.
         ...(config.NODE_ENV === 'development' && { details: error.flatten() }),
@@ -209,11 +210,11 @@ export async function buildApp() {
       error instanceof Prisma.PrismaClientKnownRequestError
     ) {
       app.log.warn({ err: error }, 'Prisma reddetti — geçersiz istek');
-      return reply.status(400).send({ success: false, error: 'Geçersiz istek' });
+      return reply.status(400).send({ success: false, error: t(request, 'common.invalidRequest') });
     }
 
     const statusCode = error.statusCode || 500;
-    const message = statusCode === 500 ? 'Sunucu hatası' : error.message;
+    const message = statusCode === 500 ? t(request, 'common.serverError') : error.message;
 
     if (statusCode === 500) {
       app.log.error(error);

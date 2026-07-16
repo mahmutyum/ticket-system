@@ -7,6 +7,7 @@ import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.
 import { getStaffCompanyScope } from '../../utils/staff-scope.js';
 import { StaffRole } from '@prisma/client';
 import { commonErrorResponses } from '../../utils/api-schema.js';
+import { t } from '../../i18n/index.js';
 
 const noteCreateSchema = z.object({
   content: requiredText({ ...LIMITS.noteContent, label: 'Not' }),
@@ -45,12 +46,12 @@ export const noteRoutes: FastifyPluginAsyncZod = async (app) => {
       select: { id: true, ticketNumber: true, createdByEmail: true, accessToken: true, companyId: true },
     });
     if (!ticket) {
-      return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'notes.ticket_not_found') });
     }
 
     const scopeIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     if (scopeIds && !scopeIds.includes(ticket.companyId)) {
-      return reply.status(403).send({ success: false, error: 'Bu talebe erişim yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'notes.no_ticket_access') });
     }
 
     const note = await app.prisma.ticketNote.create({
@@ -132,12 +133,12 @@ export const noteRoutes: FastifyPluginAsyncZod = async (app) => {
       select: { companyId: true },
     });
     if (!ticket) {
-      return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'notes.ticket_not_found') });
     }
 
     const scopeIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     if (scopeIds && !scopeIds.includes(ticket.companyId)) {
-      return reply.status(403).send({ success: false, error: 'Bu talebe erişim yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'notes.no_ticket_access') });
     }
 
     const notes = await app.prisma.ticketNote.findMany({

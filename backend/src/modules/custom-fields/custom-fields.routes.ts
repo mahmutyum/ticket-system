@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { CustomFieldType } from '@prisma/client';
 import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
 import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
+import { t } from '../../i18n/index.js';
 
 const customFieldCreateSchema = z.object({
   companyId: z.string().cuid().nullable().optional(),
@@ -51,7 +52,7 @@ export const customFieldRoutes: FastifyPluginAsyncZod = async (app) => {
     // companyId null ise "global" alan (tüm şirketlerin formuna çıkar) — yalnızca admin.
     const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     if (!isCompanyInScope(scope, body.companyId)) {
-      return reply.status(403).send({ success: false, error: 'Bu şirket için yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'customFields.no_company_permission') });
     }
 
     const field = await app.prisma.customField.create({ data: body });
@@ -77,16 +78,16 @@ export const customFieldRoutes: FastifyPluginAsyncZod = async (app) => {
       where: { id },
       select: { id: true, companyId: true },
     });
-    if (!existing) return reply.status(404).send({ success: false, error: 'Alan bulunamadı' });
+    if (!existing) return reply.status(404).send({ success: false, error: t(request, 'customFields.not_found') });
 
     const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     if (!isCompanyInScope(scope, existing.companyId)) {
-      return reply.status(403).send({ success: false, error: 'Bu alan için yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'customFields.no_field_permission') });
     }
     if (body.companyId !== undefined && !isCompanyInScope(scope, body.companyId)) {
       return reply.status(403).send({
         success: false,
-        error: 'Alanı yetkili olmadığınız bir şirkete taşıyamazsınız',
+        error: t(request, 'customFields.cannot_move_to_unauthorized_company'),
       });
     }
 

@@ -5,6 +5,7 @@ import { queueEmail } from '../../jobs/queue.js';
 import { saveFile, isAllowedMimeType, isBufferConsistentWithMime } from '../../services/storage.service.js';
 import { requiredText, emailSchema, LIMITS } from '../../utils/validation.js';
 import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
+import { t } from '../../i18n/index.js';
 
 /**
  * Public takip linkinin süresi dolmuş mu?
@@ -169,7 +170,7 @@ export const publicRoutes: FastifyPluginAsyncZod = async (app) => {
     // Süresi dolmuş link 404 döner — "bulunamadı" ile "süresi doldu" ayrımı
     // yapılmaz, aksi halde geçerli bir ticket numarasının varlığı doğrulanır.
     if (!ticket || isAccessExpired(ticket.accessTokenExpiresAt)) {
-      return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'tickets.ticket_not_found') });
     }
 
     const { accessTokenExpiresAt: _accessTokenExpiresAt, ...publicTicket } = ticket;
@@ -206,7 +207,7 @@ export const publicRoutes: FastifyPluginAsyncZod = async (app) => {
     });
 
     if (!ticket || isAccessExpired(ticket.accessTokenExpiresAt)) {
-      return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'tickets.ticket_not_found') });
     }
 
     // Create history + update status atomically
@@ -274,27 +275,27 @@ export const publicRoutes: FastifyPluginAsyncZod = async (app) => {
     });
 
     if (!ticket || isAccessExpired(ticket.accessTokenExpiresAt)) {
-      return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'tickets.ticket_not_found') });
     }
 
     if (['resolved', 'closed'].includes(ticket.status)) {
-      return reply.status(400).send({ success: false, error: 'Kapalı taleplere dosya eklenemez' });
+      return reply.status(400).send({ success: false, error: t(request, 'tickets.closed_ticket_no_attachment') });
     }
 
     const file = await request.file();
     if (!file) {
-      return reply.status(400).send({ success: false, error: 'Dosya gerekli' });
+      return reply.status(400).send({ success: false, error: t(request, 'tickets.file_required') });
     }
 
     if (!isAllowedMimeType(file.mimetype)) {
-      return reply.status(400).send({ success: false, error: 'Desteklenmeyen dosya türü' });
+      return reply.status(400).send({ success: false, error: t(request, 'tickets.unsupported_file_type') });
     }
 
     const buffer = await file.toBuffer();
 
     // İçerik doğrulaması — bu uç KİMLİKSİZ olduğu için ekstra önemli.
     if (!isBufferConsistentWithMime(buffer, file.mimetype)) {
-      return reply.status(400).send({ success: false, error: 'Dosya içeriği belirtilen türle eşleşmiyor' });
+      return reply.status(400).send({ success: false, error: t(request, 'tickets.file_content_mismatch') });
     }
 
     const saved = await saveFile(buffer, file.filename, ticket.id, file.mimetype);
@@ -327,7 +328,7 @@ export const publicRoutes: FastifyPluginAsyncZod = async (app) => {
     const parsed = ticketTrackSchema.safeParse(request.body);
 
     if (!parsed.success) {
-      return reply.status(404).send({ success: false, error: 'Talep bulunamadı veya email eşleşmiyor' });
+      return reply.status(404).send({ success: false, error: t(request, 'tickets.track_not_found') });
     }
 
     const ticket = await app.prisma.ticket.findFirst({
@@ -339,7 +340,7 @@ export const publicRoutes: FastifyPluginAsyncZod = async (app) => {
     });
 
     if (!ticket) {
-      return reply.status(404).send({ success: false, error: 'Talep bulunamadı veya email eşleşmiyor' });
+      return reply.status(404).send({ success: false, error: t(request, 'tickets.track_not_found') });
     }
 
     // Süresi dolmuş linki YENİLE. Çağıran ticket numarasını VE e-postayı bildiğini

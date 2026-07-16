@@ -5,6 +5,7 @@ import { encrypt, decrypt } from '../../utils/crypto.js';
 import { createAuditLog } from '../../middleware/audit.js';
 import { getStaffCompanyScope, isCompanyInScope, resolveCompanyFilter } from '../../utils/staff-scope.js';
 import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
+import { t } from '../../i18n/index.js';
 
 /**
  * Kasa kaydının URL'i — yalnızca http/https.
@@ -118,13 +119,13 @@ export const credentialRoutes: FastifyPluginAsyncZod = async (app) => {
     const { id } = request.params;
     const staffUser = request.staffUser!;
     const entry = await app.prisma.credentialEntry.findUnique({ where: { id } });
-    if (!entry) return reply.status(404).send({ success: false, error: 'Kayıt bulunamadı' });
+    if (!entry) return reply.status(404).send({ success: false, error: t(request, 'credentials.notFound') });
 
     // Kapsam kontrolü audit log'dan ÖNCE: reddedilen bir deneme başarılı bir
     // görüntüleme gibi loglanmamalı.
     const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     if (!isCompanyInScope(scope, entry.companyId)) {
-      return reply.status(403).send({ success: false, error: 'Bu kayda erişim yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'credentials.accessDenied') });
     }
 
     await createAuditLog({
@@ -161,7 +162,7 @@ export const credentialRoutes: FastifyPluginAsyncZod = async (app) => {
     if (scope !== null && !isCompanyInScope(scope, body.companyId)) {
       return reply.status(403).send({
         success: false,
-        error: 'Yalnızca yetkili olduğunuz şirketler için şifre ekleyebilirsiniz',
+        error: t(request, 'credentials.createScopeDenied'),
       });
     }
 
@@ -205,13 +206,13 @@ export const credentialRoutes: FastifyPluginAsyncZod = async (app) => {
       where: { id },
       select: { id: true, companyId: true },
     });
-    if (!existing) return reply.status(404).send({ success: false, error: 'Kayıt bulunamadı' });
+    if (!existing) return reply.status(404).send({ success: false, error: t(request, 'credentials.notFound') });
 
     const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
 
     // MEVCUT kayıt kapsam içinde mi? Değilse dokunamaz.
     if (!isCompanyInScope(scope, existing.companyId)) {
-      return reply.status(403).send({ success: false, error: 'Bu kayda erişim yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'credentials.accessDenied') });
     }
 
     // HEDEF şirket de kapsam içinde mi? Bu kontrol olmadan kapsamlı bir kullanıcı
@@ -219,7 +220,7 @@ export const credentialRoutes: FastifyPluginAsyncZod = async (app) => {
     if (body.companyId !== undefined && scope !== null && !isCompanyInScope(scope, body.companyId)) {
       return reply.status(403).send({
         success: false,
-        error: 'Kaydı yetkili olmadığınız bir şirkete taşıyamazsınız',
+        error: t(request, 'credentials.moveScopeDenied'),
       });
     }
 
@@ -259,11 +260,11 @@ export const credentialRoutes: FastifyPluginAsyncZod = async (app) => {
       where: { id },
       select: { id: true, companyId: true },
     });
-    if (!existing) return reply.status(404).send({ success: false, error: 'Kayıt bulunamadı' });
+    if (!existing) return reply.status(404).send({ success: false, error: t(request, 'credentials.notFound') });
 
     const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     if (!isCompanyInScope(scope, existing.companyId)) {
-      return reply.status(403).send({ success: false, error: 'Bu kayda erişim yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'credentials.accessDenied') });
     }
 
     await app.prisma.credentialEntry.delete({ where: { id } });

@@ -4,6 +4,7 @@ import { addClient, getClientCount } from '../../services/sse.service.js';
 import { getStaffCompanyScope } from '../../utils/staff-scope.js';
 import { z } from 'zod';
 import { commonErrorResponses } from '../../utils/api-schema.js';
+import { t } from '../../i18n/index.js';
 
 /**
  * SSE bileti — kısa ömürlü, TEK KULLANIMLIK.
@@ -49,14 +50,14 @@ export const eventRoutes: FastifyPluginAsyncZod = async (app) => {
   // SSE: Staff live updates
   app.get('/staff', { schema: { querystring: staffTicketQuerySchema, tags: ['Events'], summary: 'Personel canlı olay akışına bağlan' } }, async (request, reply) => {
     const { ticket } = request.query;
-    if (!ticket) return reply.status(401).send({ success: false, error: 'Bilet gerekli' });
+    if (!ticket) return reply.status(401).send({ success: false, error: t(request, 'events.ticket_required') });
 
     // TEK KULLANIMLIK: oku ve hemen sil. Log'a düşen bilet tekrar kullanılamaz.
     const staffId = await app.redis.get(sseTicketKey(ticket));
     await app.redis.del(sseTicketKey(ticket));
 
     if (!staffId) {
-      return reply.status(401).send({ success: false, error: 'Bilet geçersiz veya süresi dolmuş' });
+      return reply.status(401).send({ success: false, error: t(request, 'events.ticket_invalid_or_expired') });
     }
 
     // Rol ve aktiflik DB'den okunur — bilet yalnızca "kim" bilgisini taşır.
@@ -66,7 +67,7 @@ export const eventRoutes: FastifyPluginAsyncZod = async (app) => {
     });
 
     if (!staff || !staff.isActive) {
-      return reply.status(401).send({ success: false, error: 'Geçersiz oturum' });
+      return reply.status(401).send({ success: false, error: t(request, 'events.invalid_session') });
     }
 
     // Şirket kapsamı bağlantı anında çözülür ve keep-alive turunda tazelenir.
@@ -97,7 +98,7 @@ export const eventRoutes: FastifyPluginAsyncZod = async (app) => {
     });
 
     if (!ticket || (ticket.accessTokenExpiresAt && ticket.accessTokenExpiresAt < new Date())) {
-      return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'events.ticket_not_found') });
     }
 
     const clientId = addClient(reply, 'public', { ticketAccessToken: accessToken });

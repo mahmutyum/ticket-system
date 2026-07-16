@@ -8,6 +8,7 @@ import { createAuditLog } from '../../middleware/audit.js';
 import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
 import { requiredText, LIMITS } from '../../utils/validation.js';
 import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
+import { t } from '../../i18n/index.js';
 
 /**
  * Görev kapsamı — `Task`'ta `companyId` yoktur, şirkete `location → company`
@@ -164,7 +165,7 @@ export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
         },
       },
     });
-    if (!task) return reply.status(404).send({ success: false, error: 'Görev bulunamadı' });
+    if (!task) return reply.status(404).send({ success: false, error: t(request, 'tasks.notFound') });
 
     const isManager = staffUser.role === 'admin' || staffUser.role === 'it_manager';
     const isAssignee = task.assignees.some(a => a.staff.id === staffUser.id);
@@ -176,7 +177,7 @@ export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
     const inScope = isManager && isCompanyInScope(scope, task.location?.company.id ?? null);
 
     if (!inScope && !isAssignee && !isCreator) {
-      return reply.status(403).send({ success: false, error: 'Bu göreve erişim yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'tasks.noAccess') });
     }
 
     reply.send({ success: true, data: task });
@@ -193,7 +194,7 @@ export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
       select: { id: true, email: true, fullName: true },
     });
     if (assignees.length !== body.assigneeIds.length) {
-      return reply.status(400).send({ success: false, error: 'Bazı atanan personeller bulunamadı veya aktif değil' });
+      return reply.status(400).send({ success: false, error: t(request, 'tasks.assigneesInvalid') });
     }
 
     const location = await app.prisma.location.findFirst({
@@ -201,7 +202,7 @@ export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
       select: { id: true, companyId: true },
     });
     if (!location) {
-      return reply.status(400).send({ success: false, error: 'Lokasyon bulunamadı veya aktif değil' });
+      return reply.status(400).send({ success: false, error: t(request, 'tasks.locationInvalid') });
     }
 
     // Lokasyonun şirketi kapsam içinde olmalı — yoksa yönetici başka şirketin
@@ -210,7 +211,7 @@ export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
     if (!isCompanyInScope(scope, location.companyId)) {
       return reply.status(403).send({
         success: false,
-        error: 'Yalnızca yetkili olduğunuz şirketlerin lokasyonlarına görev açabilirsiniz',
+        error: t(request, 'tasks.locationScopeForbidden'),
       });
     }
 
@@ -278,12 +279,12 @@ export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
       where: { id },
       select: { id: true, status: true, completedAt: true, location: { select: { companyId: true } }, createdBy: { select: { email: true } }, assignees: { select: { staffId: true, staff: { select: { email: true, fullName: true } } } } },
     });
-    if (!existing) return reply.status(404).send({ success: false, error: 'Görev bulunamadı' });
+    if (!existing) return reply.status(404).send({ success: false, error: t(request, 'tasks.notFound') });
 
     // MEVCUT görev kapsam içinde mi?
     const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     if (!isCompanyInScope(scope, existing.location?.companyId ?? null)) {
-      return reply.status(403).send({ success: false, error: 'Bu görev için yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'tasks.noPermission') });
     }
 
     const updateData: Prisma.TaskUncheckedUpdateInput = {};
@@ -302,14 +303,14 @@ export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
           select: { id: true, companyId: true },
         });
         if (!loc) {
-          return reply.status(400).send({ success: false, error: 'Lokasyon bulunamadı veya aktif değil' });
+          return reply.status(400).send({ success: false, error: t(request, 'tasks.locationInvalid') });
         }
         // HEDEF lokasyonun şirketi de kapsam içinde olmalı — yoksa görev
         // yetkili olunmayan bir şirkete taşınabilirdi.
         if (!isCompanyInScope(scope, loc.companyId)) {
           return reply.status(403).send({
             success: false,
-            error: 'Görevi yetkili olmadığınız bir şirkete taşıyamazsınız',
+            error: t(request, 'tasks.moveScopeForbidden'),
           });
         }
         effectiveCompanyId = loc.companyId;
@@ -317,7 +318,7 @@ export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
         // Lokasyonu null'lamak görevi kapsam dışına çıkarır — yalnızca admin.
         return reply.status(403).send({
           success: false,
-          error: 'Görevin lokasyonunu kaldıramazsınız',
+          error: t(request, 'tasks.locationRemoveForbidden'),
         });
       } else {
         // admin lokasyonu kaldırdı → görev artık şirkete bağlı değil.
@@ -341,7 +342,7 @@ export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
         where: { id: { in: body.assigneeIds }, isActive: true },
       });
       if (valid !== body.assigneeIds.length) {
-        return reply.status(400).send({ success: false, error: 'Bazı atanan personeller bulunamadı' });
+        return reply.status(400).send({ success: false, error: t(request, 'tasks.assigneesNotFound') });
       }
       newAssigneeIds = body.assigneeIds;
     }
@@ -400,7 +401,7 @@ export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
         assignees: { select: { staffId: true } },
       },
     });
-    if (!task) return reply.status(404).send({ success: false, error: 'Görev bulunamadı' });
+    if (!task) return reply.status(404).send({ success: false, error: t(request, 'tasks.notFound') });
 
     const isManager = staffUser.role === 'admin' || staffUser.role === 'it_manager';
     const isAssignee = task.assignees.some(a => a.staffId === staffUser.id);
@@ -411,7 +412,7 @@ export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
     const inScope = isManager && isCompanyInScope(scope, task.location?.companyId ?? null);
 
     if (!inScope && !isAssignee) {
-      return reply.status(403).send({ success: false, error: 'Bu görevi güncelleme yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'tasks.statusNoPermission') });
     }
 
     const updated = await app.prisma.task.update({
@@ -459,11 +460,11 @@ export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
       where: { id },
       select: { id: true, location: { select: { companyId: true } } },
     });
-    if (!exists) return reply.status(404).send({ success: false, error: 'Görev bulunamadı' });
+    if (!exists) return reply.status(404).send({ success: false, error: t(request, 'tasks.notFound') });
 
     const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     if (!isCompanyInScope(scope, exists.location?.companyId ?? null)) {
-      return reply.status(403).send({ success: false, error: 'Bu görev için yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'tasks.noPermission') });
     }
 
     await app.prisma.task.delete({ where: { id } });
@@ -495,7 +496,7 @@ export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
         assignees: { select: { staffId: true } },
       },
     });
-    if (!task) return reply.status(404).send({ success: false, error: 'Görev bulunamadı' });
+    if (!task) return reply.status(404).send({ success: false, error: t(request, 'tasks.notFound') });
 
     const isManager = staffUser.role === 'admin' || staffUser.role === 'it_manager';
     const isAssignee = task.assignees.some(a => a.staffId === staffUser.id);
@@ -505,7 +506,7 @@ export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
     const inScope = isManager && isCompanyInScope(scope, task.location?.companyId ?? null);
 
     if (!inScope && !isAssignee && !isCreator) {
-      return reply.status(403).send({ success: false, error: 'Bu göreve yorum yapma yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'tasks.commentNoPermission') });
     }
 
     const comment = await app.prisma.taskComment.create({

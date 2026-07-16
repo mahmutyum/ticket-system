@@ -1,4 +1,5 @@
 import axios from 'axios';
+import i18n from '../i18n/config';
 import { useAuthStore } from '../stores/auth.store';
 
 const api = axios.create({
@@ -11,6 +12,8 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // Backend API mesajlarını (hata yanıtları) aktif dile göre döndürsün.
+  config.headers['Accept-Language'] = i18n.language?.startsWith('tr') ? 'tr' : 'en';
   return config;
 });
 

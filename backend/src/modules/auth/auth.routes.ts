@@ -15,6 +15,7 @@ import { createAuditLog } from '../../middleware/audit.js';
 import { nanoid } from 'nanoid';
 import { decrypt, encrypt } from '../../utils/crypto.js';
 import { generateTotpSecret, totpUri, verifyTotp } from '../../utils/totp.js';
+import { t } from '../../i18n/index.js';
 
 const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
 
@@ -74,7 +75,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     if (fails >= MAX_FAILED_LOGINS) {
       return reply.status(429).send({
         success: false,
-        error: 'Çok fazla hatalı deneme. Hesap geçici olarak kilitlendi, birazdan tekrar deneyin.',
+        error: t(request, 'auth.account_locked'),
       });
     }
 
@@ -106,7 +107,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
         ipAddress: ip,
       });
 
-      return reply.status(401).send({ success: false, error: 'Geçersiz email veya şifre' });
+      return reply.status(401).send({ success: false, error: t(request, 'auth.invalid_credentials') });
     }
 
     await app.redis.del(failKey(body.email));
@@ -165,10 +166,10 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
   }, async (request, reply) => {
     const body = request.body;
     const staffId = await app.redis.get(mfaChallengeKey(body.challenge));
-    if (!staffId) return reply.status(401).send({ success: false, error: 'MFA doğrulaması geçersiz veya süresi dolmuş' });
+    if (!staffId) return reply.status(401).send({ success: false, error: t(request, 'auth.mfa_challenge_invalid') });
     const staff = await app.prisma.staff.findUnique({ where: { id: staffId } });
     if (!staff?.isActive || !staff.mfaEnabled || !staff.mfaSecretEnc || !verifyTotp(decrypt(staff.mfaSecretEnc), body.code)) {
-      return reply.status(401).send({ success: false, error: 'MFA kodu geçersiz' });
+      return reply.status(401).send({ success: false, error: t(request, 'auth.mfa_code_invalid') });
     }
     await app.redis.del(mfaChallengeKey(body.challenge));
     const sid = newSessionId();
@@ -196,7 +197,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
       request.body?.refreshToken;
 
     if (!token) {
-      return reply.status(401).send({ success: false, error: 'Refresh token gerekli' });
+      return reply.status(401).send({ success: false, error: t(request, 'auth.refresh_token_required') });
     }
 
     try {
@@ -207,7 +208,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
       // Bu OTURUMUN saklı token'ı ile eşleşmeli.
       const storedToken = await app.redis.get(refreshKey(payload.id, payload.sid));
       if (storedToken !== token) {
-        return reply.status(401).send({ success: false, error: 'Geçersiz refresh token' });
+        return reply.status(401).send({ success: false, error: t(request, 'auth.refresh_token_invalid') });
       }
 
       const staff = await app.prisma.staff.findUnique({
@@ -215,7 +216,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
       });
 
       if (!staff || !staff.isActive) {
-        return reply.status(401).send({ success: false, error: 'Hesap aktif değil' });
+        return reply.status(401).send({ success: false, error: t(request, 'auth.account_inactive') });
       }
 
       // Rol DB'den YENİDEN okunur. Rol değiştiğinde access token'lar
@@ -254,7 +255,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
           },
         });
     } catch {
-      return reply.status(401).send({ success: false, error: 'Geçersiz refresh token' });
+      return reply.status(401).send({ success: false, error: t(request, 'auth.refresh_token_invalid') });
     }
   });
 
@@ -323,7 +324,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     const body = request.body;
     const staff = await app.prisma.staff.findUnique({ where: { id: request.staffUser!.id } });
     if (!staff || !(await bcrypt.compare(body.currentPassword, staff.passwordHash))) {
-      return reply.status(400).send({ success: false, error: 'Mevcut şifre yanlış' });
+      return reply.status(400).send({ success: false, error: t(request, 'auth.current_password_wrong') });
     }
     const passwordHash = await bcrypt.hash(body.newPassword, 12);
     await app.prisma.staff.update({ where: { id: staff.id }, data: { passwordHash } });
@@ -347,7 +348,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     },
   }, async (request, reply) => {
     const staff = await app.prisma.staff.findUnique({ where: { id: request.staffUser!.id } });
-    if (!staff) return reply.status(404).send({ success: false, error: 'Personel bulunamadı' });
+    if (!staff) return reply.status(404).send({ success: false, error: t(request, 'auth.staff_not_found') });
     const secret = generateTotpSecret();
     await app.redis.set(mfaSetupKey(staff.id), encrypt(secret), 'EX', 10 * 60);
     reply.send({ success: true, data: { secret, uri: totpUri(secret, staff.email, config.APP_NAME) } });
@@ -365,7 +366,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     const { code } = request.body;
     const pending = await app.redis.get(mfaSetupKey(request.staffUser!.id));
     if (!pending || !verifyTotp(decrypt(pending), code)) {
-      return reply.status(400).send({ success: false, error: 'MFA kodu geçersiz veya kurulum süresi dolmuş' });
+      return reply.status(400).send({ success: false, error: t(request, 'auth.mfa_code_or_setup_invalid') });
     }
     await app.prisma.staff.update({ where: { id: request.staffUser!.id }, data: { mfaSecretEnc: pending, mfaEnabled: true } });
     await app.redis.del(mfaSetupKey(request.staffUser!.id));
@@ -385,7 +386,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     const body = request.body;
     const staff = await app.prisma.staff.findUnique({ where: { id: request.staffUser!.id } });
     if (!staff?.mfaSecretEnc || !(await bcrypt.compare(body.password, staff.passwordHash)) || !verifyTotp(decrypt(staff.mfaSecretEnc), body.code)) {
-      return reply.status(400).send({ success: false, error: 'Şifre veya MFA kodu geçersiz' });
+      return reply.status(400).send({ success: false, error: t(request, 'auth.password_or_mfa_invalid') });
     }
     await app.prisma.staff.update({ where: { id: staff.id }, data: { mfaSecretEnc: null, mfaEnabled: false } });
     await createAuditLog({ entityType: 'auth', entityId: staff.id, action: 'mfa_disabled', performedBy: staff.email, ipAddress: request.ip });

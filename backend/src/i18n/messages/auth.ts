@@ -1,0 +1,28 @@
+export const authMessages = {
+  tr: {
+    'auth.account_locked': 'Çok fazla hatalı deneme. Hesap geçici olarak kilitlendi, birazdan tekrar deneyin.',
+    'auth.invalid_credentials': 'Geçersiz email veya şifre',
+    'auth.mfa_challenge_invalid': 'MFA doğrulaması geçersiz veya süresi dolmuş',
+    'auth.mfa_code_invalid': 'MFA kodu geçersiz',
+    'auth.refresh_token_required': 'Refresh token gerekli',
+    'auth.refresh_token_invalid': 'Geçersiz refresh token',
+    'auth.account_inactive': 'Hesap aktif değil',
+    'auth.current_password_wrong': 'Mevcut şifre yanlış',
+    'auth.staff_not_found': 'Personel bulunamadı',
+    'auth.mfa_code_or_setup_invalid': 'MFA kodu geçersiz veya kurulum süresi dolmuş',
+    'auth.password_or_mfa_invalid': 'Şifre veya MFA kodu geçersiz',
+  } as Record<string, string>,
+  en: {
+    'auth.account_locked': 'Too many failed attempts. The account has been temporarily locked, please try again shortly.',
+    'auth.invalid_credentials': 'Invalid email or password',
+    'auth.mfa_challenge_invalid': 'MFA verification is invalid or has expired',
+    'auth.mfa_code_invalid': 'Invalid MFA code',
+    'auth.refresh_token_required': 'Refresh token is required',
+    'auth.refresh_token_invalid': 'Invalid refresh token',
+    'auth.account_inactive': 'Account is not active',
+    'auth.current_password_wrong': 'Current password is incorrect',
+    'auth.staff_not_found': 'Staff member not found',
+    'auth.mfa_code_or_setup_invalid': 'Invalid MFA code or setup has expired',
+    'auth.password_or_mfa_invalid': 'Invalid password or MFA code',
+  } as Record<string, string>,
+};

@@ -8,6 +8,7 @@ import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.
 import { encrypt } from '../../utils/crypto.js';
 import { assertPublicHost, BlockedHostError } from '../../utils/net-guard.js';
 import { commonErrorResponses } from '../../utils/api-schema.js';
+import { t } from '../../i18n/index.js';
 
 const smtpConfigSchema = z.object({
   host: z.string().min(1),
@@ -202,7 +203,7 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
     });
 
     if (!company) {
-      return reply.status(404).send({ success: false, error: 'Şirket bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'companies.companyNotFound') });
     }
     reply.send({ success: true, data: company });
   });
@@ -316,7 +317,7 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
     const { id } = request.params;
     const existing = await app.prisma.company.findUnique({ where: { id } });
     if (!existing) {
-      return reply.status(404).send({ success: false, error: 'Şirket bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'companies.companyNotFound') });
     }
     const company = await app.prisma.company.update({
       where: { id },
@@ -339,7 +340,7 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
     const { id } = request.params;
     const existing = await app.prisma.company.findUnique({ where: { id } });
     if (!existing) {
-      return reply.status(404).send({ success: false, error: 'Şirket bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'companies.companyNotFound') });
     }
     const company = await app.prisma.company.update({
       where: { id },
@@ -401,7 +402,7 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
 
     const company = await app.prisma.company.findUnique({ where: { id } });
     if (!company) {
-      return reply.status(404).send({ success: false, error: 'Şirket bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'companies.companyNotFound') });
     }
 
     // SSRF: host admin tarafından serbest yazılır ve sunucu ona bağlanır.
@@ -413,7 +414,7 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
       if (err instanceof BlockedHostError) {
         return reply.status(400).send({
           success: false,
-          error: 'SMTP sunucusu olarak dahili veya ayrılmış bir adres kullanılamaz',
+          error: t(request, 'companies.smtpHostBlocked'),
         });
       }
       throw err;
@@ -459,7 +460,7 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
     await app.prisma.companySmtp.deleteMany({ where: { companyId: id } });
     invalidateCompanyTransporter(id);
 
-    reply.send({ success: true, message: 'SMTP yapılandırması kaldırıldı, global SMTP kullanılacak' });
+    reply.send({ success: true, message: t(request, 'companies.smtpRemoved') });
   });
 
   // Test company SMTP connection
@@ -483,7 +484,7 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
       if (err instanceof BlockedHostError) {
         return reply.status(400).send({
           success: false,
-          error: 'SMTP sunucusu olarak dahili veya ayrılmış bir adres kullanılamaz',
+          error: t(request, 'companies.smtpHostBlocked'),
         });
       }
       throw err;
@@ -500,7 +501,7 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
     });
 
     if (result.success) {
-      reply.send({ success: true, message: 'SMTP bağlantısı başarılı' });
+      reply.send({ success: true, message: t(request, 'companies.smtpTestSuccess') });
     } else {
       // Ham hata metni DÖNDÜRÜLMEZ.
       //
@@ -510,7 +511,7 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
       app.log.warn({ host: body.host, port: body.port, err: result.error }, 'SMTP testi başarısız');
       reply.status(400).send({
         success: false,
-        error: 'SMTP bağlantısı başarısız. Sunucu adresi, port ve kimlik bilgilerini kontrol edin.',
+        error: t(request, 'companies.smtpTestFailed'),
       });
     }
   });
@@ -530,27 +531,27 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
   }, async (request, reply) => {
     const { id } = request.params;
     const exists = await app.prisma.company.findUnique({ where: { id }, select: { id: true } });
-    if (!exists) return reply.status(404).send({ success: false, error: 'Şirket bulunamadı' });
+    if (!exists) return reply.status(404).send({ success: false, error: t(request, 'companies.companyNotFound') });
 
     // it_manager yalnızca kendi şirketlerinin logosunu değiştirebilir.
     const staffUser = request.staffUser!;
     const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     if (!isCompanyInScope(scope, id)) {
-      return reply.status(403).send({ success: false, error: 'Bu şirket için yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'companies.companyForbidden') });
     }
 
     const file = await request.file();
-    if (!file) return reply.status(400).send({ success: false, error: 'Dosya bulunamadı' });
+    if (!file) return reply.status(400).send({ success: false, error: t(request, 'companies.fileNotFound') });
     if (!isAllowedLogoMimeType(file.mimetype)) {
-      return reply.status(400).send({ success: false, error: 'Sadece PNG, JPG, WEBP veya SVG yüklenebilir' });
+      return reply.status(400).send({ success: false, error: t(request, 'companies.logoMimeNotAllowed') });
     }
     const buffer = await file.toBuffer();
     if (buffer.length > 2 * 1024 * 1024) {
-      return reply.status(400).send({ success: false, error: 'Dosya boyutu 2MB üzerinde olamaz' });
+      return reply.status(400).send({ success: false, error: t(request, 'companies.fileTooLarge') });
     }
     // Beyan edilen logo tipi gerçek imzayla tutarlı mı (webp/png/jpg).
     if (!isBufferConsistentWithMime(buffer, file.mimetype)) {
-      return reply.status(400).send({ success: false, error: 'Dosya içeriği belirtilen türle eşleşmiyor' });
+      return reply.status(400).send({ success: false, error: t(request, 'companies.fileMimeMismatch') });
     }
     const saved = await saveLogo(buffer, file.filename, id, file.mimetype);
     const updated = await app.prisma.company.update({

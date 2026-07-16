@@ -7,6 +7,7 @@ import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.
 import { createAuditLog } from '../../middleware/audit.js';
 import { formatTrDateTime } from '../../utils/format.js';
 import { commonErrorResponses } from '../../utils/api-schema.js';
+import { t } from '../../i18n/index.js';
 
 const onsiteCreateSchema = z.object({
   ticketId: z.string().cuid(),
@@ -75,12 +76,12 @@ export const onsiteRoutes: FastifyPluginAsyncZod = async (app) => {
     });
 
     if (!ticket) {
-      return reply.status(404).send({ success: false, error: 'Ticket bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'onsite.ticketNotFound') });
     }
 
     const scopeIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     if (scopeIds && !scopeIds.includes(ticket.companyId)) {
-      return reply.status(403).send({ success: false, error: 'Bu talebe erişim yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'onsite.ticketForbidden') });
     }
 
     const onsite = await app.prisma.onsiteSupport.create({
@@ -221,12 +222,12 @@ export const onsiteRoutes: FastifyPluginAsyncZod = async (app) => {
       include: { ticket: { select: { companyId: true } } },
     });
     if (!existing) {
-      return reply.status(404).send({ success: false, error: 'Randevu bulunamadı' });
+      return reply.status(404).send({ success: false, error: t(request, 'onsite.notFound') });
     }
 
     const scopeIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     if (scopeIds && !scopeIds.includes(existing.ticket.companyId)) {
-      return reply.status(403).send({ success: false, error: 'Bu randevuya erişim yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'onsite.forbidden') });
     }
 
     const updateData: Prisma.OnsiteSupportUpdateInput = {
@@ -324,7 +325,7 @@ export const onsiteRoutes: FastifyPluginAsyncZod = async (app) => {
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     if (companyId && !isCompanyInScope(scopeCompanyIds, companyId)) {
-      return reply.code(403).send({ success: false, error: 'Bu şirket için yetkiniz yok' });
+      return reply.code(403).send({ success: false, error: t(request, 'onsite.companyForbidden') });
     }
 
     // Frontend, kullanıcının yerel saatine göre Pazartesi 00:00'ı hesaplayıp ISO olarak gönderir.

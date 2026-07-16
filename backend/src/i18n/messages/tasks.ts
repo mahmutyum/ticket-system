@@ -1,0 +1,28 @@
+export const tasksMessages = {
+  tr: {
+    'tasks.notFound': 'Görev bulunamadı',
+    'tasks.noAccess': 'Bu göreve erişim yetkiniz yok',
+    'tasks.assigneesInvalid': 'Bazı atanan personeller bulunamadı veya aktif değil',
+    'tasks.locationInvalid': 'Lokasyon bulunamadı veya aktif değil',
+    'tasks.locationScopeForbidden': 'Yalnızca yetkili olduğunuz şirketlerin lokasyonlarına görev açabilirsiniz',
+    'tasks.noPermission': 'Bu görev için yetkiniz yok',
+    'tasks.moveScopeForbidden': 'Görevi yetkili olmadığınız bir şirkete taşıyamazsınız',
+    'tasks.locationRemoveForbidden': 'Görevin lokasyonunu kaldıramazsınız',
+    'tasks.assigneesNotFound': 'Bazı atanan personeller bulunamadı',
+    'tasks.statusNoPermission': 'Bu görevi güncelleme yetkiniz yok',
+    'tasks.commentNoPermission': 'Bu göreve yorum yapma yetkiniz yok',
+  } as Record<string, string>,
+  en: {
+    'tasks.notFound': 'Task not found',
+    'tasks.noAccess': 'You do not have access to this task',
+    'tasks.assigneesInvalid': 'Some assigned staff members were not found or are inactive',
+    'tasks.locationInvalid': 'Location not found or inactive',
+    'tasks.locationScopeForbidden': 'You can only create tasks for locations of companies you are authorized for',
+    'tasks.noPermission': 'You are not authorized for this task',
+    'tasks.moveScopeForbidden': 'You cannot move the task to a company you are not authorized for',
+    'tasks.locationRemoveForbidden': 'You cannot remove the task\'s location',
+    'tasks.assigneesNotFound': 'Some assigned staff members were not found',
+    'tasks.statusNoPermission': 'You are not authorized to update this task',
+    'tasks.commentNoPermission': 'You are not authorized to comment on this task',
+  } as Record<string, string>,
+};

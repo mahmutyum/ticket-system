@@ -1,6 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
+import axios from 'axios';
 import tr from './locales/tr.json';
 import en from './locales/en.json';
 
@@ -68,12 +69,16 @@ i18n
   });
 
 // `<html lang>` erişilebilirlik + tarayıcı çeviri ipuçları için dille senkron tutulur.
-function syncHtmlLang(lng: string) {
+// Ayrıca global axios `Accept-Language` — public sayfalar ham axios kullanır, böylece
+// onların da backend hata mesajları doğru dilde döner.
+function syncLang(lng: string) {
+  const short = lng.startsWith('tr') ? 'tr' : 'en';
   if (typeof document !== 'undefined') {
-    document.documentElement.lang = lng.startsWith('tr') ? 'tr' : 'en';
+    document.documentElement.lang = short;
   }
+  axios.defaults.headers.common['Accept-Language'] = short;
 }
-syncHtmlLang(i18n.language);
-i18n.on('languageChanged', syncHtmlLang);
+syncLang(i18n.language);
+i18n.on('languageChanged', syncLang);
 
 export default i18n;

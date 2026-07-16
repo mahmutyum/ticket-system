@@ -7,6 +7,7 @@ import { createAuditLog } from '../../middleware/audit.js';
 import { invalidateAccessTokens } from '../../plugins/auth.js';
 import { strongPassword } from '../../utils/validation.js';
 import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
+import { t } from '../../i18n/index.js';
 
 const staffCreateSchema = z.object({
   email: z.string().email(),
@@ -184,7 +185,7 @@ export const staffRoutes: FastifyPluginAsyncZod = async (app) => {
       where: { id },
       select: { role: true, isActive: true },
     });
-    if (!before) return reply.status(404).send({ success: false, error: 'Personel bulunamadı' });
+    if (!before) return reply.status(404).send({ success: false, error: t(request, 'staff.notFound') });
 
     const { password, ...profileData } = body;
     const updateData: Prisma.StaffUpdateInput = { ...profileData };

@@ -2,6 +2,7 @@ import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
 import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
+import { t } from '../../i18n/index.js';
 
 const locationCreateSchema = z.object({
   companyId: z.string().cuid(),
@@ -46,7 +47,7 @@ export const locationRoutes: FastifyPluginAsyncZod = async (app) => {
     // Gövdedeki companyId istemciden gelir — kapsam içinde olmalı.
     const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     if (!isCompanyInScope(scope, body.companyId)) {
-      return reply.status(403).send({ success: false, error: 'Bu şirket için yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'locations.no_company_permission') });
     }
 
     const location = await app.prisma.location.create({ data: body });
@@ -72,19 +73,19 @@ export const locationRoutes: FastifyPluginAsyncZod = async (app) => {
       where: { id },
       select: { id: true, companyId: true },
     });
-    if (!existing) return reply.status(404).send({ success: false, error: 'Lokasyon bulunamadı' });
+    if (!existing) return reply.status(404).send({ success: false, error: t(request, 'locations.not_found') });
 
     const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
 
     // Mevcut kayıt kapsam içinde mi?
     if (!isCompanyInScope(scope, existing.companyId)) {
-      return reply.status(403).send({ success: false, error: 'Bu lokasyon için yetkiniz yok' });
+      return reply.status(403).send({ success: false, error: t(request, 'locations.no_location_permission') });
     }
     // Hedef şirket de kapsam içinde mi? Yoksa lokasyon başka şirkete taşınabilir.
     if (body.companyId !== undefined && !isCompanyInScope(scope, body.companyId)) {
       return reply.status(403).send({
         success: false,
-        error: 'Lokasyonu yetkili olmadığınız bir şirkete taşıyamazsınız',
+        error: t(request, 'locations.cannot_move_to_unauthorized_company'),
       });
     }
 
