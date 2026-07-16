@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit2, UserX, UserCheck, Building2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
+import { getApiError } from '../../utils/api-error';
 
 const ROLES = [
   { value: 'admin', label: 'Sistem Yöneticisi' },
@@ -62,8 +63,8 @@ export default function StaffManagementPage() {
       setShowForm(false);
       setEditId(null);
       setForm(emptyForm);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'İşlem başarısız');
+    } catch (err: unknown) {
+      toast.error(getApiError(err, 'İşlem başarısız'));
     }
   };
 

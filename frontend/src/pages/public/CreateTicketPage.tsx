@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle, ArrowLeft, ArrowRight, Building2, MapPin, Tag, FileText, Upload, Paperclip, XCircle, AlertTriangle } from 'lucide-react';
 import axios from 'axios';
+import { getApiError } from '../../utils/api-error';
 import toast from 'react-hot-toast';
 import type { Company, Location, Category, CustomField } from '../../types';
 import FieldHint from '../../components/FieldHint';
@@ -213,8 +214,8 @@ export default function CreateTicketPage() {
 
       setResult(ticketData);
       toast.success('Destek talebiniz oluşturuldu!');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Bir hata oluştu');
+    } catch (err: unknown) {
+      toast.error(getApiError(err, 'Bir hata oluştu'));
     } finally {
       setSubmitting(false);
     }

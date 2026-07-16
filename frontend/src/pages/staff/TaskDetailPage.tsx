@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ArrowLeft, Send, Clock, User, Users, AlertCircle, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
+import { getApiError } from '../../utils/api-error';
 import { useAuthStore } from '../../stores/auth.store';
 // Öncelik sözlüğü ticket'larla ORTAK — burada kopyalama, tek kaynaktan al.
 import { PRIORITY_LABELS as PRIORITY_LABEL, PRIORITY_COLORS as PRIORITY_COLOR } from '../../types';
@@ -47,8 +48,8 @@ export default function TaskDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['task', id] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Durum güncellendi');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Güncelleme başarısız');
+    } catch (err: unknown) {
+      toast.error(getApiError(err, 'Güncelleme başarısız'));
     }
   };
 
@@ -61,8 +62,8 @@ export default function TaskDetailPage() {
       setComment('');
       queryClient.invalidateQueries({ queryKey: ['task', id] });
       toast.success('Yorum eklendi');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Yorum eklenemedi');
+    } catch (err: unknown) {
+      toast.error(getApiError(err, 'Yorum eklenemedi'));
     } finally {
       setSending(false);
     }

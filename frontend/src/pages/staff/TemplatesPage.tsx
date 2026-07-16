@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit2, Trash2, Mail, MessageSquare, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
+import { getApiError } from '../../utils/api-error';
 
 type TabType = 'email' | 'sms' | 'canned';
 
@@ -71,8 +72,8 @@ export default function TemplatesPage() {
       queryClient.invalidateQueries({ queryKey: ['templates-email'] });
       resetForms();
       toast.success('Email şablonu kaydedildi');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Hata');
+    } catch (err: unknown) {
+      toast.error(getApiError(err, 'Hata'));
     }
   };
 
@@ -91,8 +92,8 @@ export default function TemplatesPage() {
       queryClient.invalidateQueries({ queryKey: ['templates-sms'] });
       resetForms();
       toast.success('SMS şablonu kaydedildi');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Hata');
+    } catch (err: unknown) {
+      toast.error(getApiError(err, 'Hata'));
     }
   };
 
@@ -107,8 +108,8 @@ export default function TemplatesPage() {
       queryClient.invalidateQueries({ queryKey: ['templates-canned'] });
       resetForms();
       toast.success('Hazır yanıt kaydedildi');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Hata');
+    } catch (err: unknown) {
+      toast.error(getApiError(err, 'Hata'));
     }
   };
 
