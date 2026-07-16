@@ -37,7 +37,9 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:1111/ || exit 1"]
+      # Alpine localhost'u önce ::1'e çözer; Vite dev server IPv4'e bağlıyken
+      # uygulama erişilebilir olsa da healthcheck yanlış negatif veriyordu.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:1111/ || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
