@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Download, BarChart3, Clock, CheckCircle2, Users, Tag,
-  LayoutDashboard, TrendingUp, Filter, X,
+  LayoutDashboard, TrendingUp,
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
@@ -10,128 +10,20 @@ import {
 } from 'recharts';
 import api from '../../api/client';
 import type { Category, Company, DashboardStats, Staff } from '../../types';
-
-type Period = 'daily' | 'weekly' | 'monthly';
-type SlaPeriod = 'weekly' | 'monthly';
-type TabKey = 'overview' | 'staff' | 'category' | 'sla';
-
-interface Filters {
-  dateFrom: string;
-  dateTo: string;
-  companyId: string;
-  categoryId: string;
-  assignedToId: string;
-  priority: string;
-}
-
-interface OverviewBucket {
-  bucket: string;
-  created: number;
-  resolved: number;
-  inProgress: number;
-  overdue: number;
-}
-
-interface StaffPerformance {
-  id: string;
-  fullName: string;
-  role: string;
-  totalAssigned: number;
-  resolved: number;
-  open: number;
-  slaResponseRate: number | null;
-  slaResolveRate: number | null;
-  avgResolutionHours: number | null;
-}
-
-interface CategoryBreakdown {
-  categoryId: string;
-  categoryName: string;
-  count: number;
-}
-
-interface SlaTrendBucket {
-  bucket: string;
-  total: number;
-  responseRate: number | null;
-  resolveRate: number | null;
-}
-
-interface SlaSummary {
-  totalWithSla: number;
-  response: { met: number; violated: number; complianceRate: number };
-  resolution: { met: number; violated: number; complianceRate: number };
-}
-
-const PRIORITIES = [
-  { value: '', label: 'Tüm Öncelikler' },
-  { value: 'low', label: 'Düşük' },
-  { value: 'medium', label: 'Orta' },
-  { value: 'high', label: 'Yüksek' },
-  { value: 'critical', label: 'Kritik' },
-];
-
-function toInputDate(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function startOfWeek(d: Date) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  const dow = x.getDay();
-  const offset = dow === 0 ? -6 : 1 - dow;
-  x.setDate(x.getDate() + offset);
-  return x;
-}
-
-function presets() {
-  const today = new Date();
-  const monday = startOfWeek(today);
-  const sunday = new Date(monday);
-  sunday.setDate(sunday.getDate() + 6);
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  const last30 = new Date(today);
-  last30.setDate(last30.getDate() - 29);
-  const yearStart = new Date(today.getFullYear(), 0, 1);
-  return [
-    { key: 'thisWeek', label: 'Bu Hafta', from: toInputDate(monday), to: toInputDate(sunday) },
-    { key: 'thisMonth', label: 'Bu Ay', from: toInputDate(monthStart), to: toInputDate(monthEnd) },
-    { key: 'last30', label: 'Son 30 Gün', from: toInputDate(last30), to: toInputDate(today) },
-    { key: 'thisYear', label: 'Bu Yıl', from: toInputDate(yearStart), to: toInputDate(today) },
-  ];
-}
-
-function buildQS(filters: Filters, extra: Record<string, string> = {}): string {
-  const params = new URLSearchParams();
-  Object.entries({ ...filters, ...extra }).forEach(([k, v]) => {
-    if (v) params.set(k, v);
-  });
-  return params.toString();
-}
+import ReportFiltersPanel from './reports/ReportFilters';
+import {
+  EMPTY_REPORT_FILTERS, buildReportQuery,
+  type CategoryBreakdown, type OverviewBucket, type Period, type ReportFilters,
+  type SlaPeriod, type SlaSummary, type SlaTrendBucket, type StaffPerformance, type TabKey,
+} from './reports/report-types';
 
 export default function ReportsPage() {
-  const [filters, setFilters] = useState<Filters>({
-    dateFrom: '', dateTo: '', companyId: '', categoryId: '', assignedToId: '', priority: '',
-  });
+  const [filters, setFilters] = useState<ReportFilters>(EMPTY_REPORT_FILTERS);
   const [tab, setTab] = useState<TabKey>('overview');
   const [period, setPeriod] = useState<Period>('daily');
   const [slaPeriod, setSlaPeriod] = useState<SlaPeriod>('weekly');
 
-  const setFilter = (k: keyof Filters, v: string) => setFilters((prev) => ({ ...prev, [k]: v }));
-  const applyPreset = (p: { from: string; to: string }) =>
-    setFilters((prev) => ({ ...prev, dateFrom: p.from, dateTo: p.to }));
-  const clearFilters = () =>
-    setFilters({ dateFrom: '', dateTo: '', companyId: '', categoryId: '', assignedToId: '', priority: '' });
-
-  const baseQS = useMemo(() => buildQS(filters), [filters]);
-  const activeFilterCount = useMemo(
-    () => Object.values(filters).filter(Boolean).length,
-    [filters],
-  );
+  const baseQS = useMemo(() => buildReportQuery(filters), [filters]);
 
   // Dropdown verileri
   const { data: companies } = useQuery<Company[]>({
@@ -161,7 +53,7 @@ export default function ReportsPage() {
   const { data: overview, isLoading: overviewLoading } = useQuery<OverviewBucket[]>({
     queryKey: ['reports-overview', baseQS, period],
     queryFn: async () =>
-      (await api.get(`/reports/overview?${buildQS(filters, { period })}`)).data.data,
+      (await api.get(`/reports/overview?${buildReportQuery(filters, { period })}`)).data.data,
     enabled: tab === 'overview',
   });
 
@@ -183,7 +75,7 @@ export default function ReportsPage() {
   const { data: slaTrend, isLoading: slaTrendLoading } = useQuery<SlaTrendBucket[]>({
     queryKey: ['reports-sla-trends', baseQS, slaPeriod],
     queryFn: async () =>
-      (await api.get(`/reports/sla-trends?${buildQS(filters, { period: slaPeriod })}`)).data.data,
+      (await api.get(`/reports/sla-trends?${buildReportQuery(filters, { period: slaPeriod })}`)).data.data,
     enabled: tab === 'sla',
   });
 
@@ -213,115 +105,13 @@ export default function ReportsPage() {
         </button>
       </div>
 
-      {/* Filtre paneli */}
-      <div className="card space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold flex items-center gap-2">
-            <Filter className="w-4 h-4" /> Filtreler
-            {activeFilterCount > 0 && (
-              <span className="text-xs bg-primary-100 text-primary-700 dark:bg-primary-500/20 dark:text-primary-200 px-2 py-0.5 rounded-full">
-                {activeFilterCount} aktif
-              </span>
-            )}
-          </h3>
-          {activeFilterCount > 0 && (
-            <button onClick={clearFilters} className="text-sm text-muted hover:text-primary-600 flex items-center gap-1">
-              <X className="w-3 h-3" /> Temizle
-            </button>
-          )}
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {presets().map((p) => {
-            const active = filters.dateFrom === p.from && filters.dateTo === p.to;
-            return (
-              <button
-                key={p.key}
-                onClick={() => applyPreset(p)}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                  active
-                    ? 'bg-primary-600 text-white border-primary-600'
-                    : 'border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800'
-                }`}
-              >
-                {p.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div>
-            <label className="block text-xs font-medium mb-1 text-muted">Başlangıç</label>
-            <input
-              type="date"
-              className="input-field !py-1.5 text-sm"
-              value={filters.dateFrom}
-              onChange={(e) => setFilter('dateFrom', e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1 text-muted">Bitiş</label>
-            <input
-              type="date"
-              className="input-field !py-1.5 text-sm"
-              value={filters.dateTo}
-              onChange={(e) => setFilter('dateTo', e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1 text-muted">Şirket</label>
-            <select
-              className="input-field !py-1.5 text-sm"
-              value={filters.companyId}
-              onChange={(e) => setFilter('companyId', e.target.value)}
-            >
-              <option value="">Tüm Şirketler</option>
-              {companies?.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1 text-muted">Kategori</label>
-            <select
-              className="input-field !py-1.5 text-sm"
-              value={filters.categoryId}
-              onChange={(e) => setFilter('categoryId', e.target.value)}
-            >
-              <option value="">Tüm Kategoriler</option>
-              {categories?.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1 text-muted">Personel</label>
-            <select
-              className="input-field !py-1.5 text-sm"
-              value={filters.assignedToId}
-              onChange={(e) => setFilter('assignedToId', e.target.value)}
-            >
-              <option value="">Tüm Personel</option>
-              {staffList?.map((s) => (
-                <option key={s.id} value={s.id}>{s.fullName}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1 text-muted">Öncelik</label>
-            <select
-              className="input-field !py-1.5 text-sm"
-              value={filters.priority}
-              onChange={(e) => setFilter('priority', e.target.value)}
-            >
-              {PRIORITIES.map((p) => (
-                <option key={p.value} value={p.value}>{p.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
+      <ReportFiltersPanel
+        filters={filters}
+        onChange={setFilters}
+        companies={companies}
+        categories={categories}
+        staff={staffList}
+      />
 
       {/* Sekmeler */}
       <div className="flex gap-1 border-b border-gray-200 dark:border-slate-800 overflow-x-auto">
