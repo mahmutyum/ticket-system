@@ -6,6 +6,7 @@ import { ONSITE_TYPE_LABELS } from '../../config/constants.js';
 import { getStaffCompanyScope } from '../../utils/staff-scope.js';
 import { createAuditLog } from '../../middleware/audit.js';
 import { formatTrDateTime } from '../../utils/format.js';
+import { commonErrorResponses } from '../../utils/api-schema.js';
 
 const onsiteCreateSchema = z.object({
   ticketId: z.string().cuid(),
@@ -32,12 +33,35 @@ const onsiteListQuerySchema = z.object({
   to: z.string().datetime().optional(),
 });
 const calendarQuerySchema = z.object({ week: z.string().datetime().optional() });
+const onsiteEntitySchema = z.object({
+  id: z.string(), ticketId: z.string(), locationId: z.string(),
+  type: z.nativeEnum(OnsiteType), scheduledAt: z.date(), scheduledEnd: z.date().nullable(),
+  roomInfo: z.string().nullable(), floorInfo: z.string().nullable(), notes: z.string().nullable(),
+  status: z.nativeEnum(OnsiteStatus), completedAt: z.date().nullable(), createdAt: z.date(),
+});
+const locationEntitySchema = z.object({
+  id: z.string(), companyId: z.string(), name: z.string(), address: z.string().nullable(),
+  phone: z.string().nullable(), floor: z.string().nullable(), itRoom: z.string().nullable(),
+  isActive: z.boolean(), createdAt: z.date(),
+});
+const responseOf = <T extends z.ZodTypeAny>(data: T) => z.object({ success: z.literal(true), data });
 
 export const onsiteRoutes: FastifyPluginAsyncZod = async (app) => {
   // Create onsite support
   app.post('/', {
     preValidation: [app.authenticate],
-    schema: { body: onsiteCreateSchema, tags: ['Onsite Support'], summary: 'Yerinde destek randevusu oluştur' },
+    schema: {
+      body: onsiteCreateSchema,
+      tags: ['Onsite Support'],
+      summary: 'Yerinde destek randevusu oluştur',
+      response: {
+        201: responseOf(onsiteEntitySchema.extend({
+          location: locationEntitySchema,
+          ticket: z.object({ ticketNumber: z.string() }),
+        })),
+        ...commonErrorResponses,
+      },
+    },
   }, async (request, reply) => {
     const body = request.body;
     const staffUser = request.staffUser!;
@@ -117,7 +141,21 @@ export const onsiteRoutes: FastifyPluginAsyncZod = async (app) => {
   // List onsite support
   app.get('/', {
     preValidation: [app.authenticate],
-    schema: { querystring: onsiteListQuerySchema, tags: ['Onsite Support'], summary: 'Yerinde destek randevularını listele' },
+    schema: {
+      querystring: onsiteListQuerySchema,
+      tags: ['Onsite Support'],
+      summary: 'Yerinde destek randevularını listele',
+      response: {
+        200: responseOf(z.array(onsiteEntitySchema.extend({
+          ticket: z.object({
+            ticketNumber: z.string(), subject: z.string(), createdByEmail: z.string().email(),
+            createdBy: z.object({ fullName: z.string(), phone: z.string().nullable() }).nullable(),
+          }),
+          location: z.object({ name: z.string(), address: z.string().nullable(), itRoom: z.string().nullable() }),
+        }))),
+        ...commonErrorResponses,
+      },
+    },
   }, async (request, reply) => {
     const query = request.query;
     const staffUser = request.staffUser!;
@@ -157,7 +195,19 @@ export const onsiteRoutes: FastifyPluginAsyncZod = async (app) => {
   // Update onsite support
   app.put('/:id', {
     preValidation: [app.authenticate],
-    schema: { params: idParamsSchema, body: onsiteUpdateSchema, tags: ['Onsite Support'], summary: 'Yerinde destek randevusunu güncelle' },
+    schema: {
+      params: idParamsSchema,
+      body: onsiteUpdateSchema,
+      tags: ['Onsite Support'],
+      summary: 'Yerinde destek randevusunu güncelle',
+      response: {
+        200: responseOf(onsiteEntitySchema.extend({
+          location: locationEntitySchema,
+          ticket: z.object({ ticketNumber: z.string(), id: z.string() }),
+        })),
+        ...commonErrorResponses,
+      },
+    },
   }, async (request, reply) => {
     const { id } = request.params;
     const body = request.body;
@@ -247,7 +297,24 @@ export const onsiteRoutes: FastifyPluginAsyncZod = async (app) => {
   // Calendar view
   app.get('/calendar', {
     preValidation: [app.authenticate],
-    schema: { querystring: calendarQuerySchema, tags: ['Onsite Support'], summary: 'Haftalık yerinde destek takvimini getir' },
+    schema: {
+      querystring: calendarQuerySchema,
+      tags: ['Onsite Support'],
+      summary: 'Haftalık yerinde destek takvimini getir',
+      response: {
+        200: responseOf(z.object({
+          startDate: z.date(), endDate: z.date(),
+          events: z.array(onsiteEntitySchema.extend({
+            ticket: z.object({
+              ticketNumber: z.string(), subject: z.string(),
+              createdBy: z.object({ fullName: z.string() }).nullable(),
+            }),
+            location: z.object({ name: z.string() }),
+          })),
+        })),
+        ...commonErrorResponses,
+      },
+    },
   }, async (request, reply) => {
     const { week } = request.query;
     const staffUser = request.staffUser!;
