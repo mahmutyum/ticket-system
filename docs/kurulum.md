@@ -50,6 +50,17 @@ container'ı yeniden başlatmadan yansır.
 docker compose exec backend npx tsx prisma/seed.ts
 ```
 
+Talepler, görevler, raporlar, yerinde destek ve şifre kasası ekranlarını dolu
+veriyle değerlendirmek için ardından sentetik detay seed'ini çalıştır:
+
+```bash
+docker compose exec backend npm run db:seed:demo
+```
+
+Detay seed'i tekrar çalıştırılabilir ve yalnızca açıkça `DEMO` olarak işaretlenen
+kurgusal kayıtları yönetir. Gerçek sistem, kişi veya parola verisi içermez ve
+`NODE_ENV=production` olduğunda çalışmayı reddeder.
+
 | Adres | Ne |
 |---|---|
 | http://localhost:1111 | Arayüz (public portal + staff paneli) |

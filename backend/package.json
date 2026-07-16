@@ -10,6 +10,7 @@
     "db:migrate": "prisma migrate deploy",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:demo": "tsx prisma/demo-data.ts",
     "db:studio": "prisma studio",
     "test": "vitest run",
     "test:watch": "vitest",

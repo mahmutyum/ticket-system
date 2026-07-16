@@ -82,6 +82,19 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 docker compose exec backend npx tsx prisma/seed.ts
 ```
 
+Liste, sayfalama ve rapor ekranlarını dolu veriyle incelemek için temel seed'den
+sonra ilişkili sentetik senaryoları yükle:
+
+```bash
+docker compose exec backend npm run db:seed:demo
+```
+
+Bu komut 36 talep, 24 görev, 8 yerinde destek planı ve 24 şifre kasası kaydı
+üretir. Tekrar çalıştırılabilir; demo görev ve kasa kayıtlarını yeniler, talepleri
+benzersiz `DEMO-*` numaraları üzerinden günceller. Kullanılan e-posta, URL ve
+parolaların tamamı kurgusaldır (`example.test`) ve production ortamında çalışması
+kod seviyesinde engellenmiştir.
+
 Arayüz: **http://localhost:1111** · API dokümantasyonu: **http://localhost:4000/docs**
 
 ### Örnek giriş bilgileri (seed)
