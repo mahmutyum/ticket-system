@@ -16,7 +16,7 @@ export default function HomePage() {
         </div>
         <div className="card relative overflow-hidden border-primary-100 bg-white/80 p-6 dark:border-primary-500/20 dark:bg-slate-900/80 sm:p-8">
           <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary-200/40 blur-3xl" />
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-600">Nasıl çalışır?</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-600 dark:text-primary-300">Nasıl çalışır?</p>
           <ol className="relative mt-6 space-y-6">
             {[['1', 'Bilgilerini gir', 'Kurumsal e-posta ve iletişim bilgilerini paylaş.'], ['2', 'Sorunu anlat', 'Kategori, öncelik ve gerekli dosyaları ekle.'], ['3', 'Takipte kal', 'Oluşan bağlantı üzerinden yanıtları ve durumu izle.']].map(([number, title, text]) => <li key={number} className="flex gap-4"><span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-sm font-bold text-white shadow-glow">{number}</span><div><h3 className="font-semibold">{title}</h3><p className="mt-1 text-sm leading-6 text-muted">{text}</p></div></li>)}
           </ol>

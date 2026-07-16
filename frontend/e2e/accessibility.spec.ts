@@ -29,3 +29,12 @@ test('bilinmeyen route ana sayfaya güvenle döner', async ({ page }) => {
   await page.goto('/olmayan-route');
   await expect(page).toHaveURL(/\/$/);
 });
+
+test('/create dark mode kritik kontrast ihlali taşımıyor', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('theme', 'dark'));
+  await mockPublicApi(page);
+  await page.goto('/create');
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+  expect(results.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);
+});

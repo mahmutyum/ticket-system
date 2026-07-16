@@ -50,6 +50,11 @@ test('MFA giriş akışı challenge ve altı haneli kodla tamamlanır', async ({
 });
 
 test('kasa parolası yalnızca açık reveal etkileşimiyle gösterilir', async ({ page }) => {
+  await page.route('**/api/companies/admin/all', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ success: true, data: [] }),
+  }));
   await page.route('**/api/**', (route) => route.fulfill({
     contentType: 'application/json', body: JSON.stringify({ success: true, data: {} }),
   }));

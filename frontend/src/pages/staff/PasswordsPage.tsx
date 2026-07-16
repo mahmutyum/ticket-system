@@ -2,7 +2,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Plus, Eye, EyeOff, Copy, Trash2, Pencil, Search, X,
-  ArrowUpDown, ExternalLink, StickyNote, KeyRound, ShieldAlert,
+  ArrowUpDown, ExternalLink, StickyNote, KeyRound, ShieldAlert, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
@@ -40,6 +40,7 @@ const tr = (s: string) => s.toLocaleLowerCase('tr');
 
 /** Şirkete bağlı olmayan (companyId = null) kayıtları filtrelemek için sentinel. */
 const GLOBAL_FILTER = '__global__';
+const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 
 export default function PasswordsPage() {
   const queryClient = useQueryClient();
@@ -50,6 +51,8 @@ export default function PasswordsPage() {
   const [companyFilter, setCompanyFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [sort, setSort] = useState<{ key: SortKey; asc: boolean }>({ key: 'title', asc: true });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...empty });
@@ -117,6 +120,15 @@ export default function PasswordsPage() {
       return sort.asc ? r : -r;
     });
   }, [entries, search, companyFilter, categoryFilter, sort]);
+
+  const totalPages = Math.max(1, Math.ceil(visible.length / pageSize));
+  const pageRows = useMemo(
+    () => visible.slice((page - 1) * pageSize, page * pageSize),
+    [visible, page, pageSize],
+  );
+
+  useEffect(() => setPage(1), [search, companyFilter, categoryFilter, sort, pageSize]);
+  useEffect(() => setPage((current) => Math.min(current, totalPages)), [totalPages]);
 
   const hide = (id: string) => {
     clearTimeout(timers.current[id]);
@@ -267,7 +279,8 @@ export default function PasswordsPage() {
         <span className="text-sm text-muted ml-auto">{visible.length} kayıt</span>
       </div>
 
-      <div className="card p-0 overflow-x-auto">
+      <div className="card overflow-hidden p-0">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[720px]">
           <thead className="text-left text-muted border-b border-gray-200 dark:border-slate-800">
             <tr>
@@ -301,7 +314,7 @@ export default function PasswordsPage() {
               </tr>
             )}
 
-            {!isLoading && !isError && visible.map((e) => {
+            {!isLoading && !isError && pageRows.map((e) => {
               const shown = revealed[e.id];
               const left = shown ? Math.max(0, Math.ceil((shown.expiresAt - now) / 1000)) : 0;
               return (
@@ -375,6 +388,29 @@ export default function PasswordsPage() {
             )}
           </tbody>
         </table>
+        </div>
+        {!isLoading && !isError && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 px-4 py-3 dark:border-slate-800">
+            <span className="text-sm text-muted">
+              Toplam {visible.length} kayıt · {visible.length === 0 ? 0 : (page - 1) * pageSize + 1}–{Math.min(page * pageSize, visible.length)} gösteriliyor
+            </span>
+            <div className="flex items-center gap-2">
+              <label className="mr-2 flex items-center gap-2 text-sm text-muted">
+                Sayfa başına
+                <select className="input-field !w-auto !py-1.5 text-sm" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
+                  {PAGE_SIZE_OPTIONS.map((size) => <option key={size} value={size}>{size}</option>)}
+                </select>
+              </label>
+              <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1} className="icon-button min-h-9 min-w-9 disabled:opacity-30" aria-label="Önceki sayfa">
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <span className="min-w-14 text-center text-sm">{page} / {totalPages}</span>
+              <button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page >= totalPages} className="icon-button min-h-9 min-w-9 disabled:opacity-30" aria-label="Sonraki sayfa">
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {showForm && (

@@ -59,8 +59,9 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="space-y-6">
       <PageHeader eyebrow="Kişisel güvenlik" title="Hesap ve güvenlik" description="Parolanı, iki aşamalı doğrulamayı ve aktif oturumlarını yönet." />
+      <div className="grid gap-6 xl:grid-cols-2">
       <section className="card p-6">
         <h2 className="font-semibold mb-4">Şifre değiştir</h2>
         <form onSubmit={changePassword} className="space-y-4">
@@ -84,17 +85,18 @@ export default function AccountPage() {
           <a className="text-sm text-primary-600 underline" href={mfaSetup.uri}>Authenticator uygulamasında aç</a>
           <label className="block text-sm">Üretilen 6 haneli kod
             <input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={mfaCode}
-              onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, ''))} className="input mt-1 w-full" />
+              onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, ''))} className="input-field mt-1 w-full" />
           </label>
           <button onClick={enableMfa} disabled={mfaCode.length !== 6} className="btn-primary">Etkinleştir</button>
         </div>}
       </section>
-      <section className="card p-6">
+      <section className="card p-6 xl:col-span-2">
         <div className="flex items-center justify-between gap-4">
           <div><h2 className="font-semibold">Aktif oturumlar</h2><p className="text-sm text-muted">{sessions.length} oturum açık</p></div>
           <button onClick={revokeOthers} className="btn-secondary">Diğer cihazları kapat</button>
         </div>
       </section>
+      </div>
     </div>
   );
 }

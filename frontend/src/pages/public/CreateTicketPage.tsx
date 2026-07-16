@@ -232,11 +232,11 @@ export default function CreateTicketPage() {
       <div className="max-w-lg mx-auto card text-center py-12">
         <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
         <h2 className="text-2xl font-bold mb-2">Talebiniz Oluşturuldu!</h2>
-        <p className="text-gray-600 mb-6">Talep numaranız:</p>
+        <p className="text-muted mb-6">Talep numaranız:</p>
         <div className="text-3xl font-mono font-bold text-primary-700 mb-6">
           {result.ticketNumber}
         </div>
-        <p className="text-sm text-gray-500 mb-4">
+        <p className="text-sm text-muted mb-4">
           Bu numara ile talebinizi takip edebilirsiniz. Ayrıca email adresinize bilgilendirme gönderilecektir.
         </p>
         <a
@@ -252,7 +252,7 @@ export default function CreateTicketPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-8 text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-600">Yeni destek talebi</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-600 dark:text-primary-300">Yeni destek talebi</p>
         <h2 className="mt-2 text-3xl font-bold tracking-tight">Sorununu birlikte çözelim</h2>
         <p className="mx-auto mt-2 max-w-xl text-sm text-muted">Gerekli bilgileri adım adım tamamla. Göndermeden önce tüm detayları kontrol edebilirsin.</p>
       </div>
@@ -272,11 +272,11 @@ export default function CreateTicketPage() {
             >
               {i < step ? '✓' : i + 1}
             </div>
-            <span className={`ml-2 text-xs hidden sm:inline ${i === step ? 'text-primary-700 font-medium' : 'text-gray-400'}`}>
+            <span className={`ml-2 text-xs hidden sm:inline ${i === step ? 'text-primary-700 font-semibold dark:text-primary-300' : 'text-muted'}`}>
               {label}
             </span>
             {i < STEPS.length - 1 && (
-              <div className={`w-8 h-0.5 mx-2 ${i < step ? 'bg-green-500' : 'bg-gray-200'}`} />
+              <div className={`w-8 h-0.5 mx-2 ${i < step ? 'bg-green-500' : 'bg-gray-200 dark:bg-slate-700'}`} />
             )}
           </div>
         ))}
@@ -286,7 +286,7 @@ export default function CreateTicketPage() {
         {/* Step 0: Email */}
         {step === 0 && (
           <div className="space-y-4">
-            <div><p className="text-xs font-semibold uppercase tracking-wide text-primary-600">Adım 1</p><h3 className="mt-1 text-xl font-semibold">İletişim bilgileriniz</h3></div>
+            <div><p className="text-xs font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-300">Adım 1</p><h3 className="mt-1 text-xl font-semibold">İletişim bilgileriniz</h3></div>
             {isPortalLocked && portalCompany && (
               <div className="flex items-center gap-2 bg-primary-50 text-primary-700 px-3 py-2 rounded-lg text-sm">
                 <Building2 className="w-4 h-4" />
@@ -306,7 +306,7 @@ export default function CreateTicketPage() {
               />
               {/* Domain rejection — no detail about which domains are allowed */}
               {form.email && emailDomain && allCompanies && !hasAccessibleCompanies && (
-                <div className="mt-2 flex items-start gap-2 text-red-600 bg-red-50 rounded-lg p-3 text-sm">
+                <div className="mt-2 flex items-start gap-2 text-red-700 bg-red-50 rounded-lg p-3 text-sm dark:bg-red-500/15 dark:text-red-300">
                   <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                   <span>Bu email adresi ile destek talebi oluşturamazsınız. Lütfen kurumsal email adresinizi kullanın.</span>
                 </div>
@@ -368,12 +368,12 @@ export default function CreateTicketPage() {
                   }`}
                 >
                   <span className="font-medium">{company.name}</span>
-                  <span className="block text-xs text-gray-400 mt-1">{company.groupType}</span>
+                  <span className="block text-xs text-muted mt-1">{company.groupType}</span>
                 </button>
               ))}
             </div>
             {companies?.length === 0 && (
-              <p className="text-center text-gray-400 py-4">Kullanılabilir şirket bulunamadı.</p>
+              <p className="text-center text-muted py-4">Kullanılabilir şirket bulunamadı.</p>
             )}
           </div>
         )}
@@ -384,9 +384,9 @@ export default function CreateTicketPage() {
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <MapPin className="w-5 h-5" /> Lokasyon Seçimi
             </h3>
-            <p className="text-sm text-gray-500">{selectedCompany?.name} için lokasyon seçin</p>
+            <p className="text-sm text-muted">{selectedCompany?.name} için lokasyon seçin</p>
             {locations && locations.length === 0 ? (
-              <p className="text-center text-gray-400 py-4">Bu şirkete tanımlı lokasyon bulunamadı.</p>
+              <p className="text-center text-muted py-4">Bu şirkete tanımlı lokasyon bulunamadı.</p>
             ) : (
               <div className="space-y-2">
                 {locations?.map(loc => (
@@ -400,7 +400,7 @@ export default function CreateTicketPage() {
                     }`}
                   >
                     <span className="font-medium">{loc.name}</span>
-                    {loc.address && <span className="block text-xs text-gray-400 mt-1">{loc.address}</span>}
+                    {loc.address && <span className="block text-xs text-muted mt-1">{loc.address}</span>}
                   </button>
                 ))}
               </div>
@@ -426,7 +426,7 @@ export default function CreateTicketPage() {
                   }`}
                 >
                   <span className="font-medium">{cat.name}</span>
-                  {cat.description && <span className="block text-xs text-gray-400 mt-1">{cat.description}</span>}
+                  {cat.description && <span className="block text-xs text-muted mt-1">{cat.description}</span>}
                 </button>
               ))}
             </div>
@@ -499,9 +499,9 @@ export default function CreateTicketPage() {
                 <div className="mt-2 space-y-1">
                   {files.map((f, i) => (
                     <div key={i} className="surface-2 flex items-center gap-2 rounded-lg px-3 py-2 text-sm">
-                      <Paperclip className="w-3 h-3 text-gray-400" />
+                      <Paperclip className="w-3 h-3 text-muted" />
                       <span className="flex-1 truncate">{f.name}</span>
-                      <span className="text-xs text-gray-400">{(f.size / 1024).toFixed(0)} KB</span>
+                      <span className="text-xs text-muted">{(f.size / 1024).toFixed(0)} KB</span>
                       <button onClick={() => handleFileRemove(i)} className="icon-button min-h-8 min-w-8 border-0 text-red-500" aria-label={`${f.name} dosyasını kaldır`}>
                         <XCircle className="w-4 h-4" />
                       </button>
@@ -514,7 +514,7 @@ export default function CreateTicketPage() {
             {/* Dynamic custom fields */}
             {customFields && customFields.length > 0 && (
               <div className="border-t pt-4 mt-4 space-y-4">
-                <h4 className="text-sm font-medium text-gray-700">Ek Bilgiler</h4>
+                <h4 className="text-sm font-semibold">Ek Bilgiler</h4>
                 {customFields.map(field => (
                   <div key={field.id}>
                     <label htmlFor={`custom-field-${field.id}`} className="block text-sm font-medium mb-1">
@@ -569,42 +569,42 @@ export default function CreateTicketPage() {
             <h3 className="text-lg font-semibold">Talep Özeti</h3>
             <div className="surface-2 rounded-2xl p-4 space-y-3 text-sm sm:p-5">
               <div className="flex justify-between">
-                <span className="text-gray-500">Email:</span>
+                <span className="text-muted">Email:</span>
                 <span className="font-medium">{form.email}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Ad Soyad:</span>
+                <span className="text-muted">Ad Soyad:</span>
                 <span className="font-medium">{form.fullName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Şirket:</span>
+                <span className="text-muted">Şirket:</span>
                 <span className="font-medium">{selectedCompany?.name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Lokasyon:</span>
+                <span className="text-muted">Lokasyon:</span>
                 <span className="font-medium">{selectedLocation?.name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Kategori:</span>
+                <span className="text-muted">Kategori:</span>
                 <span className="font-medium">{selectedCategory?.name}</span>
               </div>
               <hr />
               <div className="flex justify-between">
-                <span className="text-gray-500">Konu:</span>
+                <span className="text-muted">Konu:</span>
                 <span className="font-medium">{form.subject}</span>
               </div>
               <div>
-                <span className="text-gray-500">Açıklama:</span>
+                <span className="text-muted">Açıklama:</span>
                 <p className="mt-1 whitespace-pre-wrap">{form.description}</p>
               </div>
               {files.length > 0 && (
                 <>
                   <hr />
                   <div>
-                    <span className="text-gray-500">Dosyalar ({files.length}):</span>
+                    <span className="text-muted">Dosyalar ({files.length}):</span>
                     <div className="mt-1 space-y-1">
                       {files.map((f, i) => (
-                        <div key={i} className="text-gray-600 flex items-center gap-1">
+                        <div key={i} className="text-muted flex items-center gap-1">
                           <Paperclip className="w-3 h-3" /> {f.name}
                         </div>
                       ))}

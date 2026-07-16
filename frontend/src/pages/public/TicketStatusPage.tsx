@@ -66,7 +66,7 @@ export default function TicketStatusPage() {
       <div className="card">
         <div className="flex flex-col items-start justify-between gap-4 mb-5 sm:flex-row">
           <div>
-            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-600">{ticket.ticketNumber}</span>
+            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-600 dark:text-primary-300">{ticket.ticketNumber}</span>
             <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">{ticket.subject}</h2>
           </div>
           <div className="flex gap-2">
@@ -132,10 +132,10 @@ export default function TicketStatusPage() {
           {ticket.onsiteSupport.map(os => (
             <div key={os.id} className="text-sm space-y-1">
               <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-400" />
+                <Calendar className="w-4 h-4 text-muted" />
                 <span>{new Date(os.scheduledAt).toLocaleString('tr-TR')}</span>
               </div>
-              <span className="text-gray-600">
+              <span className="text-muted">
                 {os.type === 'come_to_it_room'
                   ? `Lütfen IT odasına geliniz${os.roomInfo ? `: ${os.roomInfo}` : ''}`
                   : 'Teknik ekip size gelecek'}
@@ -153,10 +153,10 @@ export default function TicketStatusPage() {
             <div key={h.id || h.createdAt} className="flex gap-3 text-sm">
               <div className="w-2 h-2 rounded-full bg-gray-300 mt-1.5 flex-shrink-0" />
               <div className="flex-1">
-                <span className="text-gray-500">
+                <span className="text-muted">
                   {new Date(h.createdAt).toLocaleString('tr-TR')}
                 </span>
-                <span className="ml-2 text-gray-700">
+                <span className="ml-2">
                   {h.action === 'status_changed' && `Durum değişti: ${STATUS_LABELS[h.oldValue ?? ''] || h.oldValue} → ${STATUS_LABELS[h.newValue ?? ''] || h.newValue}`}
                   {h.action === 'ticket_created' && 'Talep oluşturuldu'}
                   {h.action === 'assigned' && 'Talep atandı'}
@@ -175,7 +175,7 @@ export default function TicketStatusPage() {
               <div className="flex-1 rounded-xl bg-primary-50 p-3 dark:bg-primary-500/10">
                 <div className="flex justify-between mb-1">
                   <span className="font-medium text-primary-700">{note.createdBy.fullName}</span>
-                  <span className="text-gray-400 text-xs">
+                  <span className="text-muted text-xs">
                     {new Date(note.createdAt).toLocaleString('tr-TR')}
                   </span>
                 </div>
@@ -189,7 +189,7 @@ export default function TicketStatusPage() {
       {/* Attachments */}
       {(ticket.attachments?.length ?? 0) > 0 && (
         <div className="card">
-          <h3 className="text-sm font-semibold text-gray-500 mb-3 flex items-center gap-2">
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
             <Paperclip className="w-4 h-4" /> Dosyalar
           </h3>
           <div className="space-y-2">
@@ -204,9 +204,9 @@ export default function TicketStatusPage() {
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 rounded-xl p-3 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-slate-800"
               >
-                <FileText className="w-4 h-4 text-gray-400" />
+                <FileText className="w-4 h-4 text-muted" />
                 <span className="flex-1 truncate">{att.fileName}</span>
-                <span className="text-xs text-gray-400">{(att.fileSize / 1024).toFixed(0)} KB</span>
+                <span className="text-xs text-muted">{(att.fileSize / 1024).toFixed(0)} KB</span>
               </a>
             ))}
           </div>

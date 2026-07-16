@@ -150,7 +150,7 @@ export default function TemplatesPage() {
             key={t.key}
             onClick={() => { setTab(t.key); resetForms(); }}
             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors ${
-              tab === t.key ? 'bg-white shadow text-primary-700 dark:bg-slate-700 dark:text-primary-300' : 'text-gray-500 hover:text-gray-700 dark:hover:text-slate-300'
+              tab === t.key ? 'bg-white shadow text-primary-700 dark:bg-slate-700 dark:text-primary-300' : 'text-gray-500 hover:text-gray-700 dark:text-slate-300 dark:hover:text-white'
             }`}
           >
             <t.icon className="w-4 h-4" /> {t.label}
@@ -254,10 +254,10 @@ export default function TemplatesPage() {
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <code className="text-xs bg-gray-100 px-2 py-0.5 rounded">{t.slug}</code>
+                    <code className="surface-2 rounded px-2 py-0.5 text-xs">{t.slug}</code>
                   </div>
                   <h3 className="font-medium">{t.subject}</h3>
-                  <p className="text-xs text-gray-400 mt-1">Değişkenler: {parseVariables(t.variables).join(', ') || '-'}</p>
+                  <p className="mt-1 text-xs text-muted">Değişkenler: {parseVariables(t.variables).join(', ') || '-'}</p>
                 </div>
                 <div className="flex gap-1">
                   <button
@@ -266,11 +266,12 @@ export default function TemplatesPage() {
                       setEmailForm({ slug: t.slug, subject: t.subject, bodyHtml: t.bodyHtml, bodyText: t.bodyText, variables: parseVariables(t.variables).join(', ') || '' });
                       setShowForm(true);
                     }}
-                    className="p-1.5 hover:bg-gray-100 rounded"
+                    aria-label={`${t.subject} şablonunu düzenle`}
+                    className="icon-button border-0"
                   >
-                    <Edit2 className="w-4 h-4 text-gray-500" />
+                    <Edit2 className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDelete('email', t.id)} className="p-1.5 hover:bg-red-50 rounded">
+                  <button aria-label={`${t.subject} şablonunu sil`} onClick={() => handleDelete('email', t.id)} className="icon-button border-0 text-red-500 hover:text-red-600">
                     <Trash2 className="w-4 h-4 text-red-500" />
                   </button>
                 </div>
@@ -286,9 +287,9 @@ export default function TemplatesPage() {
             <div key={t.id} className="card">
               <div className="flex items-start justify-between">
                 <div>
-                  <code className="text-xs bg-gray-100 px-2 py-0.5 rounded">{t.slug}</code>
+                  <code className="surface-2 rounded px-2 py-0.5 text-xs">{t.slug}</code>
                   <p className="mt-2 text-sm">{t.body}</p>
-                  <p className="text-xs text-gray-400 mt-1">Değişkenler: {parseVariables(t.variables).join(', ') || '-'}</p>
+                  <p className="mt-1 text-xs text-muted">Değişkenler: {parseVariables(t.variables).join(', ') || '-'}</p>
                 </div>
                 <div className="flex gap-1">
                   <button
@@ -297,11 +298,12 @@ export default function TemplatesPage() {
                       setSmsForm({ slug: t.slug, body: t.body, variables: parseVariables(t.variables).join(', ') || '' });
                       setShowForm(true);
                     }}
-                    className="p-1.5 hover:bg-gray-100 rounded"
+                    aria-label={`${t.slug} SMS şablonunu düzenle`}
+                    className="icon-button border-0"
                   >
-                    <Edit2 className="w-4 h-4 text-gray-500" />
+                    <Edit2 className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDelete('sms', t.id)} className="p-1.5 hover:bg-red-50 rounded">
+                  <button aria-label={`${t.slug} SMS şablonunu sil`} onClick={() => handleDelete('sms', t.id)} className="icon-button border-0 text-red-500 hover:text-red-600">
                     <Trash2 className="w-4 h-4 text-red-500" />
                   </button>
                 </div>
@@ -319,7 +321,7 @@ export default function TemplatesPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-medium">{cr.title}</h3>
-                    {cr.category && <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">{cr.category}</span>}
+                    {cr.category && <span className="surface-2 rounded px-2 py-0.5 text-xs">{cr.category}</span>}
                   </div>
                   <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">{cr.content}</p>
                 </div>
@@ -330,11 +332,12 @@ export default function TemplatesPage() {
                       setCannedForm({ title: cr.title, content: cr.content, category: cr.category || '', sortOrder: cr.sortOrder });
                       setShowForm(true);
                     }}
-                    className="p-1.5 hover:bg-gray-100 rounded"
+                    aria-label={`${cr.title} hazır yanıtını düzenle`}
+                    className="icon-button border-0"
                   >
-                    <Edit2 className="w-4 h-4 text-gray-500" />
+                    <Edit2 className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDelete('canned', cr.id)} className="p-1.5 hover:bg-red-50 rounded">
+                  <button aria-label={`${cr.title} hazır yanıtını sil`} onClick={() => handleDelete('canned', cr.id)} className="icon-button border-0 text-red-500 hover:text-red-600">
                     <Trash2 className="w-4 h-4 text-red-500" />
                   </button>
                 </div>

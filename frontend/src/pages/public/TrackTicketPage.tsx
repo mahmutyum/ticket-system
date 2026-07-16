@@ -45,7 +45,7 @@ export default function TrackTicketPage() {
         <div className="mt-8 flex gap-3 rounded-2xl bg-black/10 p-4 text-sm text-primary-50"><LockKeyhole className="mt-0.5 h-5 w-5 shrink-0" /><p>Bilgilerin yalnızca ilgili talebe erişim bağlantısı üretmek için kullanılır.</p></div>
       </div>
       <div className="card p-6 sm:p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-600">Talep takip</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-600 dark:text-primary-300">Talep takip</p>
         <h2 className="mt-2 text-2xl font-bold">Durumu görüntüle</h2>
         <p className="mt-2 mb-6 text-sm text-muted">
           Talep numaranızı ve email adresinizi girerek talebinizin durumunu görüntüleyebilirsiniz.

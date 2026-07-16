@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Search, ChevronLeft, ChevronRight, X, SlidersHorizontal, TicketIcon } from 'lucide-react';
@@ -24,6 +24,7 @@ export default function TicketListPage() {
   const canBulk = role === 'admin' || role === 'it_manager';
 
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
@@ -38,11 +39,11 @@ export default function TicketListPage() {
   });
 
   const { data, isLoading } = useQuery<PaginatedResponse<Ticket>>({
-    queryKey: ['tickets', page, search, statusFilter, priorityFilter],
+    queryKey: ['tickets', page, pageSize, search, statusFilter, priorityFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.set('page', String(page));
-      params.set('limit', '20');
+      params.set('limit', String(pageSize));
       if (search) params.set('search', search);
       if (statusFilter) params.set('status', statusFilter);
       if (priorityFilter) params.set('priority', priorityFilter);
@@ -58,6 +59,8 @@ export default function TicketListPage() {
 
   const tickets = useMemo(() => data?.data || [], [data?.data]);
   const pagination = data?.pagination;
+
+  useEffect(() => setPage(1), [pageSize, search, statusFilter, priorityFilter]);
 
   const allOnPageSelected = useMemo(
     () => tickets.length > 0 && tickets.every(t => selectedIds.has(t.id)),
@@ -329,12 +332,20 @@ export default function TicketListPage() {
         )}
 
         {/* Pagination */}
-        {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50 dark:bg-slate-800/50">
-            <span className="text-sm text-gray-500">
-              Toplam {pagination.total} talep
+        {pagination && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 px-4 py-3 dark:border-slate-800">
+            <span className="text-sm text-muted">
+              Toplam {pagination.total} talep · {pagination.total === 0 ? 0 : (page - 1) * pageSize + 1}–{Math.min(page * pageSize, pagination.total)} gösteriliyor
             </span>
             <div className="flex items-center gap-2">
+              <label className="mr-2 flex items-center gap-2 text-sm text-muted">
+                Sayfa başına
+                <select className="input-field !w-auto !py-1.5 text-sm" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </label>
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
@@ -348,7 +359,7 @@ export default function TicketListPage() {
               </span>
               <button
                 onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
-                disabled={page === pagination.totalPages}
+                disabled={page >= pagination.totalPages}
                 className="icon-button min-h-9 min-w-9 disabled:opacity-30"
                 aria-label="Sonraki sayfa"
               >
