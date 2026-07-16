@@ -10,11 +10,18 @@ const noteCreateSchema = z.object({
   content: requiredText({ ...LIMITS.noteContent, label: 'Not' }),
   isInternal: z.boolean().default(false),
 });
+const ticketNotesParamsSchema = z.object({ ticketId: z.string().min(1).max(128) });
 
 export const noteRoutes: FastifyPluginAsync = async (app) => {
   // STAFF: Add note to ticket
   app.post('/:ticketId/notes', {
-    preHandler: [app.authenticate],
+    preValidation: [app.authenticate],
+    schema: {
+      tags: ['Ticket Notes'],
+      summary: 'Destek talebine not ekler',
+      params: ticketNotesParamsSchema,
+      body: noteCreateSchema,
+    },
   }, async (request, reply) => {
     const { ticketId } = request.params as { ticketId: string };
     const body = noteCreateSchema.parse(request.body);
@@ -96,7 +103,12 @@ export const noteRoutes: FastifyPluginAsync = async (app) => {
 
   // STAFF: Get notes for ticket
   app.get('/:ticketId/notes', {
-    preHandler: [app.authenticate],
+    preValidation: [app.authenticate],
+    schema: {
+      tags: ['Ticket Notes'],
+      summary: 'Destek talebinin notlarını listeler',
+      params: ticketNotesParamsSchema,
+    },
   }, async (request, reply) => {
     const { ticketId } = request.params as { ticketId: string };
     const staffUser = request.staffUser!;

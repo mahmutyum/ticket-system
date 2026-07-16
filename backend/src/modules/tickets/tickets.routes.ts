@@ -73,9 +73,23 @@ const ticketFilterSchema = paginationSchema.extend({
   dateTo: z.string().optional(),
 });
 
+const ticketIdParamsSchema = z.object({ id: z.string().min(1).max(128) });
+const ticketBulkUpdateSchema = z.object({
+  ticketIds: z.array(z.string().cuid()).min(1).max(100),
+  status: z.nativeEnum(TicketStatus).optional(),
+  assignedToId: z.string().cuid().nullable().optional(),
+  priority: z.nativeEnum(Priority).optional(),
+});
+const ticketSearchSchema = z.object({ q: z.string().trim().max(200).optional() });
+
 export const ticketRoutes: FastifyPluginAsync = async (app) => {
   // PUBLIC: Create ticket
   app.post('/', {
+    schema: {
+      tags: ['Tickets'],
+      summary: 'Yeni destek talebi oluşturur',
+      body: ticketCreateSchema,
+    },
     config: {
       rateLimit: { max: 10, timeWindow: '1 minute' },
     },
@@ -283,7 +297,12 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
 
   // STAFF: List tickets with filters
   app.get('/', {
-    preHandler: [app.authenticate],
+    preValidation: [app.authenticate],
+    schema: {
+      tags: ['Tickets'],
+      summary: 'Destek taleplerini filtreleyerek listeler',
+      querystring: ticketFilterSchema,
+    },
   }, async (request, reply) => {
     const query = ticketFilterSchema.parse(request.query);
     const { skip, take } = paginate(query);
@@ -355,7 +374,12 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
 
   // STAFF: Get ticket detail
   app.get('/:id', {
-    preHandler: [app.authenticate],
+    preValidation: [app.authenticate],
+    schema: {
+      tags: ['Tickets'],
+      summary: 'Destek talebi ayrıntısını getirir',
+      params: ticketIdParamsSchema,
+    },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
 
@@ -396,7 +420,13 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
 
   // STAFF: Update ticket (status, priority, assignment)
   app.put('/:id', {
-    preHandler: [app.authenticate],
+    preValidation: [app.authenticate],
+    schema: {
+      tags: ['Tickets'],
+      summary: 'Destek talebini günceller',
+      params: ticketIdParamsSchema,
+      body: ticketUpdateSchema,
+    },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = ticketUpdateSchema.parse(request.body);
@@ -511,14 +541,14 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
 
   // STAFF: Bulk update tickets
   app.post('/bulk', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: {
+      tags: ['Tickets'],
+      summary: 'Destek taleplerini toplu günceller',
+      body: ticketBulkUpdateSchema,
+    },
   }, async (request, reply) => {
-    const body = z.object({
-      ticketIds: z.array(z.string().cuid()),
-      status: z.nativeEnum(TicketStatus).optional(),
-      assignedToId: z.string().cuid().nullable().optional(),
-      priority: z.nativeEnum(Priority).optional(),
-    }).parse(request.body);
+    const body = ticketBulkUpdateSchema.parse(request.body);
 
     const staffUser = request.staffUser!;
 
@@ -548,7 +578,12 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
 
   // STAFF: Upload attachment
   app.post('/:id/attachments', {
-    preHandler: [app.authenticate],
+    preValidation: [app.authenticate],
+    schema: {
+      tags: ['Tickets'],
+      summary: 'Destek talebine dosya ekler',
+      params: ticketIdParamsSchema,
+    },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
 
@@ -625,9 +660,14 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
 
   // STAFF: Search tickets
   app.get('/search', {
-    preHandler: [app.authenticate],
+    preValidation: [app.authenticate],
+    schema: {
+      tags: ['Tickets'],
+      summary: 'Destek taleplerinde arama yapar',
+      querystring: ticketSearchSchema,
+    },
   }, async (request, reply) => {
-    const { q } = request.query as { q: string };
+    const { q } = ticketSearchSchema.parse(request.query);
     if (!q || q.length < 2) {
       return reply.send({ success: true, data: [] });
     }

@@ -20,9 +20,24 @@ function isAccessExpired(expiresAt: Date | null): boolean {
   return expiresAt !== null && expiresAt < new Date();
 }
 
+const accessTokenParamsSchema = z.object({ accessToken: z.string().min(1).max(128) });
+const publicReplySchema = z.object({
+  content: requiredText({ ...LIMITS.noteContent, label: 'Yanıt' }),
+});
+const ticketTrackSchema = z.object({
+  ticketNumber: z.string().trim().min(1).max(50),
+  email: emailSchema,
+});
+
 export const publicRoutes: FastifyPluginAsync = async (app) => {
   // Public: View ticket by access token
-  app.get('/ticket/:accessToken', async (request, reply) => {
+  app.get('/ticket/:accessToken', {
+    schema: {
+      tags: ['Public Tickets'],
+      summary: 'Erişim anahtarıyla destek talebini getirir',
+      params: accessTokenParamsSchema,
+    },
+  }, async (request, reply) => {
     const { accessToken } = request.params as { accessToken: string };
 
     const ticket = await app.prisma.ticket.findUnique({
@@ -84,13 +99,17 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
 
   // Public: Reply to ticket — with IT notification
   app.post('/ticket/:accessToken/reply', {
+    schema: {
+      tags: ['Public Tickets'],
+      summary: 'Destek talebine kullanıcı yanıtı ekler',
+      params: accessTokenParamsSchema,
+      body: publicReplySchema,
+    },
     config: { rateLimit: { max: 20, timeWindow: '10 minutes' } },
   }, async (request, reply) => {
     const { accessToken } = request.params as { accessToken: string };
     // Kimliksiz uç — kırpma ve üst sınır zorunlu.
-    const body = z.object({
-      content: requiredText({ ...LIMITS.noteContent, label: 'Yanıt' }),
-    }).parse(request.body);
+    const body = publicReplySchema.parse(request.body);
 
     const ticket = await app.prisma.ticket.findUnique({
       where: { accessToken },
@@ -159,6 +178,11 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
 
   // Public: Upload attachment to ticket
   app.post('/ticket/:accessToken/attachments', {
+    schema: {
+      tags: ['Public Tickets'],
+      summary: 'Destek talebine kullanıcı dosyası ekler',
+      params: accessTokenParamsSchema,
+    },
     config: { rateLimit: { max: 5, timeWindow: '1 minute' } },
   }, async (request, reply) => {
     const { accessToken } = request.params as { accessToken: string };
@@ -204,12 +228,14 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
 
   // Public: Track single ticket by ticketNumber + email
   app.post('/track', {
+    schema: {
+      tags: ['Public Tickets'],
+      summary: 'Talep numarası ve e-postayla erişim anahtarını getirir',
+      body: ticketTrackSchema,
+    },
     config: { rateLimit: { max: 10, timeWindow: '5 minutes' } },
   }, async (request, reply) => {
-    const parsed = z.object({
-      ticketNumber: z.string().trim().min(1).max(50),
-      email: emailSchema,
-    }).safeParse(request.body);
+    const parsed = ticketTrackSchema.safeParse(request.body);
 
     if (!parsed.success) {
       return reply.status(404).send({ success: false, error: 'Talep bulunamadı veya email eşleşmiyor' });

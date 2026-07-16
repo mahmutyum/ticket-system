@@ -41,6 +41,8 @@ const createSchema = z.object({
 });
 
 const updateSchema = createSchema.partial();
+const credentialIdParamsSchema = z.object({ id: z.string().min(1).max(128) });
+const credentialListQuerySchema = z.object({ companyId: z.string().min(1).max(128).optional() });
 
 /**
  * Şifre kasası — `admin` ve `it_manager`.
@@ -57,8 +59,15 @@ const updateSchema = createSchema.partial();
  */
 export const credentialRoutes: FastifyPluginAsync = async (app) => {
   // Liste — şifre/not DÖNMEZ
-  app.get('/', { preHandler: [app.requireRole('admin', 'it_manager')] }, async (request, reply) => {
-    const { companyId } = request.query as { companyId?: string };
+  app.get('/', {
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: {
+      tags: ['Credentials'],
+      summary: 'Şifre kasası kayıtlarını listeler',
+      querystring: credentialListQuerySchema,
+    },
+  }, async (request, reply) => {
+    const { companyId } = credentialListQuerySchema.parse(request.query);
     const staffUser = request.staffUser!;
     const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
 
@@ -76,7 +85,14 @@ export const credentialRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // Reveal — çözülmüş şifre + not, audit log'lanır
-  app.get('/:id/reveal', { preHandler: [app.requireRole('admin', 'it_manager')] }, async (request, reply) => {
+  app.get('/:id/reveal', {
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: {
+      tags: ['Credentials'],
+      summary: 'Şifre kasası kaydını çözer ve denetim kaydı oluşturur',
+      params: credentialIdParamsSchema,
+    },
+  }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const staffUser = request.staffUser!;
     const entry = await app.prisma.credentialEntry.findUnique({ where: { id } });
@@ -105,7 +121,14 @@ export const credentialRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // Oluştur
-  app.post('/', { preHandler: [app.requireRole('admin', 'it_manager')] }, async (request, reply) => {
+  app.post('/', {
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: {
+      tags: ['Credentials'],
+      summary: 'Şifre kasası kaydı oluşturur',
+      body: createSchema,
+    },
+  }, async (request, reply) => {
     const body = createSchema.parse(request.body);
     const staffUser = request.staffUser!;
     const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
@@ -141,7 +164,15 @@ export const credentialRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // Güncelle
-  app.put('/:id', { preHandler: [app.requireRole('admin', 'it_manager')] }, async (request, reply) => {
+  app.put('/:id', {
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: {
+      tags: ['Credentials'],
+      summary: 'Şifre kasası kaydını günceller',
+      params: credentialIdParamsSchema,
+      body: updateSchema,
+    },
+  }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = updateSchema.parse(request.body);
     const staffUser = request.staffUser!;
@@ -189,7 +220,14 @@ export const credentialRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // Sil
-  app.delete('/:id', { preHandler: [app.requireRole('admin', 'it_manager')] }, async (request, reply) => {
+  app.delete('/:id', {
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: {
+      tags: ['Credentials'],
+      summary: 'Şifre kasası kaydını siler',
+      params: credentialIdParamsSchema,
+    },
+  }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const staffUser = request.staffUser!;
     const existing = await app.prisma.credentialEntry.findUnique({
