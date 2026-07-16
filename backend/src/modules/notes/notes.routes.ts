@@ -5,12 +5,24 @@ import { queueEmail } from '../../jobs/queue.js';
 import { config } from '../../config/index.js';
 import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.js';
 import { getStaffCompanyScope } from '../../utils/staff-scope.js';
+import { StaffRole } from '@prisma/client';
+import { commonErrorResponses } from '../../utils/api-schema.js';
 
 const noteCreateSchema = z.object({
   content: requiredText({ ...LIMITS.noteContent, label: 'Not' }),
   isInternal: z.boolean().default(false),
 });
 const ticketNotesParamsSchema = z.object({ ticketId: z.string().min(1).max(128) });
+const noteSchema = z.object({
+  id: z.string(),
+  ticketId: z.string(),
+  content: z.string(),
+  isInternal: z.boolean(),
+  createdById: z.string(),
+  createdAt: z.date(),
+  createdBy: z.object({ fullName: z.string(), role: z.nativeEnum(StaffRole) }),
+});
+const responseOf = <T extends z.ZodTypeAny>(data: T) => z.object({ success: z.literal(true), data });
 
 export const noteRoutes: FastifyPluginAsyncZod = async (app) => {
   // STAFF: Add note to ticket
@@ -21,6 +33,7 @@ export const noteRoutes: FastifyPluginAsyncZod = async (app) => {
       summary: 'Destek talebine not ekler',
       params: ticketNotesParamsSchema,
       body: noteCreateSchema,
+      response: { 201: responseOf(noteSchema), ...commonErrorResponses },
     },
   }, async (request, reply) => {
     const { ticketId } = request.params;
@@ -108,6 +121,7 @@ export const noteRoutes: FastifyPluginAsyncZod = async (app) => {
       tags: ['Ticket Notes'],
       summary: 'Destek talebinin notlarını listeler',
       params: ticketNotesParamsSchema,
+      response: { 200: responseOf(z.array(noteSchema)), ...commonErrorResponses },
     },
   }, async (request, reply) => {
     const { ticketId } = request.params;

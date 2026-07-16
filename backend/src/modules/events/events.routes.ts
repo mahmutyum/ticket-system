@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid';
 import { addClient, getClientCount } from '../../services/sse.service.js';
 import { getStaffCompanyScope } from '../../utils/staff-scope.js';
 import { z } from 'zod';
+import { commonErrorResponses } from '../../utils/api-schema.js';
 
 /**
  * SSE bileti — kısa ömürlü, TEK KULLANIMLIK.
@@ -28,7 +29,17 @@ export const eventRoutes: FastifyPluginAsyncZod = async (app) => {
    * Bilet YALNIZCA bir SSE bağlantısı açmaya yarar; başka hiçbir uçta geçerli
    * değildir ve tek kullanımlıktır.
    */
-  app.post('/ticket-grant', { preValidation: [app.authenticate], schema: { tags: ['Events'], summary: 'Tek kullanımlık SSE bileti üret' } }, async (request, reply) => {
+  app.post('/ticket-grant', { preValidation: [app.authenticate], schema: {
+    tags: ['Events'],
+    summary: 'Tek kullanımlık SSE bileti üret',
+    response: {
+      200: z.object({
+        success: z.literal(true),
+        data: z.object({ ticket: z.string(), expiresIn: z.number().int().positive() }),
+      }),
+      ...commonErrorResponses,
+    },
+  } }, async (request, reply) => {
     const staffUser = request.staffUser!;
     const ticket = nanoid(32);
     await app.redis.set(sseTicketKey(ticket), staffUser.id, 'EX', TICKET_TTL_SECONDS);
@@ -98,7 +109,17 @@ export const eventRoutes: FastifyPluginAsyncZod = async (app) => {
   // SSE stats
   app.get('/stats', {
     preValidation: [app.authenticate],
-    schema: { tags: ['Events'], summary: 'Aktif SSE bağlantı sayısını getir' },
+    schema: {
+      tags: ['Events'],
+      summary: 'Aktif SSE bağlantı sayısını getir',
+      response: {
+        200: z.object({
+          success: z.literal(true),
+          data: z.object({ staff: z.number().int().nonnegative(), public: z.number().int().nonnegative() }),
+        }),
+        ...commonErrorResponses,
+      },
+    },
   }, async (request, reply) => {
     reply.send({ success: true, data: getClientCount() });
   });
