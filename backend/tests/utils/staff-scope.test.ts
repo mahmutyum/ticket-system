@@ -127,6 +127,10 @@ describe('resolveCompanyFilter', () => {
   it('kapsam dışı filtre kapsamı GENİŞLETEMEZ', () => {
     const result = resolveCompanyFilter(['c1'], 'c2');
     expect(result).not.toEqual({ companyId: 'c2' });
+    expect(result.companyId).toEqual({ in: [] });
+    if (typeof result.companyId !== 'object') {
+      throw new Error('Kapsamlı filtre Prisma `in` koşulu üretmelidir');
+    }
     expect(result.companyId.in).not.toContain('c2');
   });
 

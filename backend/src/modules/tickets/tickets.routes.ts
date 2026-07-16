@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { generateTicketNumber } from '../../utils/ticket-number.js';
@@ -11,6 +11,7 @@ import { config } from '../../config/index.js';
 import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.js';
 import { getStaffCompanyScope, resolveCompanyFilter, isCompanyInScope } from '../../utils/staff-scope.js';
 import { calculateSlaDueDates, isSlaMet } from '../../utils/sla.js';
+import { commonErrorResponses } from '../../utils/api-schema.js';
 
 /**
  * Ticket kapandıktan sonra public takip linkinin ne kadar geçerli kalacağı.
@@ -82,19 +83,52 @@ const ticketBulkUpdateSchema = z.object({
 });
 const ticketSearchSchema = z.object({ q: z.string().trim().max(200).optional() });
 
-export const ticketRoutes: FastifyPluginAsync = async (app) => {
+const ticketCreateResponseSchema = z.object({
+  success: z.literal(true),
+  data: z.object({
+    ticketNumber: z.string(),
+    accessToken: z.string(),
+    trackingUrl: z.string().url(),
+    status: z.nativeEnum(TicketStatus),
+    subject: z.string(),
+  }),
+});
+
+const ticketBulkUpdateResponseSchema = z.object({
+  success: z.literal(true),
+  data: z.object({
+    updated: z.number().int().nonnegative(),
+    requested: z.number().int().nonnegative(),
+    skipped: z.number().int().nonnegative(),
+  }),
+});
+
+const ticketSearchResponseSchema = z.object({
+  success: z.literal(true),
+  data: z.array(z.object({
+    id: z.string(),
+    ticketNumber: z.string(),
+    subject: z.string(),
+    status: z.nativeEnum(TicketStatus),
+    priority: z.nativeEnum(Priority),
+    createdAt: z.date(),
+  })),
+});
+
+export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
   // PUBLIC: Create ticket
   app.post('/', {
     schema: {
       tags: ['Tickets'],
       summary: 'Yeni destek talebi oluşturur',
       body: ticketCreateSchema,
+      response: { 201: ticketCreateResponseSchema, ...commonErrorResponses },
     },
     config: {
       rateLimit: { max: 10, timeWindow: '1 minute' },
     },
   }, async (request, reply) => {
-    const body = ticketCreateSchema.parse(request.body);
+    const body = request.body;
 
     // Validate company access
     const company = await app.prisma.company.findUnique({
@@ -304,7 +338,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       querystring: ticketFilterSchema,
     },
   }, async (request, reply) => {
-    const query = ticketFilterSchema.parse(request.query);
+    const query = request.query;
     const { skip, take } = paginate(query);
     const staffUser = request.staffUser!;
 
@@ -381,7 +415,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       params: ticketIdParamsSchema,
     },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
 
     const ticket = await app.prisma.ticket.findUnique({
       where: { id },
@@ -428,8 +462,8 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       body: ticketUpdateSchema,
     },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const body = ticketUpdateSchema.parse(request.body);
+    const { id } = request.params;
+    const body = request.body;
     const staffUser = request.staffUser!;
 
     const currentTicket = await app.prisma.ticket.findUnique({ where: { id } });
@@ -546,9 +580,10 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       tags: ['Tickets'],
       summary: 'Destek taleplerini toplu günceller',
       body: ticketBulkUpdateSchema,
+      response: { 200: ticketBulkUpdateResponseSchema, ...commonErrorResponses },
     },
   }, async (request, reply) => {
-    const body = ticketBulkUpdateSchema.parse(request.body);
+    const body = request.body;
 
     const staffUser = request.staffUser!;
 
@@ -585,7 +620,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       params: ticketIdParamsSchema,
     },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
 
     const ticket = await app.prisma.ticket.findUnique({ where: { id } });
     if (!ticket) {
@@ -665,9 +700,10 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       tags: ['Tickets'],
       summary: 'Destek taleplerinde arama yapar',
       querystring: ticketSearchSchema,
+      response: { 200: ticketSearchResponseSchema, ...commonErrorResponses },
     },
   }, async (request, reply) => {
-    const { q } = ticketSearchSchema.parse(request.query);
+    const { q } = request.query;
     if (!q || q.length < 2) {
       return reply.send({ success: true, data: [] });
     }

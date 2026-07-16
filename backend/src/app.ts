@@ -126,10 +126,9 @@ export async function buildApp() {
 
   // API dokümantasyonu — /docs
   //
-  // NOT: Route'lar fastify'ın `schema:` alanını kullanmaz; input validation
-  // handler içinde Zod ile yapılır (`schema.parse(request.body)`). Bu yüzden
-  // Swagger request/response gövdelerini gösteremez — sadece endpoint listesi
-  // (method + path) üretir. Gövde formatları için ilgili modülün Zod şemasına bak.
+  // Route'ların Zod tabanlı request şemaları Swagger'a dönüştürülür. Response
+  // şemaları kontrollü olarak modül modül eklenmektedir; sözleşmesi tanımlanan
+  // uçlarda Swagger hem başarı hem hata gövdelerini yayınlar.
   if (config.ENABLE_API_DOCS) {
     await app.register(swagger, {
       transform: jsonSchemaTransform,

@@ -69,10 +69,13 @@ describe('gerçek PostgreSQL + Redis entegrasyonu', () => {
       expect.arrayContaining([expect.objectContaining({ name: 'ticket', in: 'query' })]),
     );
     expect(path('/tickets').post.requestBody).toBeDefined();
+    expect(path('/tickets').post.responses['201'].content['application/json'].schema).toBeDefined();
     expect(path('/tickets').get.parameters).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: 'status', in: 'query' })]),
     );
     expect(document.paths['/tickets/{id}'].put.requestBody).toBeDefined();
+    expect(document.paths['/tickets/bulk'].post.responses['200'].content['application/json'].schema).toBeDefined();
+    expect(document.paths['/tickets/search'].get.responses['200'].content['application/json'].schema).toBeDefined();
     expect(document.paths['/tickets/bulk'].post.requestBody).toBeDefined();
     expect(document.paths['/public/ticket/{accessToken}/reply'].post.requestBody).toBeDefined();
     expect(document.paths['/public/track'].post.requestBody).toBeDefined();
