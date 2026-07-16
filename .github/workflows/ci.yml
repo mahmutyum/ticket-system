@@ -1,9 +1,9 @@
 name: CI
 
+# Otomatik GitHub doğrulamaları kapalıdır. Gerektiğinde Actions ekranındaki
+# "Run workflow" düğmesiyle elle çalıştırılabilir.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 # Aynı dal için eski koşuları iptal et — art arda push'ta kuyruk birikmesin.
 concurrency:

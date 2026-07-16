@@ -43,19 +43,24 @@ describe('gerçek PostgreSQL + Redis entegrasyonu', () => {
     const response = await app.inject({ method: 'GET', url: '/docs/json' });
     expect(response.statusCode).toBe(200);
     const document = response.json();
-    expect(document.paths['/companies'].post.requestBody).toBeDefined();
+    // Fastify, prefix altında '/' olarak kayıtlı kök route'ları OpenAPI'da
+    // trailing slash ile yayınlayabilir (`/companies/`). İkisi aynı HTTP
+    // kaynağıdır; test serializer biçimine değil sözleşmenin varlığına bakar.
+    const path = (name: string) => document.paths[name] ?? document.paths[`${name}/`];
+    expect(path('/companies'), `OpenAPI path yok. Mevcut yollar: ${Object.keys(document.paths).join(', ')}`).toBeDefined();
+    expect(path('/companies').post.requestBody).toBeDefined();
     expect(document.paths['/staff/{id}'].put.parameters).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: 'id', in: 'path' })]),
     );
     expect(document.paths['/categories/reorder'].put.requestBody).toBeDefined();
     expect(document.paths['/templates/email'].post.requestBody).toBeDefined();
-    expect(document.paths['/onsite-support'].get.parameters).toEqual(
+    expect(path('/onsite-support').get.parameters).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: 'status', in: 'query' })]),
     );
     expect(document.paths['/reports/overview'].get.parameters).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: 'period', in: 'query' })]),
     );
-    expect(document.paths['/tasks'].post.requestBody).toBeDefined();
+    expect(path('/tasks').post.requestBody).toBeDefined();
     expect(document.paths['/tasks/{id}/status'].patch.requestBody).toBeDefined();
     expect(document.paths['/attachments/{id}'].get.parameters).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: 'token', in: 'query' })]),
