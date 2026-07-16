@@ -6,6 +6,11 @@ Bir güvenlik açığı bulursan **public issue açma.** GitHub üzerinden
 [Security Advisory](https://github.com/mahmutyum/ticket-system/security/advisories/new)
 oluştur veya depo sahibiyle özel iletişime geç.
 
+Bir kimlik bilgisi veya kişisel veri yanlışlıkla commitlendiyse public issue'ya
+değerin kendisini yazma. Önce anahtarı iptal et/döndür; ardından geçmiş temizliği
+için özel kanaldan haber ver. Public depo içerik politikası ve kontrol adımları
+[docs/public-repo.md](docs/public-repo.md) içindedir.
+
 ---
 
 ## Tasarım varsayımı: iç ağ
@@ -139,10 +144,12 @@ tutulmuştur.
   yüklenen dosyalar CSP'siz servis ediliyordu. (Gerçek nginx konteynerleriyle
   doğrulandı.)
 
-### Kalan sınır
+### Saklama ve kota
 
-Ticket başına **20 dosya / 200 MB** kotası var, ama saklama süresi politikası yok:
-kapanmış ticket'ların ekleri süresizce durur. Bkz. `docs/yol-haritasi.md` 1.5.
+Ticket başına **20 dosya / 200 MB** kotası vardır. Kapanış tarihi yapılandırılan
+süreden eski resolved/closed ticket ekleri `db:retention:check` ile raporlanır ve
+onaylı bakım çalışmasında `db:retention:apply` ile diskten ve veritabanından silinir.
+Varsayılan süre 365 gündür; otomatik zamanlama kurulum sahibinin sorumluluğundadır.
 
 ---
 

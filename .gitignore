@@ -18,11 +18,25 @@ backend/prisma/generated/
 
 # Ortam değişkenleri
 .env
+.env.*
 .env.local
 .env.*.local
 .env.development
 .env.production
 !.env.example
+
+# Secret / sertifika / yerel kimlik dosyaları
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+*.cer
+*.mobileprovision
+secrets/
+private/
 
 # Loglar
 logs/
@@ -31,6 +45,15 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Veritabanı dump ve yerel veri dosyaları (migration SQL'leri hariç)
+*.dump
+*.backup
+*.bak
+*.sqlite
+*.sqlite3
+*.db
+backups/
 
 # Editör / IDE
 .vscode/
@@ -73,3 +96,6 @@ docker-compose.override.yml
 # AI asistan talimatları — yalnızca local, repoya girmez
 CLAUDE.md
 .claude/
+AGENTS.md
+.agents/
+.codex/

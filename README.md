@@ -202,6 +202,7 @@ to the internet.
 
 **Docs are in Turkish:** [installation](docs/kurulum.md) · [usage](docs/kullanim.md) ·
 [architecture](docs/mimari.md) · [roadmap & known gaps](docs/yol-haritasi.md) ·
+[public repository safety](docs/public-repo.md) ·
 [contributing](CONTRIBUTING.md)
 
 **License:** [MIT](LICENSE) © Mahmut YUM

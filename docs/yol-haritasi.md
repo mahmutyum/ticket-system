@@ -1,177 +1,100 @@
 # Yol Haritası ve Bilinen Eksikler
 
-Bu doküman projenin **olduğu gibi** halini dürüstçe anlatır. Katkı vermeden veya production'a
-kurmadan önce oku.
+Bu belge projenin güncel durumunu ve bilinçli olarak açık bırakılan sınırları
+özetler. Tarihsel uygulama planı değildir.
 
-Durum: 2026-07-15 itibarıyla.
-
----
+Durum: 2026-07-16.
 
 ## Olgunluk özeti
 
 | Alan | Durum |
 |---|---|
-| Özellik kapsamı | 🟢 Geniş — ticket yaşam döngüsü, SLA, raporlar, görevler, şifre kasası |
-| Kurulum / deploy | 🟢 Docker Compose ile tek komut; Coolify + NPM için belgelenmiş |
-| Veritabanı şema yönetimi | 🟢 Versiyonlanmış migration'lar, CI'da gerçek Postgres'e uygulanıyor |
-| Dokümantasyon | 🟢 Kurulum, kullanım, mimari |
-| Test | 🟡 233 test (backend 214, frontend 19) — kritik yollar korunuyor, route kapsaması kısmi |
-| CI | 🟢 Tip kontrolü, lint, test, migration, Docker build, bağımlılık açıkları |
-| Lint / format | 🟢 ESLint + Prettier (backend ve frontend) |
-| Bağımlılık açıkları | 🟢 Production'da 0 (CI'da zorlanıyor) |
-| API dokümantasyonu | 🟡 Endpoint listesi var, request/response gövdeleri yok |
-| Güvenlik | 🟡 Kapsamlı bir tarama yapıldı ve bulgular kapatıldı; [kalan sınırlar](../SECURITY.md) |
+| Özellik kapsamı | 🟢 Ticket yaşam döngüsü, SLA, raporlar, görevler, kasa, MFA |
+| Kurulum / deploy | 🟢 Docker Compose, Coolify ve Nginx belgeli |
+| Migration | 🟢 Versiyonlu; gerçek PostgreSQL üzerinde doğrulanabilir |
+| Backend testleri | 🟢 220 birim/route/worker testi |
+| Frontend testleri | 🟡 19 birim testi + 3 Playwright smoke/axe senaryosu |
+| Entegrasyon | 🟢 Gerçek PostgreSQL + Redis testi mevcut |
+| CI | 🟡 Güvenlik tercihiyle yalnızca GitHub Actions'tan elle çalıştırılıyor |
+| API dokümantasyonu | 🟡 Request/path/query şemaları geniş ölçüde bağlı; response şemaları kısmi |
+| Kod kalitesi | 🟡 Backend 23, frontend 75 lint uyarısı; lint hatası yok |
+| Public repo hijyeni | 🟢 Yerel kontrol script'i, geniş ignore politikası ve yayın rehberi |
 
----
+## Sıradaki çalışmalar
 
-## Öncelik 1 — Kalan güvenlik maddeleri
+### 1. Kod kalitesi
 
-Bir güvenlik taramasının (XSS / enjeksiyon / yetkilendirme / auth) bulguları kapatıldı —
-ne yapıldığı [SECURITY.md](../SECURITY.md)'de. Kapatılmayanlar:
+- Backend'deki `any` kullanımlarını Prisma/Fastify tipleriyle değiştir.
+- Frontend API cevaplarını ortak domain tiplerine bağla.
+- Büyük yönetim sayfalarını davranış değiştirmeden küçük bileşen ve hook'lara ayır.
+- Fast Refresh uyarısı veren provider yardımcılarını ayrı modüllere taşı.
 
-### 1.1 SSE token'ı hâlâ URL'de (azaltıldı)
+### 2. OpenAPI sözleşmesi
 
-`EventSource` özel header gönderemediği için staff akışı kimliği URL'den almak zorunda.
-Artık URL'de 15 dakikalık JWT değil, **30 saniye ömürlü tek kullanımlık bilet** var —
-okunduğu anda siliniyor. Yani log'a düşen değer kullanıldığı anda ölü.
+- Başarılı ve hatalı cevaplar için ortak Zod response şemaları tanımla.
+- Route response durumlarını (`200`, `201`, `400`, `401`, `403`, `404`) yayınla.
+- Fastify type-provider çıkarımı tamamlandıkça handler içindeki tekrarlı `.parse()`
+  çağrılarını kaldır.
+- OpenAPI dokümanının kritik route'ları yayınladığını entegrasyon testinde koru.
 
-**Kalan:** Bilet yine de log'a yazılıyor ve 30 saniyelik bir pencerede yeniden
-kullanılabilir (kullanılmadıysa). Tam çözüm SSE yerine WebSocket'e geçmek olurdu.
+### 3. Test kapsamı
 
-### 1.2 Public portalda kimlik doğrulama yok — tasarım tercihi
+- Onsite, rapor, şablon ve görev route'larının kapsam/RBAC senaryolarını genişlet.
+- MFA, kasa reveal ve dosya yükleme/indirme için tarayıcı akışları ekle.
+- Gerçek servis entegrasyon testini şema değişikliklerinden sonra manuel CI ile çalıştır.
 
-Erişim tahmin edilemez `accessToken` link'ine dayanıyor. Artık kapanışta süresi
-doluyor (+90 gün) ve `/public/track` ile yenilenebiliyor. Ama link'i olan herkes
-o ticket'ı görür — bu bilinçli bir tercih, bkz. "Bilinçli olarak yapılmayanlar".
+### 4. Operasyon
 
-### 1.3 Ticket numaraları sıralı
+- Yedek alma kadar geri yükleme tatbikatını da periyodik çalıştır.
+- `db:retention:check` sonucunu izle; onaylı bakım penceresinde
+  `db:retention:apply` çalıştır.
+- Public internete açık kurulumlarda `ENABLE_API_DOCS=false`, proxy erişim kontrolü
+  ve doğru `TRUST_PROXY` değerini zorunlu kabul et.
 
-`TKT-2026-00001` biçiminde artıyor. `/public/track` ticket no + e-posta istediği ve
-rate limit + `TRUST_PROXY` doğru ayarlandığı sürece sömürülebilir değil, ama sıralı
-numaralar hacim bilgisi sızdırır (rakip bir firma kaç talep açıldığını tahmin edebilir).
+## Bilinen ve kabul edilmiş güvenlik sınırları
 
-### 1.4 Ek yükleme kotası — kapatıldı
+### Public ticket bağlantısı bearer yetkisidir
 
-Ticket başına **20 dosya / toplam 200 MB** sınırı kondu (`ATTACHMENT_LIMITS`).
-Öncesinde yalnızca dosya başına 25 MB vardı; aynı ticket'a sınırsız ek yüklenip
-disk şişirilebiliyordu.
+Public portal parola istemez. Tahmin edilemez `accessToken` bağlantısını bilen kişi
+ticket'ı görebilir, yanıtlayabilir ve dosya ekleyebilir. Token kapanıştan 90 gün sonra
+sona erer; bu riskin tamamını ortadan kaldırmaz.
 
-### 1.5 Ticket ekleri hiç silinmiyor (veri saklama)
+### Token URL'lerde bulunur
 
-Ticket'ları silen bir uç **yok** — şirket silme bile soft delete (`isActive: false`).
-Yani yetim dosya oluşmuyor, ama ekler de süresizce birikiyor. Saklama süresi
-politikası (örn. kapanmış ticket'ların eklerini N ay sonra sil) tanımlı değil.
+Public ticket token'ı path'te; tek kullanımlık staff SSE bileti query parametresindedir.
+Proxy loglarına erişim ve log saklama süresi sınırlandırılmalıdır. Staff SSE için tam
+çözüm, header tabanlı kimlik taşıyabilen WebSocket benzeri bir kanaldır.
 
-**Not:** Bu maddenin eski hali "ticket silinince dosyalar kalıyor" diyordu; yanlıştı.
-Gerçek sızıntı logo değiştirmedeydi ve kapatıldı — dosya adı her yüklemede rastgele
-olduğu için yeni logo eskisinin üzerine yazmıyor, eski dosya diskte kalıp `/branding`
-ucundan erişilebilir olmaya devam ediyordu. `saveLogo` artık şirket klasörünü buduyor.
+### Ticket numaraları sıralıdır
 
----
+Numara tek başına erişim sağlamaz; `/public/track` e-posta eşleşmesi ve rate limit
+ister. Yine de dışarıdan görülen numaralar yaklaşık ticket hacmi bilgisi verebilir.
 
-## Öncelik 2 — Test altyapısı
+### İç ağ varsayımı önemlidir
 
-**Bugün: 233 test.**
+Sistem VPN/iç ağ arkasında tasarlanmıştır. Coolify/NPM kullanırken dahili proxy
+profilindeki IP filtresi devrede değildir; eşdeğer erişim kontrolü dış proxy'de
+kurulmalıdır.
 
-Backend (214):
-- `utils/staff-scope` — şirket kapsamı, fail-closed, filtre kesiştirme
-- `utils/crypto` — AES-256-GCM, `looksEncrypted`
-- `utils/validation` — kırpma, sınırlar, telefon/e-posta/URL, şifre politikası
-- `utils/net-guard` — SSRF (IPv4/IPv6, DNS sonrası, `::ffff:` mapped)
-- `utils/sla` — son tarih hesabı, tutturma, ihlal
-- `utils/ticket-number` — yarış durumu, soğuk başlangıç tohumlaması
-- `utils/csv-escape` — formül enjeksiyonu, çerçeveleme
-- `services/sse-scope` — çapraz şirket yayın sızıntısı
-- `services/email-render` — HTML kaçışlama, replacement tuzakları
-- `services/storage` — uzantı türetme, SVG reddi, logo temizliği, yol kapsaması,
-  shell yükleme denemeleri (18 payload: .php/.jsp/.sh, çift uzantı, null byte, traversal)
-- `routes/credentials.auth` — kasa yetkilendirmesi
-- `routes/staff.auth` — ayrıcalık yükseltmesi
-- `routes/tickets.auth` — ticket yazma kapsamı, ek kotası
-- `routes/public-leak` — iç not sızıntısı
-- `routes/token-type` — token türü, geçersizleştirme
-- `routes/error-handler` — handler sırası
+## Tamamlanan önemli sertleştirmeler
 
-Frontend (19): branding rengi CSS injection geçidi, sınır hizalaması.
+- Fail-closed şirket kapsamı ve route düzeyinde RBAC testleri
+- AES-256-GCM kasa ve SMTP şifreleme, TOTP MFA, oturum bazlı refresh token iptali
+- MIME'dan türetilen güvenli uzantı, ek yetkilendirmesi ve ticket başına kota
+- Kapanmış ticket ekleri için yapılandırılabilir retention işi
+- Tek kullanımlık kısa ömürlü SSE bileti
+- İç not/history sızıntısı koruması
+- CSV formül enjeksiyonu, SSRF ve şablon kaçışlama korumaları
+- Worker testleri, gerçek PostgreSQL/Redis entegrasyon testi ve Playwright/axe katmanı
+- Zod tabanlı Fastify/OpenAPI request sözleşmeleri
 
-Bulunan gerçek açıkların çoğu için **mutasyon testi** yapıldı: eski hatalı davranış geri
-konduğunda testler kırılıyor.
+## Bilinçli ürün tercihleri
 
-**Kalan boşluklar:**
+- Public portalda kullanıcı hesabı/parola yoktur.
+- Randevular personele atanmadığı için paralel randevu çakışma sayılmaz.
+- Ayrı bir component kütüphanesi kullanılmaz; arayüz Tailwind ile proje içinde tutulur.
+- Kimliksiz kullanıcı bilgi lookup özelliği PII oracle riski nedeniyle sunulmaz.
+- Personel parolası en az 12 karakterdir.
 
-1. **Route kapsaması kısmi.** Kasa, personel, ticket yazma ve public sızıntı uçları
-   test edildi; onsite, raporlar, şablonlar ve görevler route seviyesinde test edilmedi.
-2. **Worker'lar test edilmedi** — e-posta/SMS kuyruk davranışı, retry, `failed` handler'ı.
-3. **Entegrasyon testi yok.** Testler stub'lı Prisma ile çalışır; CI migration'ları
-   gerçek Postgres'e uyguluyor ama uygulama testleri veritabanına dokunmuyor.
-   Testcontainers ile gerçek Postgres/Redis'e karşı bir katman, Prisma sorgularının
-   gerçekten doğru olduğunu kanıtlar (stub'lar `where` nesnesini doğrular, sonucu değil).
-4. **Frontend'de bileşen testi yok** — yalnızca saf mantık test ediliyor.
-
----
-
-## Öncelik 3 — API şemaları ve dokümantasyon
-
-Route'lar fastify'ın `schema:` alanını kullanmıyor; validation handler içinde
-`schema.parse(request.body)` ile elle yapılıyor. Sonuç: `/docs` yalnızca endpoint
-listesi gösterebiliyor, request/response gövdelerini belgeleyemiyor.
-
-**Yapılacak:** `fastify-type-provider-zod` ile mevcut Zod şemalarını fastify route
-şemalarına bağla. Şemalar zaten yazılı; bağlanınca hem otomatik validation hem tam
-OpenAPI dokümanı gelir ve handler'lardaki `parse` çağrıları düşer.
-
-**Neden yapılmadı:** 17 route dosyasının tamamına dokunan bir refactor. Her handler'ın
-`request.body` tipini de değiştiriyor (type provider ile çıkarım). Güvenlik
-düzeltmeleriyle aynı turda yapmak, ikisinin de gözden geçirilmesini zorlaştırırdı.
-
----
-
-## Öncelik 4 — Kod kalitesi
-
-### 4.1 `Notification.channel` enum değil
-
-Durum/öncelik/rol ve şirket grup tipi Prisma enum'u (10 enum, DB seviyesinde zorlanıyor).
-`Notification.channel` bilinçli olarak `String`: e-posta/SMS şablonlarının `slug`'ıyla
-eşleşir ve şablonlar veritabanından yönetilir — yeni bir şablon eklemek migration
-gerektirmemeli.
-
-### 4.2 `reports/staff-performance` personel listesini kapsamlamıyor
-
-Kapsamlı bir `it_manager` tüm personelin adını ve rolünü görür (ticket sayıları
-kapsamla doğru filtreleniyor). `GET /staff` de kimliği doğrulanmış herkese açık, yani
-tutarlı — ama ikisi birlikte gözden geçirilmeli.
-
-### 4.3 `PUT /tickets/:id` ve ek yükleme kapsamsız — kapatıldı
-
-`GET /tickets/:id` kapsamı kontrol ediyordu, bu iki uç etmiyordu: kapsam dışı bir
-ticket okunamıyor ama id'si bilindiğinde durumu/atanması değiştirilebiliyor ve
-üzerine dosya eklenebiliyordu (o dosya public takip linkinden servis ediliyor).
-İkisi de `isCompanyInScope` ile kapatıldı, `tests/routes/tickets.auth.test.ts`
-ile korunuyor — mutasyon testinde kontrolleri kaldırmak 3 testi kırıyor.
-
----
-
-## Öncelik 5 — Dokümantasyon borcu
-
-- **Ekran görüntüsü yok.** README'de birkaç görsel, dış kullanıcının ürünü anlamasını
-  ciddi biçimde hızlandırır. (Çalışan bir tarayıcı gerektirdiği için otomatik
-  üretilemedi.)
-- **`docs/superpowers/` klasörü** tarihsel plan/spec dokümanları içeriyor. Tamamlandı
-  notu düşüldü ama uzun vadede kaldırılabilir.
-
----
-
-## Bilinçli olarak yapılmayanlar
-
-Bunlar eksik değil, **tercih**:
-
-- **Public portalda kimlik doğrulama yok.** Talep edenin şifre hatırlaması istenmiyor;
-  erişim tahmin edilemez link'e dayanıyor. Sistem iç ağda olduğu için kabul edildi.
-- **Yerinde destek randevularında çakışma uyarısı yok.** Randevular personele atanmıyor,
-  dolayısıyla aynı saatte paralel randevu normaldir.
-- **Component kütüphanesi yok.** Frontend elle yazılmış Tailwind. Bağımlılığı azaltmak için.
-- **Public ticket formunda "önceki bilgilerini getir" yok.** `/auth/lookup` kimliksiz bir
-  PII oracle'ıydı; kimliği doğrulanmamış bir çağırana başkasının bilgisini döndürmenin
-  güvenli yolu olmadığı için özellik kaldırıldı, uç kimlik doğrulamalı hale getirildi.
-- **`min(8)` yerine 12+ karakter şifre.** Kısa şifre + sınırsız deneme, bcrypt'in
-  maliyetini anlamsız kılıyordu.
+Public depoda hangi dosyaların tutulacağı ve secret olayında izlenecek yol için
+[public depo güvenliği](public-repo.md) belgesine bak.
