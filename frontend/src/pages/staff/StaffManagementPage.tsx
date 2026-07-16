@@ -4,6 +4,7 @@ import { Plus, Edit2, UserX, UserCheck, Building2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
 import { getApiError } from '../../utils/api-error';
+import type { Company, Staff } from '../../types';
 
 const ROLES = [
   { value: 'admin', label: 'Sistem Yöneticisi' },
@@ -34,12 +35,12 @@ export default function StaffManagementPage() {
   const [companyStaffName, setCompanyStaffName] = useState('');
   const [selectedCompanyIds, setSelectedCompanyIds] = useState<string[]>([]);
 
-  const { data: staffList } = useQuery({
+  const { data: staffList } = useQuery<Staff[]>({
     queryKey: ['staff'],
     queryFn: async () => (await api.get('/staff')).data.data,
   });
 
-  const { data: allCompanies } = useQuery({
+  const { data: allCompanies } = useQuery<Company[]>({
     queryKey: ['companies'],
     queryFn: async () => (await api.get('/companies')).data.data,
   });
@@ -50,9 +51,8 @@ export default function StaffManagementPage() {
     e.preventDefault();
     try {
       if (editId) {
-        const payload: any = { ...form };
-        if (!payload.password) delete payload.password;
-        delete payload.email;
+        const { email: _email, password, ...editable } = form;
+        const payload = { ...editable, ...(password ? { password } : {}) };
         await api.put(`/staff/${editId}`, payload);
         toast.success('Personel güncellendi');
       } else {
@@ -68,7 +68,7 @@ export default function StaffManagementPage() {
     }
   };
 
-  const handleEdit = (staff: any) => {
+  const handleEdit = (staff: Staff) => {
     setEditId(staff.id);
     setForm({
       email: staff.email,
@@ -96,11 +96,11 @@ export default function StaffManagementPage() {
     }
   };
 
-  const openCompanyModal = (staff: any) => {
+  const openCompanyModal = (staff: Staff) => {
     setCompanyStaffId(staff.id);
     setCompanyStaffName(staff.fullName);
     setSelectedCompanyIds(
-      (staff.assignedCompanies || []).map((ac: any) => ac.companyId)
+      (staff.assignedCompanies || []).map(ac => ac.companyId)
     );
     setShowCompanyModal(true);
   };
@@ -188,11 +188,11 @@ export default function StaffManagementPage() {
               <strong>{companyStaffName}</strong> hangi şirketlerin taleplerini görebilir?
             </p>
             <p className="text-xs text-gray-400 mb-3">
-              Hiçbiri seçilmezse tüm şirketlere erişir. Admin ve IT Yöneticisi her zaman hepsini görür.
+              Admin dışındaki roller yalnızca seçilen şirketlere erişir. Hiçbiri seçilmezse erişim verilmez.
             </p>
 
             <div className="space-y-2 max-h-60 overflow-y-auto">
-              {allCompanies?.map((c: any) => (
+              {allCompanies?.map(c => (
                 <label
                   key={c.id}
                   className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
@@ -236,15 +236,15 @@ export default function StaffManagementPage() {
             </tr>
           </thead>
           <tbody>
-            {staffList?.map((staff: any) => {
-              const companyNames = (staff.assignedCompanies || []).map((ac: any) => ac.company?.name).filter(Boolean);
+            {staffList?.map(staff => {
+              const companyNames = (staff.assignedCompanies || []).map(ac => ac.company.name).filter(Boolean);
               return (
                 <tr key={staff.id} className="border-t hover:bg-gray-50 dark:hover:bg-slate-800/50">
                   <td className="px-4 py-3 font-medium">{staff.fullName}</td>
                   <td className="px-4 py-3 text-gray-500">{staff.email}</td>
                   <td className="px-4 py-3 text-xs">{ROLES.find(r => r.value === staff.role)?.label}</td>
                   <td className="px-4 py-3">
-                    {staff.role === 'admin' || staff.role === 'it_manager' ? (
+                    {staff.role === 'admin' ? (
                       <span className="text-xs text-gray-400">Tümü</span>
                     ) : companyNames.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
@@ -253,7 +253,7 @@ export default function StaffManagementPage() {
                         ))}
                       </div>
                     ) : (
-                      <span className="text-xs text-gray-400">Tümü (kısıtsız)</span>
+                      <span className="text-xs text-red-500">Erişim yok</span>
                     )}
                   </td>
                   <td className="px-4 py-3">{staff._count?.assignedTickets || 0}</td>

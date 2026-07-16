@@ -4,6 +4,7 @@ import { Plus, Edit2, MapPin, Building2, Mail, Trash2, CheckCircle2, XCircle } f
 import toast from 'react-hot-toast';
 import api from '../../api/client';
 import { getApiError } from '../../utils/api-error';
+import type { Company, Location } from '../../types';
 
 const GROUP_TYPES = [
   { value: 'call_center', label: 'Çağrı Merkezi' },
@@ -44,7 +45,7 @@ export default function CompanyManagementPage() {
   const [smtpForm, setSmtpForm] = useState(emptySmtpForm);
   const [smtpTesting, setSmtpTesting] = useState(false);
 
-  const { data: companies } = useQuery({
+  const { data: companies } = useQuery<Company[]>({
     queryKey: ['companies-admin'],
     queryFn: async () => (await api.get('/companies/admin/all')).data.data,
   });
@@ -52,7 +53,7 @@ export default function CompanyManagementPage() {
   const handleSubmitCompany = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const payload: any = {
+      const payload = {
         name: form.name,
         groupType: form.groupType,
         allowedDomains: form.allowedDomains
@@ -129,7 +130,7 @@ export default function CompanyManagementPage() {
     }
   };
 
-  const openEditLocation = (loc: any) => {
+  const openEditLocation = (loc: Location) => {
     setLocEditId(loc.id);
     setLocCompanyId(loc.companyId);
     setLocForm({
@@ -142,7 +143,7 @@ export default function CompanyManagementPage() {
     setShowLocForm(true);
   };
 
-  const handleDeleteLocation = async (loc: any) => {
+  const handleDeleteLocation = async (loc: Location) => {
     if (!confirm(`"${loc.name}" lokasyonunu silmek istediğinize emin misiniz?`)) return;
     try {
       await api.delete(`/locations/${loc.id}`);
@@ -202,7 +203,7 @@ export default function CompanyManagementPage() {
     }
   };
 
-  const handleToggleCompanyActive = async (company: any) => {
+  const handleToggleCompanyActive = async (company: Company) => {
     const willDeactivate = company.isActive !== false;
     const msg = willDeactivate
       ? `"${company.name}" şirketini pasifleştirmek istediğinize emin misiniz? Mevcut biletler korunur ancak yeni bilet açılamaz.`
@@ -475,7 +476,7 @@ export default function CompanyManagementPage() {
 
       {/* Companies list */}
       <div className="space-y-4">
-        {companies?.map((company: any) => (
+        {companies?.map(company => (
           <div key={company.id} className="card">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
@@ -559,9 +560,9 @@ export default function CompanyManagementPage() {
               </div>
             )}
 
-            {company.locations?.length > 0 && (
+            {(company.locations?.length ?? 0) > 0 && (
               <div className="ml-8 space-y-1">
-                {company.locations.map((loc: any) => (
+                {company.locations?.map(loc => (
                   <div key={loc.id} className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400 group">
                     <MapPin className="w-3 h-3 text-gray-400" />
                     <span>{loc.name}</span>

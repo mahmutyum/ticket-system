@@ -4,6 +4,7 @@ import { Plus, Edit2, Trash2, Mail, MessageSquare, MessageCircle } from 'lucide-
 import toast from 'react-hot-toast';
 import api from '../../api/client';
 import { getApiError } from '../../utils/api-error';
+import type { CannedResponse, EmailTemplate, SmsTemplate } from '../../types';
 
 type TabType = 'email' | 'sms' | 'canned';
 
@@ -34,17 +35,17 @@ export default function TemplatesPage() {
   // Canned form
   const [cannedForm, setCannedForm] = useState({ title: '', content: '', category: '', sortOrder: 0 });
 
-  const { data: emailTemplates } = useQuery({
+  const { data: emailTemplates } = useQuery<EmailTemplate[]>({
     queryKey: ['templates-email'],
     queryFn: async () => (await api.get('/templates/email')).data.data,
   });
 
-  const { data: smsTemplates } = useQuery({
+  const { data: smsTemplates } = useQuery<SmsTemplate[]>({
     queryKey: ['templates-sms'],
     queryFn: async () => (await api.get('/templates/sms')).data.data,
   });
 
-  const { data: cannedResponses } = useQuery({
+  const { data: cannedResponses } = useQuery<CannedResponse[]>({
     queryKey: ['templates-canned'],
     queryFn: async () => (await api.get('/templates/canned')).data.data,
   });
@@ -248,7 +249,7 @@ export default function TemplatesPage() {
       {/* Content */}
       {tab === 'email' && (
         <div className="space-y-3">
-          {emailTemplates?.map((t: any) => (
+          {emailTemplates?.map(t => (
             <div key={t.id} className="card">
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
@@ -281,7 +282,7 @@ export default function TemplatesPage() {
 
       {tab === 'sms' && (
         <div className="space-y-3">
-          {smsTemplates?.map((t: any) => (
+          {smsTemplates?.map(t => (
             <div key={t.id} className="card">
               <div className="flex items-start justify-between">
                 <div>
@@ -312,7 +313,7 @@ export default function TemplatesPage() {
 
       {tab === 'canned' && (
         <div className="space-y-3">
-          {cannedResponses?.map((cr: any) => (
+          {cannedResponses?.map(cr => (
             <div key={cr.id} className="card">
               <div className="flex items-start justify-between">
                 <div>

@@ -6,6 +6,7 @@ export interface Company {
   allowedDomains?: string[];
   portalDomains?: string[];
   notificationEmail?: string;
+  primaryColor?: string;
   isActive?: boolean;
   settings?: Record<string, unknown>;
   locations?: Location[];
