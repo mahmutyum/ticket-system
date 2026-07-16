@@ -119,9 +119,19 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     env:
       DATABASE_URL: postgresql://postgres:ci@localhost:5432/ticketdb
+      REDIS_URL: redis://localhost:6379
 
     steps:
       - uses: actions/checkout@v4
@@ -155,6 +165,19 @@ jobs:
         env:
           CREDENTIALS_ENC_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
         run: npx tsx prisma/seed.ts
+
+      - name: Gerçek PostgreSQL + Redis entegrasyon testleri
+        env:
+          NODE_ENV: test
+          JWT_SECRET: integration_jwt_secret_at_least_32_chars
+          JWT_REFRESH_SECRET: integration_refresh_secret_at_least_32_chars
+          CREDENTIALS_ENC_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
+          APP_URL: http://localhost:1111
+          SMTP_HOST: localhost
+          SMTP_USER: integration
+          SMTP_PASS: integration
+          SMTP_FROM: integration@example.com
+        run: npm run test:integration
 
   docker:
     name: Docker imajları derleniyor mu

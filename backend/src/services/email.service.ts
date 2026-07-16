@@ -216,7 +216,7 @@ export function renderTextTemplate(template: string, variables: Record<string, s
  * (nodemailer da temizler; bu ikinci katman.)
  */
 export function renderSubjectTemplate(template: string, variables: Record<string, string>): string {
-  return render(template, variables, (v) => v.replace(/[\r\n]+/g, ' ').trim());
+  return render(template, variables, (v) => v).replace(/[\r\n]+/g, ' ').trim();
 }
 
 /**

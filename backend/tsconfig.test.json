@@ -14,7 +14,7 @@
     "declarationMap": false,
     "types": ["node"]
   },
-  "include": ["src/**/*", "tests/**/*", "vitest.config.ts"],
+  "include": ["src/**/*", "tests/**/*", "vitest.config.ts", "vitest.integration.config.ts"],
   // exclude MİRAS ALINIR ve include'u filtreler: ana tsconfig `"tests"` dışlar,
   // burada ezilmezse test dosyaları sessizce kontrol dışı kalır — komut yeşil
   // görünür ama hiçbir testi kontrol etmemiş olur.
