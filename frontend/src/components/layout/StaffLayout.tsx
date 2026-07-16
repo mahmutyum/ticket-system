@@ -14,6 +14,7 @@ import {
   Moon,
   Sun,
   KeyRound,
+  ShieldCheck,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuthStore } from '../../stores/auth.store';
@@ -30,6 +31,7 @@ const navItems = [
   { path: '/staff/reports', label: 'Raporlar', icon: BarChart3 },
   { path: '/staff/templates', label: 'Şablonlar', icon: FileText },
   { path: '/staff/passwords', label: 'Şifreler', icon: KeyRound, roles: ['admin', 'it_manager'] },
+  { path: '/staff/account', label: 'Hesap ve Güvenlik', icon: ShieldCheck },
 ];
 
 export default function StaffLayout() {

@@ -1,11 +1,13 @@
 import { FastifyPluginAsync } from 'fastify';
 import bcrypt from 'bcrypt';
-import { staffLoginSchema, emailLookupSchema, refreshTokenSchema } from './auth.schema.js';
+import type Redis from 'ioredis';
+import { staffLoginSchema, emailLookupSchema, refreshTokenSchema, changePasswordSchema } from './auth.schema.js';
 import {
   generateTokens,
   verifyRefreshToken,
   newSessionId,
   refreshKey,
+  invalidateAccessTokens,
 } from '../../plugins/auth.js';
 import { config } from '../../config/index.js';
 import { createAuditLog } from '../../middleware/audit.js';
@@ -23,6 +25,17 @@ const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
 const MAX_FAILED_LOGINS = 5;
 const LOCKOUT_SECONDS = 15 * 60;
 const failKey = (email: string) => `login:fail:${email}`;
+
+async function sessionKeys(redis: Redis, staffId: string): Promise<string[]> {
+  const keys: string[] = [];
+  let cursor = '0';
+  do {
+    const [next, found] = await redis.scan(cursor, 'MATCH', `refresh:${staffId}:*`, 'COUNT', 100);
+    cursor = next;
+    keys.push(...found);
+  } while (cursor !== '0');
+  return keys;
+}
 
 /**
  * Kullanıcı sayımı (enumeration) için sabit maliyetli sahte hash.
@@ -186,6 +199,48 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     reply
       .clearCookie('refresh_token', { path: '/' })
       .send({ success: true });
+  });
+
+  app.get('/staff/sessions', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const { id, sid } = request.staffUser!;
+    const keys = await sessionKeys(app.redis, id);
+    const sessions = await Promise.all(keys.map(async (key) => ({
+      sid: key.slice(key.lastIndexOf(':') + 1),
+      current: key.endsWith(`:${sid}`),
+      expiresInSeconds: await app.redis.ttl(key),
+    })));
+    reply.send({ success: true, data: sessions });
+  });
+
+  app.delete('/staff/sessions/others', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const { id, sid } = request.staffUser!;
+    const keys = (await sessionKeys(app.redis, id)).filter((key) => !key.endsWith(`:${sid}`));
+    if (keys.length > 0) await app.redis.del(...keys);
+    await createAuditLog({
+      entityType: 'auth', entityId: id, action: 'sessions_revoked',
+      changes: { count: keys.length }, performedBy: request.staffUser!.email,
+      ipAddress: (request.headers['x-real-ip'] as string) || request.ip,
+    });
+    reply.send({ success: true, data: { revoked: keys.length } });
+  });
+
+  app.post('/staff/change-password', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const body = changePasswordSchema.parse(request.body);
+    const staff = await app.prisma.staff.findUnique({ where: { id: request.staffUser!.id } });
+    if (!staff || !(await bcrypt.compare(body.currentPassword, staff.passwordHash))) {
+      return reply.status(400).send({ success: false, error: 'Mevcut şifre yanlış' });
+    }
+    const passwordHash = await bcrypt.hash(body.newPassword, 12);
+    await app.prisma.staff.update({ where: { id: staff.id }, data: { passwordHash } });
+    const keys = await sessionKeys(app.redis, staff.id);
+    if (keys.length > 0) await app.redis.del(...keys);
+    await invalidateAccessTokens(app.redis, staff.id);
+    await createAuditLog({
+      entityType: 'auth', entityId: staff.id, action: 'password_changed',
+      performedBy: staff.email,
+      ipAddress: (request.headers['x-real-ip'] as string) || request.ip,
+    });
+    reply.clearCookie('refresh_token', { path: '/' }).send({ success: true });
   });
 
   /**

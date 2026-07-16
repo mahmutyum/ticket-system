@@ -18,6 +18,7 @@ import TemplatesPage from './pages/staff/TemplatesPage';
 import TasksPage from './pages/staff/TasksPage';
 import TaskDetailPage from './pages/staff/TaskDetailPage';
 import PasswordsPage from './pages/staff/PasswordsPage';
+import AccountPage from './pages/staff/AccountPage';
 import { useAuthStore } from './stores/auth.store';
 import { initializeAuth } from './api/client';
 import { ThemeProvider } from './components/ThemeProvider';
@@ -107,6 +108,7 @@ export default function App() {
           <Route path="onsite" element={<OnsiteSupportPage />} />
           <Route path="tasks" element={<TasksPage />} />
           <Route path="tasks/:id" element={<TaskDetailPage />} />
+          <Route path="account" element={<AccountPage />} />
           <Route
             path="passwords"
             element={
