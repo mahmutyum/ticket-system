@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Prisma, Priority, TicketStatus } from '@prisma/client';
 import { paginationSchema, paginate, paginatedResponse } from '../../utils/pagination.js';
 import { getStaffCompanyScope, resolveCompanyFilter } from '../../utils/staff-scope.js';
+import { commonErrorResponses } from '../../utils/api-schema.js';
 
 const reportFilterSchema = paginationSchema.extend({
   dateFrom: z.string().optional(),
@@ -16,6 +17,30 @@ const reportFilterSchema = paginationSchema.extend({
 const commonReportFilterSchema = reportFilterSchema.omit({ page: true, limit: true });
 const overviewFilterSchema = commonReportFilterSchema.extend({ period: z.enum(['daily', 'weekly', 'monthly']).optional() });
 const slaTrendFilterSchema = commonReportFilterSchema.extend({ period: z.enum(['weekly', 'monthly']).optional() });
+const reportTicketSchema = z.object({
+  id: z.string(), ticketNumber: z.string(), subject: z.string(), status: z.nativeEnum(TicketStatus),
+  priority: z.nativeEnum(Priority), createdByEmail: z.string().email(), createdAt: z.date(),
+  resolvedAt: z.date().nullable(), slaResponseMet: z.boolean().nullable(), slaResolveMet: z.boolean().nullable(),
+  company: z.object({ name: z.string() }), location: z.object({ name: z.string() }),
+  category: z.object({ name: z.string() }), assignedTo: z.object({ fullName: z.string() }).nullable(),
+});
+const responseOf = <T extends z.ZodTypeAny>(data: T) => z.object({ success: z.literal(true), data });
+const performanceSchema = z.object({
+  id: z.string(), fullName: z.string(), role: z.string(), totalAssigned: z.number().int(),
+  resolved: z.number().int(), open: z.number().int(), slaResponseRate: z.number().int().nullable(),
+  slaResolveRate: z.number().int().nullable(), avgResolutionHours: z.number().nullable(),
+});
+const categoryReportSchema = z.object({
+  categoryId: z.string(), categoryName: z.string(), count: z.number().int(),
+});
+const overviewBucketSchema = z.object({
+  bucket: z.string(), created: z.number().int(), resolved: z.number().int(),
+  inProgress: z.number().int(), overdue: z.number().int(),
+});
+const slaTrendSchema = z.object({
+  bucket: z.string(), total: z.number().int(), responseMet: z.number().int(), resolveMet: z.number().int(),
+  responseRate: z.number().int().nullable(), resolveRate: z.number().int().nullable(),
+});
 
 type CommonFilters = {
   dateFrom?: string;
@@ -83,7 +108,16 @@ export const reportRoutes: FastifyPluginAsyncZod = async (app) => {
   // Ticket report with date filtering and aggregation
   app.get('/tickets', {
     preValidation: [app.requireRole('admin', 'it_manager')],
-    schema: { querystring: reportFilterSchema, tags: ['Reports'], summary: 'Ticket raporunu getir' },
+    schema: {
+      querystring: reportFilterSchema, tags: ['Reports'], summary: 'Ticket raporunu getir',
+      response: {
+        200: z.object({
+          success: z.literal(true), data: z.array(reportTicketSchema),
+          pagination: z.object({ page: z.number().int(), limit: z.number().int(), total: z.number().int(), totalPages: z.number().int() }),
+        }),
+        ...commonErrorResponses,
+      },
+    },
   }, async (request, reply) => {
     const query = request.query;
     const { skip, take } = paginate(query);
@@ -108,7 +142,10 @@ export const reportRoutes: FastifyPluginAsyncZod = async (app) => {
         skip,
         take,
         orderBy: { createdAt: 'desc' },
-        include: {
+        select: {
+          id: true, ticketNumber: true, subject: true, status: true, priority: true,
+          createdByEmail: true, createdAt: true, resolvedAt: true,
+          slaResponseMet: true, slaResolveMet: true,
           company: { select: { name: true } },
           location: { select: { name: true } },
           category: { select: { name: true } },
@@ -124,7 +161,7 @@ export const reportRoutes: FastifyPluginAsyncZod = async (app) => {
   // Staff performance report
   app.get('/staff-performance', {
     preValidation: [app.requireRole('admin', 'it_manager')],
-    schema: { querystring: commonReportFilterSchema, tags: ['Reports'], summary: 'Personel performans raporunu getir' },
+    schema: { querystring: commonReportFilterSchema, tags: ['Reports'], summary: 'Personel performans raporunu getir', response: { 200: responseOf(z.array(performanceSchema)), ...commonErrorResponses } },
   }, async (request, reply) => {
     const query = request.query;
     const staffUser = request.staffUser!;
@@ -189,7 +226,7 @@ export const reportRoutes: FastifyPluginAsyncZod = async (app) => {
   // Category breakdown report
   app.get('/categories', {
     preValidation: [app.requireRole('admin', 'it_manager')],
-    schema: { querystring: commonReportFilterSchema, tags: ['Reports'], summary: 'Kategori dağılım raporunu getir' },
+    schema: { querystring: commonReportFilterSchema, tags: ['Reports'], summary: 'Kategori dağılım raporunu getir', response: { 200: responseOf(z.array(categoryReportSchema)), ...commonErrorResponses } },
   }, async (request, reply) => {
     const query = request.query;
     const staffUser = request.staffUser!;
@@ -271,7 +308,13 @@ export const reportRoutes: FastifyPluginAsyncZod = async (app) => {
   // Zaman serisi overview: günlük / haftalık / aylık bucket'larda created/resolved/inProgress/overdue
   app.get('/overview', {
     preValidation: [app.requireRole('admin', 'it_manager')],
-    schema: { querystring: overviewFilterSchema, tags: ['Reports'], summary: 'Rapor zaman serisini getir' },
+    schema: {
+      querystring: overviewFilterSchema, tags: ['Reports'], summary: 'Rapor zaman serisini getir',
+      response: {
+        200: responseOf(z.array(overviewBucketSchema)).extend({ period: z.enum(['day', 'week', 'month']) }),
+        ...commonErrorResponses,
+      },
+    },
   }, async (request, reply) => {
     const query = request.query;
     const period = query.period === 'weekly' ? 'week' : query.period === 'monthly' ? 'month' : 'day';
@@ -335,7 +378,13 @@ export const reportRoutes: FastifyPluginAsyncZod = async (app) => {
   // SLA trend serisi
   app.get('/sla-trends', {
     preValidation: [app.requireRole('admin', 'it_manager')],
-    schema: { querystring: slaTrendFilterSchema, tags: ['Reports'], summary: 'SLA trend raporunu getir' },
+    schema: {
+      querystring: slaTrendFilterSchema, tags: ['Reports'], summary: 'SLA trend raporunu getir',
+      response: {
+        200: responseOf(z.array(slaTrendSchema)).extend({ period: z.enum(['week', 'month']) }),
+        ...commonErrorResponses,
+      },
+    },
   }, async (request, reply) => {
     const query = request.query;
     const period = query.period === 'monthly' ? 'month' : 'week';

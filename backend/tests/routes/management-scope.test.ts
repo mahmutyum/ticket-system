@@ -95,6 +95,13 @@ describe('görev ve onsite şirket kapsamı', () => {
 
   it('it_manager kapsam dışı şirket filtresiyle rapor verisi okuyamaz', async () => {
     const { prisma, ticketFindMany } = scopedPrisma();
+    ticketFindMany.mockResolvedValueOnce([{
+      id: 'ticket-1', ticketNumber: 'TKT-2026-00001', subject: 'Yazıcı', status: 'open',
+      priority: 'medium', createdByEmail: 'user@example.com', createdAt: new Date(),
+      resolvedAt: null, slaResponseMet: null, slaResolveMet: null,
+      accessToken: 'public-bearer-secret', company: { name: 'ACME' }, location: { name: 'Merkez' },
+      category: { name: 'Donanım' }, assignedTo: null,
+    }]);
     const app = buildTestApp(prisma);
     const { reportRoutes } = await import('../../src/modules/reports/reports.routes.js');
     app.register(reportRoutes, { prefix: '/reports' });
@@ -107,6 +114,7 @@ describe('görev ve onsite şirket kapsamı', () => {
     });
 
     expect(response.statusCode).toBe(200);
+    expect(response.json().data[0]).not.toHaveProperty('accessToken');
     expect(ticketFindMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { companyId: { in: [] } },
     }));
