@@ -9,6 +9,7 @@ import {
   companyPayload, companyToForm, emptyCompanyForm, emptyLocationForm,
   emptySmtpForm, GROUP_TYPES,
 } from './company-management';
+import { LocationFormModal } from './CompanyManagementModals';
 
 export default function CompanyManagementPage() {
   const queryClient = useQueryClient();
@@ -331,39 +332,13 @@ export default function CompanyManagementPage() {
 
       {/* Location Form Modal */}
       {showLocForm && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="glass-strong rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-bold mb-4">{locEditId ? 'Lokasyon Düzenle' : 'Yeni Lokasyon'}</h2>
-            <form onSubmit={handleSubmitLocation} className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium mb-1">Lokasyon Adı *</label>
-                <input type="text" className="input-field" value={locForm.name} onChange={e => setLocForm({ ...locForm, name: e.target.value })} required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Adres</label>
-                <input type="text" className="input-field" value={locForm.address} onChange={e => setLocForm({ ...locForm, address: e.target.value })} />
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Telefon</label>
-                  <input type="tel" className="input-field" value={locForm.phone} onChange={e => setLocForm({ ...locForm, phone: e.target.value })} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Kat</label>
-                  <input type="text" className="input-field" value={locForm.floor} onChange={e => setLocForm({ ...locForm, floor: e.target.value })} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">IT Odası</label>
-                  <input type="text" className="input-field" value={locForm.itRoom} onChange={e => setLocForm({ ...locForm, itRoom: e.target.value })} />
-                </div>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="submit" className="btn-primary flex-1">{locEditId ? 'Güncelle' : 'Ekle'}</button>
-                <button type="button" onClick={() => { setShowLocForm(false); setLocEditId(null); }} className="btn-secondary flex-1">İptal</button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <LocationFormModal
+          editId={locEditId}
+          form={locForm}
+          setForm={setLocForm}
+          onSubmit={handleSubmitLocation}
+          onClose={() => { setShowLocForm(false); setLocEditId(null); }}
+        />
       )}
 
       {/* SMTP Config Modal */}

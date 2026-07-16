@@ -27,6 +27,8 @@ export const emptyLocationForm = {
 };
 
 export type CompanyForm = typeof emptyCompanyForm;
+export type LocationForm = typeof emptyLocationForm;
+export type SmtpForm = typeof emptySmtpForm;
 
 export function normalizeDomains(value: string): string[] {
   return [...new Set(
