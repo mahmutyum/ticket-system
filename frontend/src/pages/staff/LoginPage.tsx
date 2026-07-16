@@ -51,8 +51,9 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="bg-gray-800 rounded-xl p-6 space-y-4">
           {!mfaChallenge && <><div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
+            <label htmlFor="staff-email" className="block text-sm font-medium text-gray-300 mb-1">Email</label>
             <input
+              id="staff-email"
               type="email"
               className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
               value={email}
@@ -62,8 +63,9 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Şifre</label>
+            <label htmlFor="staff-password" className="block text-sm font-medium text-gray-300 mb-1">Şifre</label>
             <input
+              id="staff-password"
               type="password"
               className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
               value={password}
@@ -73,8 +75,8 @@ export default function LoginPage() {
             />
           </div></>}
           {mfaChallenge && <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Doğrulama kodu</label>
-            <input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6}
+            <label htmlFor="staff-mfa-code" className="block text-sm font-medium text-gray-300 mb-1">Doğrulama kodu</label>
+            <input id="staff-mfa-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6}
               className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white tracking-[0.35em] text-center"
               value={mfaCode} onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, ''))} required autoFocus />
           </div>}
