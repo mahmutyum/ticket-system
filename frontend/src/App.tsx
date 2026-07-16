@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import PublicLayout from './components/layout/PublicLayout';
 import StaffLayout from './components/layout/StaffLayout';
 import { useAuthStore } from './stores/auth.store';
@@ -26,7 +27,8 @@ const PasswordsPage = lazy(() => import('./pages/staff/PasswordsPage'));
 const AccountPage = lazy(() => import('./pages/staff/AccountPage'));
 
 function PageLoader() {
-  return <div className="min-h-48 flex items-center justify-center text-sm text-muted">Sayfa yükleniyor…</div>;
+  const { t } = useTranslation();
+  return <div className="min-h-48 flex items-center justify-center text-sm text-muted">{t('common.pageLoading')}</div>;
 }
 
 function ProtectedRoute({ children, allowedRoles }: { 
@@ -43,6 +45,7 @@ function ProtectedRoute({ children, allowedRoles }: {
 
 function AuthLoader({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
   const isHydrated = useAuthStore((s) => s.isHydrated);
 
   useEffect(() => {
@@ -58,7 +61,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto" />
-          <p className="mt-2 text-sm text-gray-500">Yükleniyor...</p>
+          <p className="mt-2 text-sm text-gray-500">{t('common.loading')}</p>
         </div>
       </div>
     );

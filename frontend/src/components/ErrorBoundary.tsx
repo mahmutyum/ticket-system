@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import i18n from '../i18n/config';
 
 interface Props {
   children: React.ReactNode;
@@ -30,9 +31,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
           <div className="max-w-md w-full bg-white rounded-xl shadow-sm border p-8 text-center">
             <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h1 className="text-xl font-bold text-gray-900 mb-2">Bir Hata Oluştu</h1>
+            <h1 className="text-xl font-bold text-gray-900 mb-2">{i18n.t('common.errorTitle')}</h1>
             <p className="text-gray-500 mb-6 text-sm">
-              Sayfa yüklenirken beklenmeyen bir hata oluştu. Lütfen sayfayı yenileyin.
+              {i18n.t('common.errorBody')}
             </p>
             <button
               onClick={() => {
@@ -41,7 +42,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
               }}
               className="btn-primary inline-flex items-center gap-2"
             >
-              <RefreshCw className="w-4 h-4" /> Sayfayı Yenile
+              <RefreshCw className="w-4 h-4" /> {i18n.t('common.reloadPage')}
             </button>
           </div>
         </div>

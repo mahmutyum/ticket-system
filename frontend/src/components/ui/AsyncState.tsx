@@ -1,9 +1,11 @@
 import type { LucideIcon } from 'lucide-react';
 import { Inbox } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export function SkeletonRows({ rows = 5 }: { rows?: number }) {
+  const { t } = useTranslation();
   return (
-    <div className="animate-pulse divide-y divide-gray-100 dark:divide-slate-800" aria-label="Yükleniyor">
+    <div className="animate-pulse divide-y divide-gray-100 dark:divide-slate-800" aria-label={t('common.loading')}>
       {Array.from({ length: rows }, (_, index) => (
         <div key={index} className="flex items-center gap-4 px-5 py-4">
           <div className="h-9 w-9 rounded-xl surface-2" />

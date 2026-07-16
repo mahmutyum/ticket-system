@@ -77,7 +77,11 @@
     "confirmDelete": "Are you sure you want to delete?",
     "operationFailed": "Operation failed",
     "yesterday": "Yesterday",
-    "today": "Today"
+    "today": "Today",
+    "pageLoading": "Loading page…",
+    "errorTitle": "An Error Occurred",
+    "errorBody": "An unexpected error occurred while loading the page. Please reload.",
+    "reloadPage": "Reload Page"
   },
   "enums": {
     "status": {

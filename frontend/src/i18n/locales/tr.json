@@ -77,7 +77,11 @@
     "confirmDelete": "Silmek istediğinize emin misiniz?",
     "operationFailed": "İşlem başarısız",
     "yesterday": "Dün",
-    "today": "Bugün"
+    "today": "Bugün",
+    "pageLoading": "Sayfa yükleniyor…",
+    "errorTitle": "Bir Hata Oluştu",
+    "errorBody": "Sayfa yüklenirken beklenmeyen bir hata oluştu. Lütfen sayfayı yenileyin.",
+    "reloadPage": "Sayfayı Yenile"
   },
   "enums": {
     "status": {
