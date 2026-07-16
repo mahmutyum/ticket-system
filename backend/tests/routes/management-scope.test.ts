@@ -16,16 +16,20 @@ function scopedPrisma() {
   const onsiteFindMany = vi.fn(async () => []);
   const ticketFindMany = vi.fn(async () => []);
   const ticketCount = vi.fn(async () => 0);
+  const notificationFindMany = vi.fn(async () => []);
+  const notificationCount = vi.fn(async () => 0);
   return {
     prisma: {
       staffCompany: { findMany: vi.fn(async () => [{ companyId: COMPANY_ID }]) },
       task: { findMany: taskFindMany },
       onsiteSupport: { findMany: onsiteFindMany },
       ticket: { findMany: ticketFindMany, count: ticketCount },
+      notification: { findMany: notificationFindMany, count: notificationCount },
     },
     taskFindMany,
     onsiteFindMany,
     ticketFindMany,
+    notificationFindMany,
   };
 }
 
@@ -129,5 +133,24 @@ describe('görev ve onsite şirket kapsamı', () => {
 
     expect(listResponse.statusCode).toBe(403);
     expect(createResponse.statusCode).toBe(403);
+  });
+
+  it('it_manager bildirim listesini ticket şirket kapsamıyla sınırlar', async () => {
+    const { prisma, notificationFindMany } = scopedPrisma();
+    const app = buildTestApp(prisma);
+    const { notificationRoutes } = await import('../../src/modules/notifications/notifications.routes.js');
+    app.register(notificationRoutes, { prefix: '/notifications' });
+    await app.ready();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/notifications',
+      headers: authHeader(StaffRole.it_manager, MANAGER_ID),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(notificationFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { ticket: { companyId: { in: [COMPANY_ID] } } },
+    }));
   });
 });
