@@ -9,7 +9,7 @@ import {
   companyPayload, companyToForm, emptyCompanyForm, emptyLocationForm,
   emptySmtpForm, GROUP_TYPES,
 } from './company-management';
-import { LocationFormModal, SmtpConfigModal } from './CompanyManagementModals';
+import { CompanyFormModal, LocationFormModal, SmtpConfigModal } from './CompanyManagementModals';
 
 export default function CompanyManagementPage() {
   const queryClient = useQueryClient();
@@ -220,114 +220,15 @@ export default function CompanyManagementPage() {
 
       {/* Company Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="glass-strong rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-bold mb-4">{editId ? 'Şirket Düzenle' : 'Yeni Şirket'}</h2>
-            <form onSubmit={handleSubmitCompany} className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium mb-1">Şirket Adı *</label>
-                <input type="text" className="input-field" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Grup Türü *</label>
-                <select className="input-field" value={form.groupType} onChange={e => setForm({ ...form, groupType: e.target.value })}>
-                  {GROUP_TYPES.map(gt => <option key={gt.value} value={gt.value}>{gt.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">İzinli Email Domainleri</label>
-                <input type="text" className="input-field" value={form.allowedDomains} onChange={e => setForm({ ...form, allowedDomains: e.target.value })} placeholder="company.com, company.com.tr" />
-                <p className="text-xs text-gray-400 mt-1">Virgülle ayırın. Boş bırakırsanız tüm email domainlerine açık olur.</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Portal Domain Kilidi</label>
-                <input type="text" className="input-field" value={form.portalDomains} onChange={e => setForm({ ...form, portalDomains: e.target.value })} placeholder="ticket.abc.com.tr" />
-                <p className="text-xs text-gray-400 mt-1">Bu domainlerden erişildiğinde sadece bu şirket için ticket açılabilir. Boş bırakırsanız genel portaldan erişilir.</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">IT Grup Email (Bildirim)</label>
-                <input type="email" className="input-field" value={form.notificationEmail} onChange={e => setForm({ ...form, notificationEmail: e.target.value })} placeholder="it-destek@company.com" />
-                <p className="text-xs text-gray-400 mt-1">Yeni ticket açıldığında bu adrese bildirim gönderilir.</p>
-              </div>
-
-              <div className="border-t border-subtle pt-3 space-y-3">
-                <h3 className="text-sm font-semibold text-muted uppercase tracking-wide">Marka</h3>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Ana Renk</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      className="w-12 h-10 rounded-lg border border-gray-300 dark:border-slate-600 dark:border-slate-700 bg-transparent cursor-pointer"
-                      value={form.primaryColor || '#2563eb'}
-                      onChange={e => setForm({ ...form, primaryColor: e.target.value })}
-                    />
-                    <input
-                      type="text"
-                      className="input-field flex-1 font-mono"
-                      value={form.primaryColor}
-                      onChange={e => setForm({ ...form, primaryColor: e.target.value })}
-                      placeholder="#2563eb"
-                      pattern="^#[0-9a-fA-F]{6}$"
-                    />
-                    {form.primaryColor && (
-                      <button
-                        type="button"
-                        onClick={() => setForm({ ...form, primaryColor: '' })}
-                        className="text-xs text-muted hover:text-red-500"
-                        title="Sıfırla"
-                      >
-                        Sıfırla
-                      </button>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">Portal sayfalarında bu renk uygulanır. Boş bırakırsanız varsayılan mavi kullanılır.</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Logo</label>
-                  <div className="flex items-center gap-3">
-                    {form.logo ? (
-                      <img src={form.logo} alt="logo" className="w-14 h-14 object-contain rounded-lg border border-subtle bg-white p-1" />
-                    ) : (
-                      <div className="w-14 h-14 rounded-lg border border-dashed border-subtle flex items-center justify-center text-xs text-muted">Logo</div>
-                    )}
-                    <div className="flex-1 space-y-2">
-                      <input
-                        type="text"
-                        className="input-field"
-                        value={form.logo}
-                        onChange={e => setForm({ ...form, logo: e.target.value })}
-                        placeholder="URL veya dosya yükleyin"
-                      />
-                      <label className={`btn-secondary text-xs inline-flex items-center gap-1 cursor-pointer ${logoUploading ? 'opacity-50 pointer-events-none' : ''}`}>
-                        {logoUploading ? 'Yükleniyor...' : 'Dosya Yükle'}
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                          className="hidden"
-                          onChange={e => {
-                            const f = e.target.files?.[0];
-                            if (f) handleLogoUpload(f);
-                            e.target.value = '';
-                          }}
-                        />
-                      </label>
-                    </div>
-                  </div>
-                  {!editId && (
-                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                      Dosya yükleme için önce şirketi kaydetmelisiniz. Şimdilik URL girebilirsiniz.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button type="submit" className="btn-primary flex-1">Kaydet</button>
-                <button type="button" onClick={() => setShowForm(false)} className="btn-secondary flex-1">İptal</button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <CompanyFormModal
+          editId={editId}
+          form={form}
+          setForm={setForm}
+          logoUploading={logoUploading}
+          onLogoUpload={handleLogoUpload}
+          onSubmit={handleSubmitCompany}
+          onClose={() => setShowForm(false)}
+        />
       )}
 
       {/* Location Form Modal */}
