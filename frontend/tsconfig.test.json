@@ -12,6 +12,6 @@
     "noEmit": true,
     "types": ["vitest/globals", "node", "@testing-library/jest-dom"]
   },
-  "include": ["src", "tests", "vitest.config.ts"],
+  "include": ["src", "tests", "e2e", "vitest.config.ts", "playwright.config.ts"],
   "exclude": ["node_modules", "dist"]
 }

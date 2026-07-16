@@ -93,6 +93,12 @@ jobs:
           echo "Entry JS: ${ENTRY_BYTES} bytes"
           test "$ENTRY_BYTES" -le 500000
 
+      - name: Playwright Chromium kur
+        run: npx playwright install --with-deps chromium
+
+      - name: Tarayıcı smoke + axe erişilebilirlik
+        run: npm run test:e2e
+
       - name: Bağımlılık açıkları (production)
         run: npm audit --omit=dev --audit-level=low
 
