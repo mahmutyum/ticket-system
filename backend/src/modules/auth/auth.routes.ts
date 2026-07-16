@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import bcrypt from 'bcrypt';
 import type Redis from 'ioredis';
 import { staffLoginSchema, emailLookupSchema, refreshTokenSchema, changePasswordSchema, mfaVerifySchema, mfaCodeSchema, disableMfaSchema, loginResponseSchema, refreshResponseSchema } from './auth.schema.js';
@@ -53,7 +53,7 @@ async function sessionKeys(redis: Redis, staffId: string): Promise<string[]> {
  */
 const DUMMY_HASH = '$2b$12$C6UzMDM.H6dfI/f/IKcEe.7iHW7hVQZ2Nl3xkZL8XxJvGqZ0hqZ0G';
 
-export const authRoutes: FastifyPluginAsync = async (app) => {
+export const authRoutes: FastifyPluginAsyncZod = async (app) => {
   // Staff login
   app.post('/staff/login', {
     schema: {
@@ -66,7 +66,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       rateLimit: { max: 5, timeWindow: '1 minute' },
     },
   }, async (request, reply) => {
-    const body = staffLoginSchema.parse(request.body);
+    const body = request.body;
     const ip = (request.headers['x-real-ip'] as string) || request.ip;
 
     // Hesap kilitli mi?
@@ -161,7 +161,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     },
     config: { rateLimit: { max: 10, timeWindow: '5 minutes' } },
   }, async (request, reply) => {
-    const body = mfaVerifySchema.parse(request.body);
+    const body = request.body;
     const staffId = await app.redis.get(mfaChallengeKey(body.challenge));
     if (!staffId) return reply.status(401).send({ success: false, error: 'MFA doğrulaması geçersiz veya süresi dolmuş' });
     const staff = await app.prisma.staff.findUnique({ where: { id: staffId } });
@@ -190,9 +190,8 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     },
     config: { rateLimit: { max: 20, timeWindow: '1 minute' } },
   }, async (request, reply) => {
-    const bodyToken = refreshTokenSchema.safeParse(request.body);
     const token = request.cookies?.refresh_token ||
-      (bodyToken.success ? bodyToken.data.refreshToken : undefined);
+      request.body?.refreshToken;
 
     if (!token) {
       return reply.status(401).send({ success: false, error: 'Refresh token gerekli' });
@@ -289,7 +288,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.authenticate],
     schema: { body: changePasswordSchema, tags: ['Auth'], summary: 'Personel parolasını değiştirir' },
   }, async (request, reply) => {
-    const body = changePasswordSchema.parse(request.body);
+    const body = request.body;
     const staff = await app.prisma.staff.findUnique({ where: { id: request.staffUser!.id } });
     if (!staff || !(await bcrypt.compare(body.currentPassword, staff.passwordHash))) {
       return reply.status(400).send({ success: false, error: 'Mevcut şifre yanlış' });
@@ -322,7 +321,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.authenticate],
     schema: { body: mfaCodeSchema, tags: ['Auth'], summary: 'MFA korumasını etkinleştirir' },
   }, async (request, reply) => {
-    const { code } = mfaCodeSchema.parse(request.body);
+    const { code } = request.body;
     const pending = await app.redis.get(mfaSetupKey(request.staffUser!.id));
     if (!pending || !verifyTotp(decrypt(pending), code)) {
       return reply.status(400).send({ success: false, error: 'MFA kodu geçersiz veya kurulum süresi dolmuş' });
@@ -337,7 +336,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.authenticate],
     schema: { body: disableMfaSchema, tags: ['Auth'], summary: 'MFA korumasını devre dışı bırakır' },
   }, async (request, reply) => {
-    const body = disableMfaSchema.parse(request.body);
+    const body = request.body;
     const staff = await app.prisma.staff.findUnique({ where: { id: request.staffUser!.id } });
     if (!staff?.mfaSecretEnc || !(await bcrypt.compare(body.password, staff.passwordHash)) || !verifyTotp(decrypt(staff.mfaSecretEnc), body.code)) {
       return reply.status(400).send({ success: false, error: 'Şifre veya MFA kodu geçersiz' });
@@ -366,7 +365,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     schema: { body: emailLookupSchema, tags: ['Auth'], summary: 'E-posta için kullanıcı bilgisini getirir' },
     config: { rateLimit: { max: 30, timeWindow: '5 minutes' } },
   }, async (request, reply) => {
-    const body = emailLookupSchema.parse(request.body);
+    const body = request.body;
 
     const user = await app.prisma.user.findUnique({
       where: { email: body.email },
