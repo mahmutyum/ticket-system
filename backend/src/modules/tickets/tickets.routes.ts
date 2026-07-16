@@ -449,7 +449,23 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
       return reply.status(403).send({ success: false, error: 'Bu talebe erişim yetkiniz yok' });
     }
 
-    reply.send({ success: true, data: ticket });
+    const {
+      accessToken: _accessToken,
+      accessTokenExpiresAt: _accessTokenExpiresAt,
+      createdBy,
+      attachments,
+      ...safeTicket
+    } = ticket;
+    reply.send({
+      success: true,
+      data: {
+        ...safeTicket,
+        createdBy: createdBy
+          ? { fullName: createdBy.fullName, phone: createdBy.phone }
+          : null,
+        attachments: attachments.map(({ filePath: _filePath, ...attachment }) => attachment),
+      },
+    });
   });
 
   // STAFF: Update ticket (status, priority, assignment)
@@ -570,7 +586,12 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
       priority: ticket.priority,
     });
 
-    reply.send({ success: true, data: ticket });
+    const {
+      accessToken: _accessToken,
+      accessTokenExpiresAt: _accessTokenExpiresAt,
+      ...safeTicket
+    } = ticket;
+    reply.send({ success: true, data: safeTicket });
   });
 
   // STAFF: Bulk update tickets
@@ -690,7 +711,8 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     });
 
-    reply.status(201).send({ success: true, data: attachment });
+    const { filePath: _filePath, ...safeAttachment } = attachment;
+    reply.status(201).send({ success: true, data: safeAttachment });
   });
 
   // STAFF: Search tickets

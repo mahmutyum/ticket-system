@@ -45,8 +45,13 @@ const OUT_OF_SCOPE = 'clcompanyoutofscopexxxxxx';
 
 /** it_manager yalnızca IN_SCOPE'a atanmış. */
 function makeApp(ticketCompanyId: string) {
-  const ticketUpdate = vi.fn(async () => ({ id: TICKET_ID, ticketNumber: 'TKT-2026-00001' }));
-  const attachmentCreate = vi.fn(async () => ({ id: 'att1' }));
+  const ticketUpdate = vi.fn(async () => ({
+    id: TICKET_ID,
+    ticketNumber: 'TKT-2026-00001',
+    accessToken: 'public-bearer-secret',
+    accessTokenExpiresAt: null,
+  }));
+  const attachmentCreate = vi.fn(async () => ({ id: 'att1', filePath: 'ticket/a.txt' }));
 
   const prisma = {
     staffCompany: {
@@ -61,10 +66,14 @@ function makeApp(ticketCompanyId: string) {
         ticketNumber: 'TKT-2026-00001',
         subject: 'test',
         createdByEmail: 'a@b.co',
+        accessToken: 'public-bearer-secret',
+        accessTokenExpiresAt: null,
         firstRespondedAt: null,
         slaResponseDue: null,
         slaResolveDue: null,
         company: { name: 'Test' },
+        createdBy: null,
+        attachments: [{ id: 'att1', filePath: 'ticket/a.txt', fileName: 'a.txt' }],
       })),
       update: ticketUpdate,
     },
@@ -104,6 +113,24 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+describe('GET /tickets/:id — cevap veri sınırı', () => {
+  it('public erişim sırrını ve depolama yolunu personele yayınlamaz', async () => {
+    const { app } = makeApp(IN_SCOPE);
+    await withRoutes(app);
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/tickets/${TICKET_ID}`,
+      headers: authHeader(StaffRole.it_manager, MANAGER_ID),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).not.toHaveProperty('accessToken');
+    expect(res.json().data).not.toHaveProperty('accessTokenExpiresAt');
+    expect(res.json().data.attachments[0]).not.toHaveProperty('filePath');
+  });
+});
+
 describe('PUT /tickets/:id — şirket kapsamı', () => {
   it('kapsam DIŞI ticket 403 — ve DB\'ye yazılmaz', async () => {
     const { app, ticketUpdate } = makeApp(OUT_OF_SCOPE);
@@ -134,6 +161,8 @@ describe('PUT /tickets/:id — şirket kapsamı', () => {
 
     expect(res.statusCode).toBe(200);
     expect(ticketUpdate).toHaveBeenCalled();
+    expect(res.json().data).not.toHaveProperty('accessToken');
+    expect(res.json().data).not.toHaveProperty('accessTokenExpiresAt');
   });
 
   it('admin her ticket\'ı güncelleyebilir', async () => {
@@ -238,6 +267,7 @@ describe('POST /tickets/:id/attachments — kota', () => {
 
     expect(res.statusCode).toBe(201);
     expect(attachmentCreate).toHaveBeenCalled();
+    expect(res.json().data).not.toHaveProperty('filePath');
   });
 
   it('ilk ek — Prisma\'nın null toplamı yüklemeyi engellemez', async () => {
