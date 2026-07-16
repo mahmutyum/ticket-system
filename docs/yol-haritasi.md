@@ -1,139 +1,50 @@
-# Yol Haritası ve Bilinen Eksikler
+# Yol Haritası
 
-Bu belge projenin güncel durumunu ve bilinçli olarak açık bırakılan sınırları
-özetler. Tarihsel uygulama planı değildir.
-
-Durum: 2026-07-17.
+Projenin güncel olgunluğu ve planlanan işler. Durum: 2026-07-17.
 
 ## Olgunluk özeti
 
 | Alan | Durum |
 |---|---|
 | Özellik kapsamı | 🟢 Ticket yaşam döngüsü, SLA, raporlar, görevler, kasa, MFA |
-| Çok dillilik | 🟢 TR/EN çift dil (arayüz + API mesajları + e-posta/SMS şablonları) |
+| Çok dillilik | 🟢 TR/EN (arayüz + API mesajları + e-posta/SMS şablonları) |
 | Kurulum / deploy | 🟢 Docker Compose, Coolify ve Nginx belgeli |
 | Migration | 🟢 Versiyonlu; gerçek PostgreSQL üzerinde doğrulanabilir |
 | Backend testleri | 🟢 235 birim/route/worker testi |
-| Frontend testleri | 🟢 26 birim testi + 6 Playwright smoke/axe/güvenlik senaryosu |
-| Entegrasyon | 🟢 Gerçek PostgreSQL + Redis testi mevcut |
-| CI | 🟡 Güvenlik tercihiyle yalnızca GitHub Actions'tan elle çalıştırılıyor |
-| API dokümantasyonu | 🟢 Kritik yönetim route'larında request, parametre ve response sözleşmeleri bağlı |
-| Kod kalitesi | 🟢 Backend ve frontend lint temiz; gevşek `any` tipleri kaldırıldı |
-| Public repo hijyeni | 🟢 Yerel kontrol script'i, geniş ignore politikası ve yayın rehberi |
+| Frontend testleri | 🟢 26 birim testi + 6 Playwright smoke/axe senaryosu |
+| Entegrasyon | 🟢 Gerçek PostgreSQL + Redis testi |
+| API dokümantasyonu | 🟢 Kritik route'larda request/response sözleşmeleri (OpenAPI) |
+| Kod kalitesi | 🟢 Backend + frontend lint temiz, tipli |
 
-## Sıradaki çalışmalar
+## Planlanan özellikler
+
+### "Taleplerim" — talep sahibi için birleşik takip
+
+Bugün bir talebe erişim, o talebe özel bağlantı (veya ticket numarası + e-posta) ile
+sağlanıyor; birden fazla talep açan kullanıcının hepsini tek yerde görmesi için bir
+akış yok.
+
+**Plan:** Kullanıcı e-postasını girer; gelen kutusuna gönderilen **kısa ömürlü doğrulama
+bağlantısıyla** o e-postaya ait tüm taleplerini tek listede görür ve takip eder. Parola
+yok — e-posta sahipliği doğrulanır. Mevcut altyapıyı (kısa ömürlü token, Redis, BullMQ
+e-posta kuyruğu, rate limit) kullanır; yeni tablo gerektirmez. Yeni çift dilli
+bildirim şablonu (`my_tickets_link`) ve bir public sayfa (`MyTicketsPage`) eklenir.
 
 ### Operasyon
 
-- Yedek alma kadar geri yükleme tatbikatını da periyodik çalıştır.
-- `db:retention:check` sonucunu izle; onaylı bakım penceresinde
-  `db:retention:apply` çalıştır.
-- Public internete açık kurulumlarda `ENABLE_API_DOCS=false`, proxy erişim kontrolü
-  ve doğru `TRUST_PROXY` değerini zorunlu kabul et.
+- Yedek almanın yanında geri yükleme tatbikatını da periyodik çalıştır.
+- Retention işini izle (`db:retention:check`) ve onaylı bakım penceresinde uygula.
+- İnternete açık kurulumlarda erişim kontrolü ve `ENABLE_API_DOCS=false` zorunlu kabul et.
 
-Kod kalitesi, OpenAPI ve güvenlik akışları mevcut paket içinde tamamlandı; yeni route
-ve ekranlarda aynı tipli sözleşme, kapsam/RBAC ve regresyon testi standardını koru.
+## Ürün tercihleri (bilinçli)
 
-## Planlanan özellik: Talep sahibi için "Taleplerim" görünümü (e-posta doğrulamalı)
-
-**Sorun.** Bugün public portal parolasızdır ve her ticket'a erişim yalnızca o
-ticket'a özel `accessToken` linki (ya da ticket numarası + e-posta ile `/public/track`)
-üzerindendir. Birden fazla talep açan bir kullanıcının **tüm taleplerini tek yerde**
-görüp takip etmesinin bir yolu yoktur; her talebin linkini ayrı saklaması gerekir.
-
-**Neden bugün "e-posta gir, taleplerini gör" yok?** Bir e-postaya ait tüm ticket'ları
-kimlik doğrulamasız listelemek bir **PII oracle**'dır: herkes rastgele bir e-posta
-girip o kişinin taleplerini (konu, sayı, tarih) görebilir. Bu, [Bilinçli ürün
-tercihleri](#bilinçli-ürün-tercihleri) altında bilerek reddedilmiştir. Bu yüzden çözüm,
-listeyi göstermeden önce **e-posta sahipliğini kanıtlatmalıdır**.
-
-**Önerilen çözüm — magic link (parolasız e-posta doğrulaması).** Mevcut altyapıyı
-(nanoid token, Redis, BullMQ e-posta kuyruğu, rate limit) yeniden kullanır; yeni tablo
-gerektirmez.
-
-1. **Talep et.** Kullanıcı `/my-tickets` sayfasında e-postasını girer →
-   `POST /public/my-tickets/request`.
-   - Rate limit'li (ör. 3/15dk, e-posta + IP başına).
-   - Sunucu, e-postaya ait ticket olup olmadığından **bağımsız olarak** her zaman aynı
-     "bağlantı gönderildi" yanıtını döner (istek adımında oracle yok).
-   - Ticket varsa: `nanoid(32)` bir doğrulama token'ı Redis'e yazılır
-     (`mytickets:verify:<token>` → e-posta, TTL ~15dk, tek kullanımlık) ve e-posta ile
-     bir bağlantı gönderilir (`{CANONICAL_URL}/my-tickets?token=...`). Yeni çift dilli
-     şablon: `my_tickets_link`.
-2. **Doğrula.** Bağlantıya tıklama → `GET /public/my-tickets/verify?token=...`.
-   - Token okunup **hemen silinir**; e-posta çözülür.
-   - Kısa ömürlü bir **oturum token'ı** üretilir (`mytickets:session:<sid>` → e-posta,
-     TTL ~30dk) ve istemciye döner (bellekte tutulur, localStorage'a yazılmaz — staff
-     access token deseninin aynısı).
-3. **Listele.** `GET /public/my-tickets?session=...` (Authorization benzeri) → o
-   e-postaya ait ticket'ları döner: numara, konu, durum, öncelik, şirket, oluşturma
-   tarihi + her satır için mevcut `accessToken` (veya ihtiyaç anında üretilen tek
-   kullanımlık geçiş). Her satır zaten var olan ticket takip ekranına götürür.
-
-**Güvenlik notları.**
-- Liste yalnızca e-posta gelen kutusuna erişimi kanıtlayan oturumla görülür → oracle yok.
-- Doğrulama token'ı ve oturum token'ı kısa ömürlü, tek kullanımlık/iptal edilebilir.
-- `createdByEmail` büyük/küçük harf duyarsız eşleştirilir (mevcut `/track` ile tutarlı).
-- Çok şirketli: liste, e-postanın oluşturduğu tüm şirketlerdeki ticket'ları kapsar
-  (talep sahibi kendi taleplerini görür; şirket kapsamı personel içindir).
-- Doğrulama denemeleri ve oturum açılışları audit log'lanır.
-
-**Dokunulacak yerler (uygulama sırasında).**
-- Backend: `modules/tickets/public.routes.ts` (3 uç), Redis anahtar yardımcıları,
-  `my_tickets_link` e-posta şablonu (seed, tr+en).
-- Frontend: yeni public sayfa `MyTicketsPage` + `PublicLayout`'a "Taleplerim / My
-  Tickets" bağlantısı; oturum token'ı için hafif bir store.
-- Test: request adımının oracle sızdırmadığı, token tek kullanımlık olduğu, süre dolan
-  oturumun reddedildiği, listenin yalnızca doğru e-postanın ticket'larını döndürdüğü.
-
-**Kapsam dışı (şimdilik).** Kalıcı kullanıcı hesabı/parola yok — bu bilinçli ürün
-tercihidir. Bu özellik yalnızca "sahip olduğun e-postaya taleplerinin listesini
-gönderelim" akışıdır; oturum kısa ömürlüdür ve kalıcı kimlik oluşturmaz.
-
-## Bilinen ve kabul edilmiş güvenlik sınırları
-
-### Public ticket bağlantısı bearer yetkisidir
-
-Public portal parola istemez. Tahmin edilemez `accessToken` bağlantısını bilen kişi
-ticket'ı görebilir, yanıtlayabilir ve dosya ekleyebilir. Token kapanıştan 90 gün sonra
-sona erer; bu riskin tamamını ortadan kaldırmaz.
-
-### Token URL'lerde bulunur
-
-Public ticket token'ı path'te; tek kullanımlık staff SSE bileti query parametresindedir.
-Proxy loglarına erişim ve log saklama süresi sınırlandırılmalıdır. Staff SSE için tam
-çözüm, header tabanlı kimlik taşıyabilen WebSocket benzeri bir kanaldır.
-
-### Ticket numaraları sıralıdır
-
-Numara tek başına erişim sağlamaz; `/public/track` e-posta eşleşmesi ve rate limit
-ister. Yine de dışarıdan görülen numaralar yaklaşık ticket hacmi bilgisi verebilir.
-
-### İç ağ varsayımı önemlidir
-
-Sistem VPN/iç ağ arkasında tasarlanmıştır. Coolify/NPM kullanırken dahili proxy
-profilindeki IP filtresi devrede değildir; eşdeğer erişim kontrolü dış proxy'de
-kurulmalıdır.
-
-## Tamamlanan önemli sertleştirmeler
-
-- Fail-closed şirket kapsamı ve route düzeyinde RBAC testleri
-- AES-256-GCM kasa ve SMTP şifreleme, TOTP MFA, oturum bazlı refresh token iptali
-- MIME'dan türetilen güvenli uzantı, ek yetkilendirmesi ve ticket başına kota
-- Kapanmış ticket ekleri için yapılandırılabilir retention işi
-- Tek kullanımlık kısa ömürlü SSE bileti
-- İç not/history sızıntısı koruması
-- CSV formül enjeksiyonu, SSRF ve şablon kaçışlama korumaları
-- Worker testleri, gerçek PostgreSQL/Redis entegrasyon testi ve Playwright/axe katmanı
-- Zod tabanlı Fastify/OpenAPI request sözleşmeleri
-
-## Bilinçli ürün tercihleri
-
-- Public portalda kullanıcı hesabı/parola yoktur.
-- Randevular personele atanmadığı için paralel randevu çakışma sayılmaz.
+- Public portalda kalıcı kullanıcı hesabı / parola yoktur; erişim bağlantı tabanlıdır.
 - Ayrı bir component kütüphanesi kullanılmaz; arayüz Tailwind ile proje içinde tutulur.
-- Kimliksiz kullanıcı bilgi lookup özelliği PII oracle riski nedeniyle sunulmaz.
+- Yerinde destek randevuları personele atanmaz; paralel randevu çakışma sayılmaz.
 - Personel parolası en az 12 karakterdir.
 
-Public depoda hangi dosyaların tutulacağı ve secret olayında izlenecek yol için
-[public depo güvenliği](public-repo.md) belgesine bak.
+## Katkı standardı
+
+Yeni route ve ekranlarda aynı tipli sözleşme, kapsam/RBAC ve regresyon testi standardını
+koru. Güvenlik açığı bildirimi için [SECURITY.md](../SECURITY.md), katkı rehberi için
+[CONTRIBUTING.md](../CONTRIBUTING.md).

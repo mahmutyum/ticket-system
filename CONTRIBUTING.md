@@ -53,7 +53,9 @@ CI ayrıca migration'ları **gerçek bir Postgres'e** uygular ve şemanın verit
   yakalamaz.
 - **Tüm input Zod ile doğrulanır.**
 - **API yanıtı:** `{ success: boolean, data?: T, error?: string }`.
-- **Türkçe** hata mesajları ve UI label'ları.
+- **Çift dil (TR/EN).** Kullanıcıya görünen metin hardcode edilmez: frontend
+  `react-i18next` (`i18n/locales` + sayfa bazlı `i18n/pages`), backend API mesajları
+  `i18n/messages/*` + `t(request, key)` (Accept-Language). tr = orijinal, en = çeviri.
 - Durum/öncelik/rol sabitleri `backend/src/config/constants.ts`'de — string literal
   serpiştirme.
 - Admin/staff CRUD işlemlerinde `createAuditLog()` çağır.
@@ -84,12 +86,15 @@ Bu dosyalara dokunuyorsan ekstra dikkat ve PR açıklamasında gerekçe:
 
 | Alan | Neden |
 |---|---|
-| `plugins/auth.ts`, `utils/staff-scope.ts` | Auth ve şirket kapsamı. Test edilmemiş — regresyon sessizce geçer. |
+| `plugins/auth.ts`, `utils/staff-scope.ts` | Auth ve şirket kapsamı. Testli (`tests/utils/staff-scope`, `tests/routes/management-scope`) ama sessiz regresyon riski yüksek — değişince testleri de gözden geçir. |
 | `modules/tickets/public.routes.ts` | Kimlik doğrulaması olmayan yüzey. İç notlar buradan **asla** sızmamalı. |
 | `utils/crypto.ts`, `modules/credentials/` | Şifre kasası. Şifreleme formatını değiştirmek mevcut kayıtları **okunamaz** hale getirir. |
 | `modules/notes/` | `isInternal` filtresi. |
 
 Güvenlik açığı bulduysan **issue açma** — [SECURITY.md](SECURITY.md)'deki yolu izle.
+
+Repoya neyin girip girmeyeceği (secret, gerçek veri, PII, üretim görüntüsü) ve commit
+öncesi kontrol için: [docs/public-repo.md](docs/public-repo.md).
 
 ---
 
@@ -106,11 +111,10 @@ Güvenlik açığı bulduysan **issue açma** — [SECURITY.md](SECURITY.md)'dek
 
 ## Nereden başlamalı
 
-[Yol haritasındaki](docs/yol-haritasi.md) yüksek değerli ve nispeten bağımsız işler:
+[Yol haritasındaki](docs/yol-haritasi.md) nispeten bağımsız işler:
 
-- **Public erişim testleri** — iç notların public endpoint'ten sızmadığını doğrulayan test
-  yok; regresyon riski yüksek bir alan. Örnek için `tests/routes/credentials.auth.test.ts`.
-- **Frontend test runner** — hiç yok.
-- **Zod → fastify şema entegrasyonu** (`fastify-type-provider-zod`) — şemalar zaten yazılı;
-  bağlanınca `/docs` tam OpenAPI dokümanına dönüşür.
-- **Ekran görüntüleri** — README'yi ciddi biçimde iyileştirir.
+- **"Taleplerim" görünümü** — talep sahibinin e-posta doğrulamalı, birleşik talep listesi
+  (yol haritasında akış tarif edildi). Yeni bir public sayfa + kısa ömürlü doğrulama akışı.
+- **Test kapsamını genişlet** — özellikle kapsam/RBAC ve public yüzey senaryoları; mevcut
+  örnekler `tests/routes/` altında.
+- **Erişilebilirlik ve UX** — Playwright/axe senaryolarını genişlet.
