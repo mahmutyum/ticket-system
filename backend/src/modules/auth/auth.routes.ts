@@ -55,7 +55,7 @@ const DUMMY_HASH = '$2b$12$C6UzMDM.H6dfI/f/IKcEe.7iHW7hVQZ2Nl3xkZL8XxJvGqZ0hqZ0G
 export const authRoutes: FastifyPluginAsync = async (app) => {
   // Staff login
   app.post('/staff/login', {
-    schema: { body: staffLoginSchema },
+    schema: { body: staffLoginSchema, tags: ['Auth'], summary: 'Personel oturumu açar' },
     config: {
       rateLimit: { max: 5, timeWindow: '1 minute' },
     },
@@ -147,7 +147,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.post('/staff/mfa/verify-login', {
-    schema: { body: mfaVerifySchema },
+    schema: { body: mfaVerifySchema, tags: ['Auth'], summary: 'MFA giriş doğrulamasını tamamlar' },
     config: { rateLimit: { max: 10, timeWindow: '5 minutes' } },
   }, async (request, reply) => {
     const body = mfaVerifySchema.parse(request.body);
@@ -171,7 +171,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   // Refresh token
   app.post('/staff/refresh', {
-    schema: { body: refreshTokenSchema.optional() },
+    schema: { body: refreshTokenSchema.optional(), tags: ['Auth'], summary: 'Erişim tokenını yeniler' },
     config: { rateLimit: { max: 20, timeWindow: '1 minute' } },
   }, async (request, reply) => {
     const bodyToken = refreshTokenSchema.safeParse(request.body);
@@ -229,7 +229,10 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // Staff logout — YALNIZCA bu oturumu kapatır, diğer cihazlar etkilenmez.
-  app.post('/staff/logout', { preHandler: [app.authenticate] }, async (request, reply) => {
+  app.post('/staff/logout', {
+    preValidation: [app.authenticate],
+    schema: { tags: ['Auth'], summary: 'Geçerli personel oturumunu kapatır' },
+  }, async (request, reply) => {
     const { id, sid } = request.staffUser!;
     await app.redis.del(refreshKey(id, sid));
     reply
@@ -237,7 +240,10 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       .send({ success: true });
   });
 
-  app.get('/staff/sessions', { preHandler: [app.authenticate] }, async (request, reply) => {
+  app.get('/staff/sessions', {
+    preValidation: [app.authenticate],
+    schema: { tags: ['Auth'], summary: 'Aktif personel oturumlarını listeler' },
+  }, async (request, reply) => {
     const { id, sid } = request.staffUser!;
     const keys = await sessionKeys(app.redis, id);
     const sessions = await Promise.all(keys.map(async (key) => ({
@@ -248,7 +254,10 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     reply.send({ success: true, data: sessions });
   });
 
-  app.delete('/staff/sessions/others', { preHandler: [app.authenticate] }, async (request, reply) => {
+  app.delete('/staff/sessions/others', {
+    preValidation: [app.authenticate],
+    schema: { tags: ['Auth'], summary: 'Geçerli oturum dışındaki oturumları kapatır' },
+  }, async (request, reply) => {
     const { id, sid } = request.staffUser!;
     const keys = (await sessionKeys(app.redis, id)).filter((key) => !key.endsWith(`:${sid}`));
     if (keys.length > 0) await app.redis.del(...keys);
@@ -260,7 +269,10 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     reply.send({ success: true, data: { revoked: keys.length } });
   });
 
-  app.post('/staff/change-password', { preHandler: [app.authenticate], schema: { body: changePasswordSchema } }, async (request, reply) => {
+  app.post('/staff/change-password', {
+    preValidation: [app.authenticate],
+    schema: { body: changePasswordSchema, tags: ['Auth'], summary: 'Personel parolasını değiştirir' },
+  }, async (request, reply) => {
     const body = changePasswordSchema.parse(request.body);
     const staff = await app.prisma.staff.findUnique({ where: { id: request.staffUser!.id } });
     if (!staff || !(await bcrypt.compare(body.currentPassword, staff.passwordHash))) {
@@ -279,7 +291,10 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     reply.clearCookie('refresh_token', { path: '/' }).send({ success: true });
   });
 
-  app.post('/staff/mfa/setup', { preHandler: [app.authenticate] }, async (request, reply) => {
+  app.post('/staff/mfa/setup', {
+    preValidation: [app.authenticate],
+    schema: { tags: ['Auth'], summary: 'MFA kurulum sırrı oluşturur' },
+  }, async (request, reply) => {
     const staff = await app.prisma.staff.findUnique({ where: { id: request.staffUser!.id } });
     if (!staff) return reply.status(404).send({ success: false, error: 'Personel bulunamadı' });
     const secret = generateTotpSecret();
@@ -287,7 +302,10 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     reply.send({ success: true, data: { secret, uri: totpUri(secret, staff.email, config.APP_NAME) } });
   });
 
-  app.post('/staff/mfa/enable', { preHandler: [app.authenticate], schema: { body: mfaCodeSchema } }, async (request, reply) => {
+  app.post('/staff/mfa/enable', {
+    preValidation: [app.authenticate],
+    schema: { body: mfaCodeSchema, tags: ['Auth'], summary: 'MFA korumasını etkinleştirir' },
+  }, async (request, reply) => {
     const { code } = mfaCodeSchema.parse(request.body);
     const pending = await app.redis.get(mfaSetupKey(request.staffUser!.id));
     if (!pending || !verifyTotp(decrypt(pending), code)) {
@@ -299,7 +317,10 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     reply.send({ success: true });
   });
 
-  app.post('/staff/mfa/disable', { preHandler: [app.authenticate], schema: { body: disableMfaSchema } }, async (request, reply) => {
+  app.post('/staff/mfa/disable', {
+    preValidation: [app.authenticate],
+    schema: { body: disableMfaSchema, tags: ['Auth'], summary: 'MFA korumasını devre dışı bırakır' },
+  }, async (request, reply) => {
     const body = disableMfaSchema.parse(request.body);
     const staff = await app.prisma.staff.findUnique({ where: { id: request.staffUser!.id } });
     if (!staff?.mfaSecretEnc || !(await bcrypt.compare(body.password, staff.passwordHash)) || !verifyTotp(decrypt(staff.mfaSecretEnc), body.code)) {
@@ -325,8 +346,8 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
    * güvenli bir yolu yok.
    */
   app.post('/lookup', {
-    preHandler: [app.authenticate],
-    schema: { body: emailLookupSchema },
+    preValidation: [app.authenticate],
+    schema: { body: emailLookupSchema, tags: ['Auth'], summary: 'E-posta için kullanıcı bilgisini getirir' },
     config: { rateLimit: { max: 30, timeWindow: '5 minutes' } },
   }, async (request, reply) => {
     const body = emailLookupSchema.parse(request.body);

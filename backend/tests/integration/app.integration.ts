@@ -81,5 +81,8 @@ describe('gerçek PostgreSQL + Redis entegrasyonu', () => {
     expect(document.paths['/credentials/{id}/reveal'].get.parameters).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: 'id', in: 'path' })]),
     );
+    expect(document.paths['/auth/staff/change-password'].post.requestBody).toBeDefined();
+    expect(document.paths['/auth/staff/mfa/enable'].post.requestBody).toBeDefined();
+    expect(document.paths['/auth/staff/sessions'].get.summary).toBeDefined();
   });
 });
