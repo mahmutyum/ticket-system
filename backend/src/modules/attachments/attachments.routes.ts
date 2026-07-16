@@ -4,6 +4,14 @@ import { stat } from 'fs/promises';
 import { join, normalize } from 'path';
 import { config } from '../../config/index.js';
 import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
+import { z } from 'zod';
+
+const attachmentParamsSchema = z.object({ id: z.string().min(1).max(128) });
+const attachmentQuerySchema = z.object({ token: z.string().min(16).max(128).optional() });
+const brandingParamsSchema = z.object({
+  companyId: z.string().min(1).max(128),
+  file: z.string().regex(/^[a-zA-Z0-9_-]+\.(png|jpg|webp)$/),
+});
 
 /**
  * Ek indirme — KİMLİK DOĞRULAMALI.
@@ -20,7 +28,7 @@ import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.
  *   - talep eden: geçerli (süresi dolmamış) `accessToken` sunuyor mu.
  */
 export const attachmentRoutes: FastifyPluginAsync = async (app) => {
-  app.get('/:id', async (request, reply) => {
+  app.get('/:id', { schema: { params: attachmentParamsSchema, querystring: attachmentQuerySchema, tags: ['Attachments'], summary: 'Yetki kontrollü ticket eki indir' } }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const { token } = request.query as { token?: string };
 
@@ -117,7 +125,7 @@ export const attachmentRoutes: FastifyPluginAsync = async (app) => {
  * türetilir ve burada da sandbox CSP + nosniff uygulanır.
  */
 export const brandingRoutes: FastifyPluginAsync = async (app) => {
-  app.get('/:companyId/:file', async (request, reply) => {
+  app.get('/:companyId/:file', { schema: { params: brandingParamsSchema, tags: ['Branding'], summary: 'Şirket logosunu getir' } }, async (request, reply) => {
     const { companyId, file } = request.params as { companyId: string; file: string };
 
     // Yol bileşenleri istemciden geliyor — normalize edip kök içinde kal.

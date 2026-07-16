@@ -1,11 +1,12 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { Priority, TicketStatus } from '@prisma/client';
 import { getStaffCompanyScope, companyWhereClause , resolveCompanyFilter } from '../../utils/staff-scope.js';
 
 const dashboardFilterSchema = z.object({
   companyId: z.string().optional(),
-  status: z.string().optional(),
-  priority: z.string().optional(),
+  status: z.nativeEnum(TicketStatus).optional(),
+  priority: z.nativeEnum(Priority).optional(),
   assignedToId: z.string().optional(),
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
@@ -15,7 +16,8 @@ const dashboardFilterSchema = z.object({
 export const dashboardRoutes: FastifyPluginAsync = async (app) => {
   // Dashboard stats — with filters and company scoping
   app.get('/stats', {
-    preHandler: [app.authenticate],
+    preValidation: [app.authenticate],
+    schema: { querystring: dashboardFilterSchema, tags: ['Dashboard'], summary: 'Dashboard istatistiklerini getir' },
   }, async (request, reply) => {
     const staffUser = request.staffUser!;
     const query = dashboardFilterSchema.parse(request.query);
@@ -139,7 +141,8 @@ export const dashboardRoutes: FastifyPluginAsync = async (app) => {
 
   // SLA report — scoped
   app.get('/sla', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { tags: ['Dashboard'], summary: 'SLA özetini getir' },
   }, async (request, reply) => {
     const staffUser = request.staffUser!;
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
@@ -177,7 +180,8 @@ export const dashboardRoutes: FastifyPluginAsync = async (app) => {
 
   // My assigned tickets
   app.get('/my-tickets', {
-    preHandler: [app.authenticate],
+    preValidation: [app.authenticate],
+    schema: { tags: ['Dashboard'], summary: 'Bana atanan açık ticketları getir' },
   }, async (request, reply) => {
     const staffUser = request.staffUser!;
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);

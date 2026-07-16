@@ -2,6 +2,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { nanoid } from 'nanoid';
 import { addClient, getClientCount } from '../../services/sse.service.js';
 import { getStaffCompanyScope } from '../../utils/staff-scope.js';
+import { z } from 'zod';
 
 /**
  * SSE bileti — kısa ömürlü, TEK KULLANIMLIK.
@@ -17,6 +18,8 @@ import { getStaffCompanyScope } from '../../utils/staff-scope.js';
  */
 const TICKET_TTL_SECONDS = 30;
 const sseTicketKey = (ticket: string) => `sse:ticket:${ticket}`;
+const staffTicketQuerySchema = z.object({ ticket: z.string().min(16).max(128).optional() });
+const accessTokenParamsSchema = z.object({ accessToken: z.string().min(16).max(128) });
 
 export const eventRoutes: FastifyPluginAsync = async (app) => {
   /**
@@ -25,7 +28,7 @@ export const eventRoutes: FastifyPluginAsync = async (app) => {
    * Bilet YALNIZCA bir SSE bağlantısı açmaya yarar; başka hiçbir uçta geçerli
    * değildir ve tek kullanımlıktır.
    */
-  app.post('/ticket-grant', { preHandler: [app.authenticate] }, async (request, reply) => {
+  app.post('/ticket-grant', { preValidation: [app.authenticate], schema: { tags: ['Events'], summary: 'Tek kullanımlık SSE bileti üret' } }, async (request, reply) => {
     const staffUser = request.staffUser!;
     const ticket = nanoid(32);
     await app.redis.set(sseTicketKey(ticket), staffUser.id, 'EX', TICKET_TTL_SECONDS);
@@ -33,12 +36,9 @@ export const eventRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // SSE: Staff live updates
-  app.get('/staff', async (request, reply) => {
-    const { ticket } = request.query as { ticket?: string };
-
-    if (!ticket) {
-      return reply.status(401).send({ success: false, error: 'Bilet gerekli' });
-    }
+  app.get('/staff', { schema: { querystring: staffTicketQuerySchema, tags: ['Events'], summary: 'Personel canlı olay akışına bağlan' } }, async (request, reply) => {
+    const { ticket } = staffTicketQuerySchema.parse(request.query);
+    if (!ticket) return reply.status(401).send({ success: false, error: 'Bilet gerekli' });
 
     // TEK KULLANIMLIK: oku ve hemen sil. Log'a düşen bilet tekrar kullanılamaz.
     const staffId = await app.redis.get(sseTicketKey(ticket));
@@ -77,7 +77,7 @@ export const eventRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // SSE: Public ticket live updates
-  app.get('/ticket/:accessToken', async (request, reply) => {
+  app.get('/ticket/:accessToken', { schema: { params: accessTokenParamsSchema, tags: ['Events'], summary: 'Public ticket canlı olay akışına bağlan' } }, async (request, reply) => {
     const { accessToken } = request.params as { accessToken: string };
 
     const ticket = await app.prisma.ticket.findUnique({
@@ -97,7 +97,8 @@ export const eventRoutes: FastifyPluginAsync = async (app) => {
 
   // SSE stats
   app.get('/stats', {
-    preHandler: [app.authenticate],
+    preValidation: [app.authenticate],
+    schema: { tags: ['Events'], summary: 'Aktif SSE bağlantı sayısını getir' },
   }, async (request, reply) => {
     reply.send({ success: true, data: getClientCount() });
   });

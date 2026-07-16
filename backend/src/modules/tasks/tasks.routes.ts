@@ -53,6 +53,13 @@ const taskUpdateSchema = z.object({
 const commentSchema = z.object({
   content: requiredText({ ...LIMITS.taskComment, label: 'Yorum' }),
 });
+const idParamsSchema = z.object({ id: z.string().min(1).max(128) });
+const taskListQuerySchema = z.object({
+  status: z.nativeEnum(TaskStatus).optional(),
+  mine: z.literal('1').optional(),
+  scope: z.enum(['created', 'assigned', 'all']).optional(),
+});
+const taskStatusSchema = z.object({ status: z.nativeEnum(TaskStatus) });
 
 const TASK_SELECT = {
   id: true,
@@ -83,13 +90,9 @@ const TASK_SELECT = {
 
 export const taskRoutes: FastifyPluginAsync = async (app) => {
   // List tasks — admin/manager: all, staff: only assigned
-  app.get('/', { preHandler: [app.authenticate] }, async (request, reply) => {
+  app.get('/', { preValidation: [app.authenticate], schema: { querystring: taskListQuerySchema, tags: ['Tasks'], summary: 'Görevleri listele' } }, async (request, reply) => {
     const staffUser = request.staffUser!;
-    const q = z.object({
-      status: z.string().optional(),
-      mine: z.string().optional(), // "1" → only my assigned
-      scope: z.string().optional(), // "created" | "assigned" | "all"
-    }).parse(request.query ?? {});
+    const q = taskListQuerySchema.parse(request.query ?? {});
 
     const where: any = {};
     if (q.status) where.status = q.status;
@@ -116,7 +119,7 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // Get single task with comments
-  app.get('/:id', { preHandler: [app.authenticate] }, async (request, reply) => {
+  app.get('/:id', { preValidation: [app.authenticate], schema: { params: idParamsSchema, tags: ['Tasks'], summary: 'Görev detayını getir' } }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const staffUser = request.staffUser!;
 
@@ -154,7 +157,7 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // Create task — admin/it_manager only
-  app.post('/', { preHandler: [app.requireRole('admin', 'it_manager')] }, async (request, reply) => {
+  app.post('/', { preValidation: [app.requireRole('admin', 'it_manager')], schema: { body: taskCreateSchema, tags: ['Tasks'], summary: 'Görev oluştur' } }, async (request, reply) => {
     const body = taskCreateSchema.parse(request.body);
     const staffUser = request.staffUser!;
 
@@ -240,7 +243,7 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // Update task — admin/it_manager only (full edit). Assignees can only change status via separate endpoint.
-  app.put('/:id', { preHandler: [app.requireRole('admin', 'it_manager')] }, async (request, reply) => {
+  app.put('/:id', { preValidation: [app.requireRole('admin', 'it_manager')], schema: { params: idParamsSchema, body: taskUpdateSchema, tags: ['Tasks'], summary: 'Görevi güncelle' } }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = taskUpdateSchema.parse(request.body);
     const staffUser = request.staffUser!;
@@ -357,11 +360,9 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // Status update — assignees can change own task status
-  app.patch('/:id/status', { preHandler: [app.authenticate] }, async (request, reply) => {
+  app.patch('/:id/status', { preValidation: [app.authenticate], schema: { params: idParamsSchema, body: taskStatusSchema, tags: ['Tasks'], summary: 'Görev durumunu güncelle' } }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const body = z.object({
-      status: z.nativeEnum(TaskStatus),
-    }).parse(request.body);
+    const body = taskStatusSchema.parse(request.body);
     const staffUser = request.staffUser!;
 
     const task = await app.prisma.task.findUnique({
@@ -424,7 +425,7 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // Delete task — admin/it_manager only
-  app.delete('/:id', { preHandler: [app.requireRole('admin', 'it_manager')] }, async (request, reply) => {
+  app.delete('/:id', { preValidation: [app.requireRole('admin', 'it_manager')], schema: { params: idParamsSchema, tags: ['Tasks'], summary: 'Görevi sil' } }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const staffUser = request.staffUser!;
 
@@ -455,7 +456,7 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // Add comment
-  app.post('/:id/comments', { preHandler: [app.authenticate] }, async (request, reply) => {
+  app.post('/:id/comments', { preValidation: [app.authenticate], schema: { params: idParamsSchema, body: commentSchema, tags: ['Tasks'], summary: 'Göreve yorum ekle' } }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = commentSchema.parse(request.body);
     const staffUser = request.staffUser!;

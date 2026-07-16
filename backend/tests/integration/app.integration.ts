@@ -55,5 +55,13 @@ describe('gerçek PostgreSQL + Redis entegrasyonu', () => {
     expect(document.paths['/reports/overview'].get.parameters).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: 'period', in: 'query' })]),
     );
+    expect(document.paths['/tasks'].post.requestBody).toBeDefined();
+    expect(document.paths['/tasks/{id}/status'].patch.requestBody).toBeDefined();
+    expect(document.paths['/attachments/{id}'].get.parameters).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'token', in: 'query' })]),
+    );
+    expect(document.paths['/events/staff'].get.parameters).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'ticket', in: 'query' })]),
+    );
   });
 });
