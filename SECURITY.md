@@ -191,6 +191,9 @@ Bunlar bilinçli tercihlerdir, bozma:
 - **Şifre kasası:** AES-256-GCM (authenticated encryption), anahtar yalnızca ortam
   değişkeninde, liste endpoint'i şifreleri hiç döndürmez, her `reveal` audit log'lanır.
 - **Rate limiting:** global 100/dk, staff login 5/dk, public lookup 10/5dk.
+- **Opsiyonel TOTP MFA:** Personel hesapları authenticator tabanlı ikinci aşamayı
+  etkinleştirebilir. TOTP sırrı AES-256-GCM ile şifrelenir; login challenge Redis'te
+  5 dakika, kurulum sırrı 10 dakika tutulur.
 - **Dosya yükleme:** MIME allowlist + dosya adı sanitizasyonu + boyut sınırı +
   uzantının doğrulanmış MIME'dan türetilmesi. SVG logo allowlist'te DEĞİLDİR
   (aktif içerik formatı).

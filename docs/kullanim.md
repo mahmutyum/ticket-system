@@ -109,6 +109,11 @@ Giriş: `/staff/login`. Oturum 15 dakikalık access token + 7 günlük refresh c
 yönetilir; sekmeyi kapatıp açtığında oturum korunur, "Çıkış" dediğinde sunucu tarafında
 gerçekten iptal edilir.
 
+Giriş yaptıktan sonra **Hesap ve Güvenlik** ekranından authenticator tabanlı iki aşamalı
+doğrulama etkinleştirilebilir. Kurulum anahtarı 10 dakika geçerlidir; etkinleştirme için
+uygulamanın ürettiği ilk 6 haneli kod doğrulanır. Sonraki girişlerde şifreden sonra bu kod
+istenir.
+
 ### Dashboard — `/staff`
 
 Açık/işlemdeki/çözülen ticket sayıları, SLA durumu (yaklaşan ve aşılmış), üzerine atanmış

@@ -244,6 +244,8 @@ model Staff {
   phone        String?
   isActive     Boolean   @default(true) @map("is_active")
   avatarUrl    String?   @map("avatar_url")
+  mfaSecretEnc String?   @map("mfa_secret_enc")
+  mfaEnabled   Boolean   @default(false) @map("mfa_enabled")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 

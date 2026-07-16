@@ -11,6 +11,8 @@ export default function AccountPage() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [busy, setBusy] = useState(false);
+  const [mfaSetup, setMfaSetup] = useState<{ secret: string; uri: string } | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
 
@@ -43,6 +45,18 @@ export default function AccountPage() {
     }
   };
 
+  const startMfa = async () => {
+    const response = await api.post('/auth/staff/mfa/setup');
+    setMfaSetup(response.data.data);
+  };
+
+  const enableMfa = async () => {
+    await api.post('/auth/staff/mfa/enable', { code: mfaCode });
+    toast.success('İki aşamalı doğrulama etkinleştirildi');
+    setMfaSetup(null);
+    setMfaCode('');
+  };
+
   return (
     <div className="max-w-2xl space-y-6">
       <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Hesap ve güvenlik</h1>
@@ -60,6 +74,19 @@ export default function AccountPage() {
           <p className="text-xs text-muted">En az 12 karakter ve dört karakter sınıfından en az üçü.</p>
           <button disabled={busy} className="btn-primary">{busy ? 'Değiştiriliyor…' : 'Şifreyi değiştir'}</button>
         </form>
+      </section>
+      <section className="card p-6 space-y-4">
+        <div><h2 className="font-semibold">İki aşamalı doğrulama</h2><p className="text-sm text-muted">Authenticator uygulamasıyla hesabınıza ikinci koruma katmanı ekleyin.</p></div>
+        {!mfaSetup ? <button onClick={startMfa} className="btn-secondary">MFA kurulumu başlat</button> : <div className="space-y-3">
+          <p className="text-sm">Aşağıdaki anahtarı authenticator uygulamanıza ekleyin:</p>
+          <code className="block break-all rounded bg-gray-100 dark:bg-slate-800 p-3 select-all">{mfaSetup.secret}</code>
+          <a className="text-sm text-primary-600 underline" href={mfaSetup.uri}>Authenticator uygulamasında aç</a>
+          <label className="block text-sm">Üretilen 6 haneli kod
+            <input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={mfaCode}
+              onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, ''))} className="input mt-1 w-full" />
+          </label>
+          <button onClick={enableMfa} disabled={mfaCode.length !== 6} className="btn-primary">Etkinleştir</button>
+        </div>}
       </section>
       <section className="card p-6">
         <div className="flex items-center justify-between gap-4">

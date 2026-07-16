@@ -21,3 +21,15 @@ export const changePasswordSchema = z.object({
   message: 'Yeni şifre mevcut şifreden farklı olmalı',
   path: ['newPassword'],
 });
+
+export const mfaVerifySchema = z.object({
+  challenge: z.string().min(16),
+  code: z.string().regex(/^\d{6}$/, 'Kod 6 haneli olmalı'),
+});
+
+export const mfaCodeSchema = z.object({ code: z.string().regex(/^\d{6}$/) });
+
+export const disableMfaSchema = z.object({
+  password: z.string().min(1),
+  code: z.string().regex(/^\d{6}$/),
+});

@@ -9,6 +9,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [mfaChallenge, setMfaChallenge] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
   const navigate = useNavigate();
   const setAuth = useAuthStore(s => s.setAuth);
 
@@ -16,13 +18,21 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await axios.post('/api/auth/staff/login', { email, password });
+      const res = mfaChallenge
+        ? await axios.post('/api/auth/staff/mfa/verify-login', { challenge: mfaChallenge, code: mfaCode })
+        : await axios.post('/api/auth/staff/login', { email, password });
+      if (res.data.data.mfaRequired) {
+        setMfaChallenge(res.data.data.challenge);
+        toast.success('Authenticator uygulamanızdaki kodu girin');
+        return;
+      }
       const { accessToken, user } = res.data.data;
       setAuth(accessToken, user);
       toast.success(`Hoş geldiniz, ${user.fullName}`);
       navigate('/staff');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Giriş başarısız');
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { error?: string } } }).response?.data?.error;
+      toast.error(message || 'Giriş başarısız');
     } finally {
       setLoading(false);
     }
@@ -40,7 +50,7 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="bg-gray-800 rounded-xl p-6 space-y-4">
-          <div>
+          {!mfaChallenge && <><div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
             <input
               type="email"
@@ -61,14 +71,20 @@ export default function LoginPage() {
               placeholder="••••••••"
               required
             />
-          </div>
+          </div></>}
+          {mfaChallenge && <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Doğrulama kodu</label>
+            <input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6}
+              className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white tracking-[0.35em] text-center"
+              value={mfaCode} onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, ''))} required autoFocus />
+          </div>}
           <button
             type="submit"
             disabled={loading}
             className="w-full btn-primary py-2.5 flex items-center justify-center gap-2"
           >
             <LogIn className="w-4 h-4" />
-            {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
+            {loading ? 'Doğrulanıyor...' : mfaChallenge ? 'Kodu Doğrula' : 'Giriş Yap'}
           </button>
         </form>
       </div>
