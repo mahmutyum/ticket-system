@@ -38,4 +38,15 @@ describe('gerçek PostgreSQL + Redis entegrasyonu', () => {
     const response = await app.inject({ method: 'POST', url: '/auth/staff/login', payload: {} });
     expect(response.statusCode).toBe(400);
   });
+
+  it('OpenAPI yönetim route gövdelerini ve parametrelerini yayınlar', async () => {
+    const response = await app.inject({ method: 'GET', url: '/docs/json' });
+    expect(response.statusCode).toBe(200);
+    const document = response.json();
+    expect(document.paths['/companies'].post.requestBody).toBeDefined();
+    expect(document.paths['/staff/{id}'].put.parameters).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'id', in: 'path' })]),
+    );
+    expect(document.paths['/categories/reorder'].put.requestBody).toBeDefined();
+  });
 });

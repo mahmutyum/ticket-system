@@ -23,6 +23,9 @@ const staffUpdateSchema = z.object({
   isActive: z.boolean().optional(),
   password: strongPassword.optional(),
 });
+const idParamsSchema = z.object({ id: z.string().min(1).max(128) });
+const staffQuerySchema = z.object({ companyId: z.string().cuid().optional() });
+const staffCompaniesSchema = z.object({ companyIds: z.array(z.string().cuid()).max(100) });
 
 /**
  * Bir personelin TÜM oturumlarını kapatır.
@@ -42,7 +45,8 @@ async function deleteAllSessions(app: any, staffId: string): Promise<void> {
 export const staffRoutes: FastifyPluginAsync = async (app) => {
   // List staff (optionally filtered by company assignment)
   app.get('/', {
-    preHandler: [app.authenticate],
+    preValidation: [app.authenticate],
+    schema: { querystring: staffQuerySchema, tags: ['Staff'], summary: 'Personel listesini getir' },
   }, async (request, reply) => {
     const { companyId } = request.query as { companyId?: string };
 
@@ -85,7 +89,8 @@ export const staffRoutes: FastifyPluginAsync = async (app) => {
 
   // Create staff
   app.post('/', {
-    preHandler: [app.requireRole('admin')],
+    preValidation: [app.requireRole('admin')],
+    schema: { body: staffCreateSchema, tags: ['Staff'], summary: 'Personel oluştur' },
   }, async (request, reply) => {
     const body = staffCreateSchema.parse(request.body);
     const passwordHash = await bcrypt.hash(body.password, 12);
@@ -122,7 +127,8 @@ export const staffRoutes: FastifyPluginAsync = async (app) => {
 
   // Update staff
   app.put('/:id', {
-    preHandler: [app.requireRole('admin')],
+    preValidation: [app.requireRole('admin')],
+    schema: { params: idParamsSchema, body: staffUpdateSchema, tags: ['Staff'], summary: 'Personel güncelle' },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = staffUpdateSchema.parse(request.body);
@@ -183,7 +189,8 @@ export const staffRoutes: FastifyPluginAsync = async (app) => {
 
   // Deactivate staff
   app.delete('/:id', {
-    preHandler: [app.requireRole('admin')],
+    preValidation: [app.requireRole('admin')],
+    schema: { params: idParamsSchema, tags: ['Staff'], summary: 'Personeli pasifleştir' },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
 
@@ -209,12 +216,11 @@ export const staffRoutes: FastifyPluginAsync = async (app) => {
   // sınırsız erişim kazanabiliyordu (kapsam her istekte DB'den okunduğu için
   // anında etkili olurdu). Şirket ataması bir yetki kararıdır — admin'de kalır.
   app.put('/:id/companies', {
-    preHandler: [app.requireRole('admin')],
+    preValidation: [app.requireRole('admin')],
+    schema: { params: idParamsSchema, body: staffCompaniesSchema, tags: ['Staff'], summary: 'Personel şirket kapsamını güncelle' },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const body = z.object({
-      companyIds: z.array(z.string().cuid()),
-    }).parse(request.body);
+    const body = staffCompaniesSchema.parse(request.body);
 
     // Delete existing assignments and recreate
     await app.prisma.staffCompany.deleteMany({ where: { staffId: id } });

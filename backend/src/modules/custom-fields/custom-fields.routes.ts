@@ -17,11 +17,13 @@ const customFieldCreateSchema = z.object({
 const customFieldUpdateSchema = customFieldCreateSchema.partial().extend({
   isActive: z.boolean().optional(),
 });
+const idParamsSchema = z.object({ id: z.string().min(1).max(128) });
 
 export const customFieldRoutes: FastifyPluginAsync = async (app) => {
   // Admin: Create custom field
   app.post('/', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { body: customFieldCreateSchema, tags: ['Custom Fields'], summary: 'Özel alan oluştur' },
   }, async (request, reply) => {
     const body = customFieldCreateSchema.parse(request.body);
     const staffUser = request.staffUser!;
@@ -38,7 +40,8 @@ export const customFieldRoutes: FastifyPluginAsync = async (app) => {
 
   // Admin: Update custom field
   app.put('/:id', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { params: idParamsSchema, body: customFieldUpdateSchema, tags: ['Custom Fields'], summary: 'Özel alan güncelle' },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = customFieldUpdateSchema.parse(request.body);
@@ -70,7 +73,8 @@ export const customFieldRoutes: FastifyPluginAsync = async (app) => {
 
   // Admin: Delete
   app.delete('/:id', {
-    preHandler: [app.requireRole('admin')],
+    preValidation: [app.requireRole('admin')],
+    schema: { params: idParamsSchema, tags: ['Custom Fields'], summary: 'Özel alanı pasifleştir' },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     await app.prisma.customField.update({

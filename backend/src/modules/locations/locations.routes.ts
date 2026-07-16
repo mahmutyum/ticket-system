@@ -14,11 +14,13 @@ const locationCreateSchema = z.object({
 const locationUpdateSchema = locationCreateSchema.partial().extend({
   isActive: z.boolean().optional(),
 });
+const idParamsSchema = z.object({ id: z.string().min(1).max(128) });
 
 export const locationRoutes: FastifyPluginAsync = async (app) => {
   // Admin: Create location
   app.post('/', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { body: locationCreateSchema, tags: ['Locations'], summary: 'Lokasyon oluştur' },
   }, async (request, reply) => {
     const body = locationCreateSchema.parse(request.body);
     const staffUser = request.staffUser!;
@@ -35,7 +37,8 @@ export const locationRoutes: FastifyPluginAsync = async (app) => {
 
   // Admin: Update location
   app.put('/:id', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { params: idParamsSchema, body: locationUpdateSchema, tags: ['Locations'], summary: 'Lokasyon güncelle' },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = locationUpdateSchema.parse(request.body);
@@ -70,7 +73,8 @@ export const locationRoutes: FastifyPluginAsync = async (app) => {
 
   // Admin: Soft delete
   app.delete('/:id', {
-    preHandler: [app.requireRole('admin')],
+    preValidation: [app.requireRole('admin')],
+    schema: { params: idParamsSchema, tags: ['Locations'], summary: 'Lokasyonu pasifleştir' },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     await app.prisma.location.update({

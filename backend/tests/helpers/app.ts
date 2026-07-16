@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import type { StaffRole } from '@prisma/client';
 import { authPlugin } from '../../src/plugins/auth.js';
 import { config } from '../../src/config/index.js';
+import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 
 /**
  * Route seviyesinde yetkilendirme testleri için minimal uygulama.
@@ -15,6 +16,8 @@ import { config } from '../../src/config/index.js';
  */
 export function buildTestApp(prismaStub: any, redisStub: any = {}): FastifyInstance {
   const app = Fastify();
+  app.setValidatorCompiler(validatorCompiler);
+  app.setSerializerCompiler(serializerCompiler);
   app.register(cookie, { secret: config.JWT_SECRET });
   app.decorate('prisma', prismaStub);
   // `authenticate` her istekte `staff:invalidated:<id>` anahtarını okur (rol

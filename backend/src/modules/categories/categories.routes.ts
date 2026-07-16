@@ -17,11 +17,14 @@ const categoryCreateSchema = z.object({
 const categoryUpdateSchema = categoryCreateSchema.partial().extend({
   isActive: z.boolean().optional(),
 });
+const idParamsSchema = z.object({ id: z.string().min(1).max(128) });
+const reorderSchema = z.array(z.object({ id: z.string().cuid(), sortOrder: z.number().int() }));
 
 export const categoryRoutes: FastifyPluginAsync = async (app) => {
   // Staff: tüm aktif kategorileri listele (raporlar filtre dropdown'ı için)
   app.get('/', {
-    preHandler: [app.authenticate],
+    preValidation: [app.authenticate],
+    schema: { tags: ['Categories'], summary: 'Aktif kategorileri listele' },
   }, async (_request, reply) => {
     const categories = await app.prisma.category.findMany({
       where: { isActive: true },
@@ -33,12 +36,10 @@ export const categoryRoutes: FastifyPluginAsync = async (app) => {
 
   // Admin: Reorder — MUST be before /:id
   app.put('/reorder', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { body: reorderSchema, tags: ['Categories'], summary: 'Kategori sırasını güncelle' },
   }, async (request, reply) => {
-    const body = z.array(z.object({
-      id: z.string().cuid(),
-      sortOrder: z.number().int(),
-    })).parse(request.body);
+    const body = reorderSchema.parse(request.body);
 
     // Sıralanan kategorilerin TAMAMI kapsam içinde olmalı — id listesi
     // istemciden geliyor ve şirket bilgisi taşımıyor.
@@ -81,7 +82,8 @@ export const categoryRoutes: FastifyPluginAsync = async (app) => {
 
   // Admin: Create category
   app.post('/', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { body: categoryCreateSchema, tags: ['Categories'], summary: 'Kategori oluştur' },
   }, async (request, reply) => {
     const body = categoryCreateSchema.parse(request.body);
     const staffUser = request.staffUser!;
@@ -100,7 +102,8 @@ export const categoryRoutes: FastifyPluginAsync = async (app) => {
 
   // Admin: Update category
   app.put('/:id', {
-    preHandler: [app.requireRole('admin', 'it_manager')],
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: { params: idParamsSchema, body: categoryUpdateSchema, tags: ['Categories'], summary: 'Kategori güncelle' },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = categoryUpdateSchema.parse(request.body);
@@ -132,7 +135,8 @@ export const categoryRoutes: FastifyPluginAsync = async (app) => {
 
   // Admin: Soft delete
   app.delete('/:id', {
-    preHandler: [app.requireRole('admin')],
+    preValidation: [app.requireRole('admin')],
+    schema: { params: idParamsSchema, tags: ['Categories'], summary: 'Kategoriyi pasifleştir' },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     await app.prisma.category.update({
