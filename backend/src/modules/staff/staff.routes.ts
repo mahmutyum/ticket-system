@@ -1,10 +1,12 @@
-import { FastifyInstance, FastifyPluginAsync } from 'fastify';
+import type { FastifyInstance } from 'fastify';
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { Prisma, StaffRole } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { createAuditLog } from '../../middleware/audit.js';
 import { invalidateAccessTokens } from '../../plugins/auth.js';
 import { strongPassword } from '../../utils/validation.js';
+import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
 
 const staffCreateSchema = z.object({
   email: z.string().email(),
@@ -26,6 +28,26 @@ const staffUpdateSchema = z.object({
 const idParamsSchema = z.object({ id: z.string().min(1).max(128) });
 const staffQuerySchema = z.object({ companyId: z.string().cuid().optional() });
 const staffCompaniesSchema = z.object({ companyIds: z.array(z.string().cuid()).max(100) });
+const staffProfileSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  fullName: z.string(),
+  role: z.nativeEnum(StaffRole),
+  department: z.string().nullable(),
+});
+const staffMutationSchema = staffProfileSchema.extend({
+  phone: z.string().nullable(),
+  isActive: z.boolean(),
+});
+const staffListSchema = staffMutationSchema.extend({
+  avatarUrl: z.string().nullable(),
+  createdAt: z.date(),
+  _count: z.object({ assignedTickets: z.number().int().nonnegative() }),
+  assignedCompanies: z.array(z.object({
+    companyId: z.string(),
+    company: z.object({ name: z.string() }),
+  })),
+});
 
 /**
  * Bir personelin TÜM oturumlarını kapatır.
@@ -42,13 +64,21 @@ async function deleteAllSessions(app: FastifyInstance, staffId: string): Promise
   }
 }
 
-export const staffRoutes: FastifyPluginAsync = async (app) => {
+export const staffRoutes: FastifyPluginAsyncZod = async (app) => {
   // List staff (optionally filtered by company assignment)
   app.get('/', {
     preValidation: [app.authenticate],
-    schema: { querystring: staffQuerySchema, tags: ['Staff'], summary: 'Personel listesini getir' },
+    schema: {
+      querystring: staffQuerySchema,
+      tags: ['Staff'],
+      summary: 'Personel listesini getir',
+      response: {
+        200: z.object({ success: z.literal(true), data: z.array(staffListSchema) }),
+        ...commonErrorResponses,
+      },
+    },
   }, async (request, reply) => {
-    const { companyId } = request.query as { companyId?: string };
+    const { companyId } = request.query;
 
     const where: Prisma.StaffWhereInput = {};
     if (companyId) {
@@ -90,9 +120,17 @@ export const staffRoutes: FastifyPluginAsync = async (app) => {
   // Create staff
   app.post('/', {
     preValidation: [app.requireRole('admin')],
-    schema: { body: staffCreateSchema, tags: ['Staff'], summary: 'Personel oluştur' },
+    schema: {
+      body: staffCreateSchema,
+      tags: ['Staff'],
+      summary: 'Personel oluştur',
+      response: {
+        201: z.object({ success: z.literal(true), data: staffProfileSchema }),
+        ...commonErrorResponses,
+      },
+    },
   }, async (request, reply) => {
-    const body = staffCreateSchema.parse(request.body);
+    const body = request.body;
     const passwordHash = await bcrypt.hash(body.password, 12);
 
     const staff = await app.prisma.staff.create({
@@ -128,10 +166,19 @@ export const staffRoutes: FastifyPluginAsync = async (app) => {
   // Update staff
   app.put('/:id', {
     preValidation: [app.requireRole('admin')],
-    schema: { params: idParamsSchema, body: staffUpdateSchema, tags: ['Staff'], summary: 'Personel güncelle' },
+    schema: {
+      params: idParamsSchema,
+      body: staffUpdateSchema,
+      tags: ['Staff'],
+      summary: 'Personel güncelle',
+      response: {
+        200: z.object({ success: z.literal(true), data: staffMutationSchema }),
+        ...commonErrorResponses,
+      },
+    },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const body = staffUpdateSchema.parse(request.body);
+    const { id } = request.params;
+    const body = request.body;
 
     const before = await app.prisma.staff.findUnique({
       where: { id },
@@ -188,9 +235,14 @@ export const staffRoutes: FastifyPluginAsync = async (app) => {
   // Deactivate staff
   app.delete('/:id', {
     preValidation: [app.requireRole('admin')],
-    schema: { params: idParamsSchema, tags: ['Staff'], summary: 'Personeli pasifleştir' },
+    schema: {
+      params: idParamsSchema,
+      tags: ['Staff'],
+      summary: 'Personeli pasifleştir',
+      response: { 200: successResponseSchema, ...commonErrorResponses },
+    },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
 
     await app.prisma.staff.update({
       where: { id },
@@ -215,10 +267,16 @@ export const staffRoutes: FastifyPluginAsync = async (app) => {
   // anında etkili olurdu). Şirket ataması bir yetki kararıdır — admin'de kalır.
   app.put('/:id/companies', {
     preValidation: [app.requireRole('admin')],
-    schema: { params: idParamsSchema, body: staffCompaniesSchema, tags: ['Staff'], summary: 'Personel şirket kapsamını güncelle' },
+    schema: {
+      params: idParamsSchema,
+      body: staffCompaniesSchema,
+      tags: ['Staff'],
+      summary: 'Personel şirket kapsamını güncelle',
+      response: { 200: successResponseSchema, ...commonErrorResponses },
+    },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const body = staffCompaniesSchema.parse(request.body);
+    const { id } = request.params;
+    const body = request.body;
 
     // Delete existing assignments and recreate
     await app.prisma.staffCompany.deleteMany({ where: { staffId: id } });
