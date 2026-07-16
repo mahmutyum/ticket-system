@@ -84,5 +84,7 @@ describe('gerçek PostgreSQL + Redis entegrasyonu', () => {
     expect(document.paths['/auth/staff/change-password'].post.requestBody).toBeDefined();
     expect(document.paths['/auth/staff/mfa/enable'].post.requestBody).toBeDefined();
     expect(document.paths['/auth/staff/sessions'].get.summary).toBeDefined();
+    expect(document.paths['/auth/staff/login'].post.responses['200'].content['application/json'].schema).toBeDefined();
+    expect(document.paths['/auth/staff/login'].post.responses['401'].content['application/json'].schema).toBeDefined();
   });
 });

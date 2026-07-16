@@ -1,7 +1,8 @@
 import { FastifyPluginAsync } from 'fastify';
 import bcrypt from 'bcrypt';
 import type Redis from 'ioredis';
-import { staffLoginSchema, emailLookupSchema, refreshTokenSchema, changePasswordSchema, mfaVerifySchema, mfaCodeSchema, disableMfaSchema } from './auth.schema.js';
+import { staffLoginSchema, emailLookupSchema, refreshTokenSchema, changePasswordSchema, mfaVerifySchema, mfaCodeSchema, disableMfaSchema, loginResponseSchema, refreshResponseSchema } from './auth.schema.js';
+import { commonErrorResponses } from '../../utils/api-schema.js';
 import {
   generateTokens,
   verifyRefreshToken,
@@ -55,7 +56,12 @@ const DUMMY_HASH = '$2b$12$C6UzMDM.H6dfI/f/IKcEe.7iHW7hVQZ2Nl3xkZL8XxJvGqZ0hqZ0G
 export const authRoutes: FastifyPluginAsync = async (app) => {
   // Staff login
   app.post('/staff/login', {
-    schema: { body: staffLoginSchema, tags: ['Auth'], summary: 'Personel oturumu açar' },
+    schema: {
+      body: staffLoginSchema,
+      response: { 200: loginResponseSchema, ...commonErrorResponses },
+      tags: ['Auth'],
+      summary: 'Personel oturumu açar',
+    },
     config: {
       rateLimit: { max: 5, timeWindow: '1 minute' },
     },
@@ -147,7 +153,12 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.post('/staff/mfa/verify-login', {
-    schema: { body: mfaVerifySchema, tags: ['Auth'], summary: 'MFA giriş doğrulamasını tamamlar' },
+    schema: {
+      body: mfaVerifySchema,
+      response: { 200: loginResponseSchema, ...commonErrorResponses },
+      tags: ['Auth'],
+      summary: 'MFA giriş doğrulamasını tamamlar',
+    },
     config: { rateLimit: { max: 10, timeWindow: '5 minutes' } },
   }, async (request, reply) => {
     const body = mfaVerifySchema.parse(request.body);
@@ -171,7 +182,12 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   // Refresh token
   app.post('/staff/refresh', {
-    schema: { body: refreshTokenSchema.optional(), tags: ['Auth'], summary: 'Erişim tokenını yeniler' },
+    schema: {
+      body: refreshTokenSchema.optional(),
+      response: { 200: refreshResponseSchema, ...commonErrorResponses },
+      tags: ['Auth'],
+      summary: 'Erişim tokenını yeniler',
+    },
     config: { rateLimit: { max: 20, timeWindow: '1 minute' } },
   }, async (request, reply) => {
     const bodyToken = refreshTokenSchema.safeParse(request.body);

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { strongPassword } from '../../utils/validation.js';
+import { StaffRole } from '@prisma/client';
 
 export const staffLoginSchema = z.object({
   email: z.string().email('Geçerli bir email adresi girin'),
@@ -32,4 +33,26 @@ export const mfaCodeSchema = z.object({ code: z.string().regex(/^\d{6}$/) });
 export const disableMfaSchema = z.object({
   password: z.string().min(1),
   code: z.string().regex(/^\d{6}$/),
+});
+
+const staffProfileSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  fullName: z.string(),
+  role: z.nativeEnum(StaffRole),
+  department: z.string().nullable(),
+  avatarUrl: z.string().nullable(),
+});
+
+export const loginResponseSchema = z.object({
+  success: z.literal(true),
+  data: z.union([
+    z.object({ mfaRequired: z.literal(true), challenge: z.string() }),
+    z.object({ accessToken: z.string(), user: staffProfileSchema }),
+  ]),
+});
+
+export const refreshResponseSchema = z.object({
+  success: z.literal(true),
+  data: z.object({ accessToken: z.string() }),
 });
