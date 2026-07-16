@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { broadcastToStaff } from '../../services/sse.service.js';
 import { queueEmail } from '../../jobs/queue.js';
@@ -97,7 +97,7 @@ const trackResponseSchema = z.object({
   data: z.object({ accessToken: z.string() }),
 });
 
-export const publicRoutes: FastifyPluginAsync = async (app) => {
+export const publicRoutes: FastifyPluginAsyncZod = async (app) => {
   // Public: View ticket by access token
   app.get('/ticket/:accessToken', {
     schema: {
@@ -107,7 +107,7 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
       response: { 200: publicTicketResponseSchema, ...commonErrorResponses },
     },
   }, async (request, reply) => {
-    const { accessToken } = request.params as { accessToken: string };
+    const { accessToken } = request.params;
 
     const ticket = await app.prisma.ticket.findUnique({
       where: { accessToken },
@@ -187,9 +187,9 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
     },
     config: { rateLimit: { max: 20, timeWindow: '10 minutes' } },
   }, async (request, reply) => {
-    const { accessToken } = request.params as { accessToken: string };
-    // Kimliksiz uç — kırpma ve üst sınır zorunlu.
-    const body = publicReplySchema.parse(request.body);
+    const { accessToken } = request.params;
+    // Kimliksiz uç — Fastify sınırında kırpma ve üst sınır uygulanır.
+    const body = request.body;
 
     const ticket = await app.prisma.ticket.findUnique({
       where: { accessToken },
@@ -266,7 +266,7 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
     },
     config: { rateLimit: { max: 5, timeWindow: '1 minute' } },
   }, async (request, reply) => {
-    const { accessToken } = request.params as { accessToken: string };
+    const { accessToken } = request.params;
 
     const ticket = await app.prisma.ticket.findUnique({
       where: { accessToken },
