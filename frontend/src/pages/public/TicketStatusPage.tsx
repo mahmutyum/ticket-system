@@ -7,10 +7,12 @@ import {
   Clock, Building2, MapPin, Tag, User, Send,
   Calendar, MapPinned, Upload, Paperclip, FileText,
 } from 'lucide-react';
-import { STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, type Ticket } from '../../types';
+import { STATUS_LABELS, type Ticket } from '../../types';
 import { useTicketSSE } from '../../hooks/useSSE';
 import { useQueryClient } from '@tanstack/react-query';
 import { publicAttachmentUrl } from '../../utils/download';
+import { EmptyState, SkeletonRows } from '../../components/ui/AsyncState';
+import { PriorityBadge, StatusBadge } from '../../components/ui/Badge';
 
 export default function TicketStatusPage() {
   const { accessToken } = useParams<{ accessToken: string }>();
@@ -47,60 +49,53 @@ export default function TicketStatusPage() {
   };
 
   if (isLoading) {
-    return <div className="text-center py-12 text-gray-400">Yükleniyor...</div>;
+    return <div className="card mx-auto max-w-3xl overflow-hidden p-0"><SkeletonRows rows={7} /></div>;
   }
 
   if (!ticket) {
     return (
-      <div className="text-center py-12">
-        <h2 className="text-xl font-bold text-gray-700">Talep Bulunamadı</h2>
-        <p className="text-gray-500 mt-2">Geçersiz veya süresi dolmuş bağlantı.</p>
-      </div>
+      <div className="card mx-auto max-w-2xl"><EmptyState title="Talep bulunamadı" description="Bağlantı geçersiz veya erişim süresi dolmuş olabilir. Talep takip ekranından yeniden erişim isteyin." /></div>
     );
   }
 
   const closedStatuses = ['resolved', 'closed'];
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       {/* Header */}
       <div className="card">
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex flex-col items-start justify-between gap-4 mb-5 sm:flex-row">
           <div>
-            <span className="text-sm font-mono text-primary-600">{ticket.ticketNumber}</span>
-            <h2 className="text-xl font-bold mt-1">{ticket.subject}</h2>
+            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-600">{ticket.ticketNumber}</span>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">{ticket.subject}</h2>
           </div>
           <div className="flex gap-2">
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${STATUS_COLORS[ticket.status] || ''}`}>
-              {STATUS_LABELS[ticket.status] || ticket.status}
-            </span>
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${PRIORITY_COLORS[ticket.priority] || ''}`}>
-              {PRIORITY_LABELS[ticket.priority] || ticket.priority}
-            </span>
+            <StatusBadge status={ticket.status} />
+            <PriorityBadge priority={ticket.priority} />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-          <div className="flex items-center gap-2 text-gray-500">
+        <div className="surface-2 grid grid-cols-2 gap-4 rounded-2xl p-4 text-sm sm:grid-cols-4">
+          <div className="flex items-center gap-2 text-muted">
             <Building2 className="w-4 h-4" />
             <span>{ticket.company.name}</span>
           </div>
-          <div className="flex items-center gap-2 text-gray-500">
+          <div className="flex items-center gap-2 text-muted">
             <MapPin className="w-4 h-4" />
             <span>{ticket.location.name}</span>
           </div>
-          <div className="flex items-center gap-2 text-gray-500">
+          <div className="flex items-center gap-2 text-muted">
             <Tag className="w-4 h-4" />
             <span>{ticket.category.name}</span>
           </div>
-          <div className="flex items-center gap-2 text-gray-500">
+          <div className="flex items-center gap-2 text-muted">
             <Clock className="w-4 h-4" />
             <span>{new Date(ticket.createdAt).toLocaleDateString('tr-TR')}</span>
           </div>
         </div>
 
         {ticket.assignedTo && (
-          <div className="mt-3 flex items-center gap-2 text-sm text-gray-600">
+          <div className="mt-4 flex items-center gap-2 text-sm text-muted">
             <User className="w-4 h-4" />
             <span>Atanan: <strong>{ticket.assignedTo.fullName}</strong></span>
           </div>
@@ -109,19 +104,19 @@ export default function TicketStatusPage() {
 
       {/* Description */}
       <div className="card">
-        <h3 className="text-sm font-semibold text-gray-500 mb-2">Açıklama</h3>
-        <p className="text-gray-800 whitespace-pre-wrap">{ticket.description}</p>
+        <h3 className="mb-3 font-semibold">Talep açıklaması</h3>
+        <p className="whitespace-pre-wrap leading-7">{ticket.description}</p>
       </div>
 
       {/* Custom field values */}
       {ticket.customValues && ticket.customValues.length > 0 && (
         <div className="card">
-          <h3 className="text-sm font-semibold text-gray-500 mb-3">Ek Bilgiler</h3>
-          <div className="grid grid-cols-2 gap-3 text-sm">
+          <h3 className="mb-3 font-semibold">Ek bilgiler</h3>
+          <div className="grid gap-3 text-sm sm:grid-cols-2">
             {ticket.customValues.map(cv => (
-              <div key={cv.id}>
-                <span className="text-gray-500">{cv.customField?.fieldLabel}:</span>
-                <span className="ml-2 font-medium">{cv.value}</span>
+              <div key={cv.id} className="surface-2 rounded-xl p-3">
+                <span className="block text-xs text-muted">{cv.customField?.fieldLabel}</span>
+                <span className="mt-1 block font-medium">{cv.value}</span>
               </div>
             ))}
           </div>
@@ -152,7 +147,7 @@ export default function TicketStatusPage() {
 
       {/* Timeline */}
       <div className="card">
-        <h3 className="text-sm font-semibold text-gray-500 mb-4">Süreç Geçmişi</h3>
+        <h3 className="mb-4 font-semibold">Süreç geçmişi</h3>
         <div className="space-y-4">
           {ticket.history?.map(h => (
             <div key={h.id || h.createdAt} className="flex gap-3 text-sm">
@@ -177,14 +172,14 @@ export default function TicketStatusPage() {
           {ticket.notes?.map(note => (
             <div key={note.id} className="flex gap-3 text-sm">
               <div className="w-2 h-2 rounded-full bg-primary-400 mt-1.5 flex-shrink-0" />
-              <div className="flex-1 bg-primary-50 rounded-lg p-3">
+              <div className="flex-1 rounded-xl bg-primary-50 p-3 dark:bg-primary-500/10">
                 <div className="flex justify-between mb-1">
                   <span className="font-medium text-primary-700">{note.createdBy.fullName}</span>
                   <span className="text-gray-400 text-xs">
                     {new Date(note.createdAt).toLocaleString('tr-TR')}
                   </span>
                 </div>
-                <p className="text-gray-700">{note.content}</p>
+                <p>{note.content}</p>
               </div>
             </div>
           ))}
@@ -207,7 +202,7 @@ export default function TicketStatusPage() {
                 href={publicAttachmentUrl(att.id, accessToken!)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 text-sm"
+                className="flex items-center gap-3 rounded-xl p-3 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-slate-800"
               >
                 <FileText className="w-4 h-4 text-gray-400" />
                 <span className="flex-1 truncate">{att.fileName}</span>
@@ -221,15 +216,16 @@ export default function TicketStatusPage() {
       {/* Reply form + file upload */}
       {!closedStatuses.includes(ticket.status) && (
         <div className="card">
-          <h3 className="text-sm font-semibold text-gray-500 mb-3">Yanıt Gönder</h3>
+          <h3 className="mb-1 font-semibold">Yanıt gönder</h3>
+          <p className="mb-4 text-sm text-muted">Mesajınız destek ekibine iletilir ve süreç geçmişinde görünür.</p>
           <form onSubmit={handleReply} className="space-y-3">
             <textarea
-              className="input-field min-h-[80px]"
+              className="input-field min-h-[120px]"
               value={reply}
               onChange={e => setReply(e.target.value)}
               placeholder="Mesajınızı yazın..."
             />
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <button type="submit" disabled={sending || !reply.trim()} className="btn-primary flex items-center gap-2">
                 <Send className="w-4 h-4" />
                 {sending ? 'Gönderiliyor...' : 'Gönder'}

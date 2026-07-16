@@ -14,7 +14,7 @@ async function mockPublicApi(page: Page) {
   }));
 }
 
-for (const path of ['/', '/staff/login']) {
+for (const path of ['/', '/create', '/track', '/staff/login']) {
   test(`${path} kritik erişilebilirlik ihlali taşımıyor`, async ({ page }) => {
     await mockPublicApi(page);
     await page.goto(path);

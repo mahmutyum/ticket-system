@@ -250,17 +250,25 @@ export default function CreateTicketPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="mx-auto max-w-3xl">
+      <div className="mb-8 text-center">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-600">Yeni destek talebi</p>
+        <h2 className="mt-2 text-3xl font-bold tracking-tight">Sorununu birlikte çözelim</h2>
+        <p className="mx-auto mt-2 max-w-xl text-sm text-muted">Gerekli bilgileri adım adım tamamla. Göndermeden önce tüm detayları kontrol edebilirsin.</p>
+      </div>
       {/* Step indicator */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="mb-3 flex items-center justify-between sm:hidden"><span className="text-sm font-semibold">{STEPS[step]}</span><span className="text-xs text-muted">Adım {step + 1} / {STEPS.length}</span></div>
+      <div className="mb-8 h-2 overflow-hidden rounded-full bg-gray-200 sm:hidden dark:bg-slate-800"><div className="h-full rounded-full bg-primary-600 transition-all" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} /></div>
+      <div className="mb-8 hidden items-center justify-between sm:flex" aria-label="Talep oluşturma adımları">
         {STEPS.map((label, i) => (
           <div key={label} className="flex items-center">
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                 i < step ? 'bg-green-500 text-white' :
                 i === step ? 'bg-primary-600 text-white' :
-                'bg-gray-200 text-gray-500'
+                'bg-gray-200 text-gray-500 dark:bg-slate-800 dark:text-slate-400'
               }`}
+              aria-current={i === step ? 'step' : undefined}
             >
               {i < step ? '✓' : i + 1}
             </div>
@@ -274,21 +282,22 @@ export default function CreateTicketPage() {
         ))}
       </div>
 
-      <div className="card">
+      <div className="card overflow-hidden p-5 sm:p-8">
         {/* Step 0: Email */}
         {step === 0 && (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Bilgileriniz</h3>
+            <div><p className="text-xs font-semibold uppercase tracking-wide text-primary-600">Adım 1</p><h3 className="mt-1 text-xl font-semibold">İletişim bilgileriniz</h3></div>
             {isPortalLocked && portalCompany && (
               <div className="flex items-center gap-2 bg-primary-50 text-primary-700 px-3 py-2 rounded-lg text-sm">
                 <Building2 className="w-4 h-4" />
                 <span><strong>{portalCompany.name}</strong> destek portalı</span>
               </div>
             )}
-            <p className="text-sm text-gray-500">Daha önce talep oluşturduysanız bilgileriniz otomatik getirilecektir.</p>
+            <p className="text-sm text-muted">Talep bağlantısı ve bilgilendirmeler bu e-posta adresine gönderilir.</p>
             <div>
-              <label className="block text-sm font-medium mb-1">Email Adresiniz *</label>
+              <label htmlFor="requester-email" className="block text-sm font-medium mb-1">Email Adresiniz *</label>
               <input
+                id="requester-email"
                 type="email"
                 className="input-field"
                 value={form.email}
@@ -304,8 +313,9 @@ export default function CreateTicketPage() {
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Ad Soyad *</label>
+              <label htmlFor="requester-name" className="block text-sm font-medium mb-1">Ad Soyad *</label>
               <input
+                id="requester-name"
                 type="text"
                 className="input-field"
                 value={form.fullName}
@@ -314,10 +324,11 @@ export default function CreateTicketPage() {
                 maxLength={LIMITS.fullName.max}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium mb-1">Telefon</label>
+                <label htmlFor="requester-phone" className="block text-sm font-medium mb-1">Telefon</label>
                 <input
+                  id="requester-phone"
                   type="tel"
                   className="input-field"
                   value={form.phone}
@@ -326,8 +337,9 @@ export default function CreateTicketPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Departman</label>
+                <label htmlFor="requester-department" className="block text-sm font-medium mb-1">Departman</label>
                 <input
+                  id="requester-department"
                   type="text"
                   className="input-field"
                   value={form.department}
@@ -344,15 +356,15 @@ export default function CreateTicketPage() {
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <Building2 className="w-5 h-5" /> Şirket Seçimi
             </h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               {companies?.map(company => (
                 <button
                   key={company.id}
                   onClick={() => update({ companyId: company.id, locationId: '', categoryId: '' })}
                   className={`p-4 rounded-xl border-2 text-left transition-all ${
                     form.companyId === company.id
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10'
+                      : 'border-gray-200 hover:border-gray-300 dark:border-slate-700 dark:hover:border-slate-600'
                   }`}
                 >
                   <span className="font-medium">{company.name}</span>
@@ -383,8 +395,8 @@ export default function CreateTicketPage() {
                     onClick={() => update({ locationId: loc.id })}
                     className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
                       form.locationId === loc.id
-                        ? 'border-primary-500 bg-primary-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10'
+                        : 'border-gray-200 hover:border-gray-300 dark:border-slate-700 dark:hover:border-slate-600'
                     }`}
                   >
                     <span className="font-medium">{loc.name}</span>
@@ -409,8 +421,8 @@ export default function CreateTicketPage() {
                   onClick={() => update({ categoryId: cat.id })}
                   className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
                     form.categoryId === cat.id
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10'
+                      : 'border-gray-200 hover:border-gray-300 dark:border-slate-700 dark:hover:border-slate-600'
                   }`}
                 >
                   <span className="font-medium">{cat.name}</span>
@@ -433,8 +445,9 @@ export default function CreateTicketPage() {
               yazar, gönderir ve sunucudan 400 yer — hata formda değil ağda çıkar.
             */}
             <div>
-              <label className="block text-sm font-medium mb-1">Konu *</label>
+              <label htmlFor="ticket-subject" className="block text-sm font-medium mb-1">Konu *</label>
               <input
+                id="ticket-subject"
                 type="text"
                 className="input-field"
                 value={form.subject}
@@ -447,8 +460,9 @@ export default function CreateTicketPage() {
               <FieldHint value={form.subject} {...LIMITS.subject} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Açıklama *</label>
+              <label htmlFor="ticket-description" className="block text-sm font-medium mb-1">Açıklama *</label>
               <textarea
+                id="ticket-description"
                 className="input-field min-h-[120px]"
                 value={form.description}
                 onChange={e => update({ description: e.target.value })}
@@ -460,8 +474,9 @@ export default function CreateTicketPage() {
               <FieldHint value={form.description} {...LIMITS.description} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Öncelik</label>
+              <label htmlFor="ticket-priority" className="block text-sm font-medium mb-1">Öncelik</label>
               <select
+                id="ticket-priority"
                 className="input-field"
                 value={form.priority}
                 onChange={e => update({ priority: e.target.value })}
@@ -475,7 +490,7 @@ export default function CreateTicketPage() {
 
             {/* File upload */}
             <div>
-              <label className="block text-sm font-medium mb-1">Dosya Ekle</label>
+              <span className="block text-sm font-medium mb-1">Dosya Ekle</span>
               <label className="flex items-center gap-2 btn-secondary text-sm cursor-pointer w-fit">
                 <Upload className="w-4 h-4" /> Dosya Seç
                 <input type="file" className="hidden" onChange={handleFileAdd} multiple />
@@ -483,11 +498,11 @@ export default function CreateTicketPage() {
               {files.length > 0 && (
                 <div className="mt-2 space-y-1">
                   {files.map((f, i) => (
-                    <div key={i} className="flex items-center gap-2 text-sm bg-gray-50 rounded-lg px-3 py-1.5">
+                    <div key={i} className="surface-2 flex items-center gap-2 rounded-lg px-3 py-2 text-sm">
                       <Paperclip className="w-3 h-3 text-gray-400" />
                       <span className="flex-1 truncate">{f.name}</span>
                       <span className="text-xs text-gray-400">{(f.size / 1024).toFixed(0)} KB</span>
-                      <button onClick={() => handleFileRemove(i)} className="text-red-400 hover:text-red-600">
+                      <button onClick={() => handleFileRemove(i)} className="icon-button min-h-8 min-w-8 border-0 text-red-500" aria-label={`${f.name} dosyasını kaldır`}>
                         <XCircle className="w-4 h-4" />
                       </button>
                     </div>
@@ -502,11 +517,12 @@ export default function CreateTicketPage() {
                 <h4 className="text-sm font-medium text-gray-700">Ek Bilgiler</h4>
                 {customFields.map(field => (
                   <div key={field.id}>
-                    <label className="block text-sm font-medium mb-1">
+                    <label htmlFor={`custom-field-${field.id}`} className="block text-sm font-medium mb-1">
                       {field.fieldLabel} {field.required && '*'}
                     </label>
                     {field.fieldType === 'select' ? (
                       <select
+                        id={`custom-field-${field.id}`}
                         className="input-field"
                         value={form.customFields[field.id] || ''}
                         onChange={e => update({
@@ -520,6 +536,7 @@ export default function CreateTicketPage() {
                       </select>
                     ) : field.fieldType === 'textarea' ? (
                       <textarea
+                        id={`custom-field-${field.id}`}
                         className="input-field"
                         value={form.customFields[field.id] || ''}
                         onChange={e => update({
@@ -529,6 +546,7 @@ export default function CreateTicketPage() {
                       />
                     ) : (
                       <input
+                        id={`custom-field-${field.id}`}
                         type={field.fieldType === 'phone' ? 'tel' : field.fieldType === 'url' ? 'url' : field.fieldType === 'email' ? 'email' : field.fieldType === 'number' ? 'number' : 'text'}
                         className="input-field"
                         value={form.customFields[field.id] || ''}
@@ -549,7 +567,7 @@ export default function CreateTicketPage() {
         {step === 5 && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Talep Özeti</h3>
-            <div className="bg-gray-50 rounded-lg p-4 space-y-3 text-sm">
+            <div className="surface-2 rounded-2xl p-4 space-y-3 text-sm sm:p-5">
               <div className="flex justify-between">
                 <span className="text-gray-500">Email:</span>
                 <span className="font-medium">{form.email}</span>
@@ -577,7 +595,7 @@ export default function CreateTicketPage() {
               </div>
               <div>
                 <span className="text-gray-500">Açıklama:</span>
-                <p className="mt-1 text-gray-800">{form.description}</p>
+                <p className="mt-1 whitespace-pre-wrap">{form.description}</p>
               </div>
               {files.length > 0 && (
                 <>
@@ -599,7 +617,7 @@ export default function CreateTicketPage() {
         )}
 
         {/* Navigation */}
-        <div className="flex justify-between mt-8 pt-4 border-t">
+        <div className="sticky -bottom-5 -mx-5 mt-8 flex justify-between border-t border-subtle bg-white/95 px-5 pb-1 pt-4 backdrop-blur sm:-bottom-8 sm:-mx-8 sm:px-8 dark:bg-slate-900/95">
           <button
             onClick={handlePrev}
             disabled={step === 0}
