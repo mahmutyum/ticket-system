@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Prisma, CompanyGroupType } from '@prisma/client';
 import { testSmtpConnection, invalidateCompanyTransporter } from '../../services/email.service.js';
 import { createAuditLog } from '../../middleware/audit.js';
-import { saveLogo, isAllowedLogoMimeType } from '../../services/storage.service.js';
+import { saveLogo, isAllowedLogoMimeType, isBufferConsistentWithMime } from '../../services/storage.service.js';
 import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
 import { encrypt } from '../../utils/crypto.js';
 import { assertPublicHost, BlockedHostError } from '../../utils/net-guard.js';
@@ -547,6 +547,10 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
     const buffer = await file.toBuffer();
     if (buffer.length > 2 * 1024 * 1024) {
       return reply.status(400).send({ success: false, error: 'Dosya boyutu 2MB üzerinde olamaz' });
+    }
+    // Beyan edilen logo tipi gerçek imzayla tutarlı mı (webp/png/jpg).
+    if (!isBufferConsistentWithMime(buffer, file.mimetype)) {
+      return reply.status(400).send({ success: false, error: 'Dosya içeriği belirtilen türle eşleşmiyor' });
     }
     const saved = await saveLogo(buffer, file.filename, id, file.mimetype);
     const updated = await app.prisma.company.update({

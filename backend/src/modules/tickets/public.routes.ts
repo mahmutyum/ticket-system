@@ -2,7 +2,7 @@ import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { broadcastToStaff } from '../../services/sse.service.js';
 import { queueEmail } from '../../jobs/queue.js';
-import { saveFile, isAllowedMimeType } from '../../services/storage.service.js';
+import { saveFile, isAllowedMimeType, isBufferConsistentWithMime } from '../../services/storage.service.js';
 import { requiredText, emailSchema, LIMITS } from '../../utils/validation.js';
 import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
 
@@ -291,6 +291,12 @@ export const publicRoutes: FastifyPluginAsyncZod = async (app) => {
     }
 
     const buffer = await file.toBuffer();
+
+    // İçerik doğrulaması — bu uç KİMLİKSİZ olduğu için ekstra önemli.
+    if (!isBufferConsistentWithMime(buffer, file.mimetype)) {
+      return reply.status(400).send({ success: false, error: 'Dosya içeriği belirtilen türle eşleşmiyor' });
+    }
+
     const saved = await saveFile(buffer, file.filename, ticket.id, file.mimetype);
 
     const attachment = await app.prisma.attachment.create({

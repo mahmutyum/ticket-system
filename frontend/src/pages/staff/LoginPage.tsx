@@ -26,8 +26,11 @@ export default function LoginPage() {
         toast.success('Authenticator uygulamanızdaki kodu girin');
         return;
       }
-      const { accessToken, user } = res.data.data;
+      const { accessToken, user, mfaWarningEnabled } = res.data.data;
       setAuth(accessToken, user);
+      if (typeof mfaWarningEnabled === 'boolean') {
+        useAuthStore.getState().setMfaWarningEnabled(mfaWarningEnabled);
+      }
       toast.success(`Hoş geldiniz, ${user.fullName}`);
       navigate('/staff');
     } catch (error: unknown) {

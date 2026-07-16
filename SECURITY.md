@@ -144,6 +144,17 @@ tutulmuştur.
   yüklenen dosyalar CSP'siz servis ediliyordu. (Gerçek nginx konteynerleriyle
   doğrulandı.)
 
+### İçerik (magic-byte) doğrulaması
+
+`Content-Type` istemci beyanıdır. `nosniff` + `Content-Disposition: attachment` +
+sandbox CSP zaten aktif-içerik çalıştırmayı engelliyordu; buna ek olarak yükleme
+anında **dosya imzası** kontrol edilir (`isBufferConsistentWithMime`): beyan edilen
+tip gerçek magic-byte ile uyuşmuyorsa (ör. `image/png` deyip HTML/exe göndermek)
+dosya diske hiç yazılmadan `400` ile reddedilir. Kontrol üç yükleme ucunda da
+uygulanır: personel eki, **kimliksiz public ek** ve şirket logosu. İmzası olmayan
+metin tipleri (`text/plain`, `text/csv`) doğrulanamaz — onlar için beyan kabul
+edilir, aktif-içerik riski yukarıdaki başlıklarla zaten kapalıdır.
+
 ### Saklama ve kota
 
 Ticket başına **20 dosya / 200 MB** kotası vardır. Kapanış tarihi yapılandırılan
@@ -197,6 +208,15 @@ Bunlar bilinçli tercihlerdir, bozma:
   nesnesini kalıcılaştırır; access token `localStorage`'a **yazılmaz**.
 - **Şifre kasası:** AES-256-GCM (authenticated encryption), anahtar yalnızca ortam
   değişkeninde, liste endpoint'i şifreleri hiç döndürmez, her `reveal` audit log'lanır.
+- **Anahtar rotasyonu mümkün:** `CREDENTIALS_ENC_KEY` ile şifreli tüm sütunlar
+  (`credential_entries`, `staff.mfa_secret_enc`, `company_smtp.pass`)
+  `prisma/scripts/rotate-credentials-key.ts` ile eski→yeni anahtara güvenli
+  geçirilir (önce kuru çalışma, sonra `--commit`). Anahtar sızarsa yeniden
+  anahtarlama yolu vardır.
+- **MFA uyarısı:** TOTP MFA opt-in'dir; kurumsal zorunluluk yerine ayrıcalıklı
+  hesaplara (admin/it_manager) panelde MFA kurmaları hatırlatılır
+  (`MFA_WARNING_ENABLED`, varsayılan açık). Bu roller kasaya erişebildiği için en
+  değerli koruma buradadır.
 - **Rate limiting:** global 100/dk, staff login 5/dk, public lookup 10/5dk.
 - **Opsiyonel TOTP MFA:** Personel hesapları authenticator tabanlı ikinci aşamayı
   etkinleştirebilir. TOTP sırrı AES-256-GCM ile şifrelenir; login challenge Redis'te

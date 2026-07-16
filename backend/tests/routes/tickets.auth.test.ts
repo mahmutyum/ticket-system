@@ -31,6 +31,7 @@ vi.mock('../../src/services/sse.service.js', () => ({
 // Uzantı/MIME davranışı storage.test.ts'te gerçek dosya sistemine karşı test ediliyor.
 vi.mock('../../src/services/storage.service.js', () => ({
   isAllowedMimeType: () => true,
+  isBufferConsistentWithMime: () => true,
   saveFile: vi.fn(async (buffer: Buffer) => ({
     fileName: 'a.txt',
     filePath: 'ticket/a.txt',

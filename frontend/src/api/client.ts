@@ -43,7 +43,7 @@ export async function initializeAuth(): Promise<boolean> {
 
   try {
     const res = await axios.post('/api/auth/staff/refresh', {}, { withCredentials: true });
-    const { accessToken, user } = res.data.data || {};
+    const { accessToken, user, mfaWarningEnabled } = res.data.data || {};
     if (!accessToken) {
       logout();
       return false;
@@ -51,6 +51,9 @@ export async function initializeAuth(): Promise<boolean> {
     setAccessToken(accessToken);
     if (user) {
       setUser(user);
+    }
+    if (typeof mfaWarningEnabled === 'boolean') {
+      useAuthStore.getState().setMfaWarningEnabled(mfaWarningEnabled);
     }
     useAuthStore.setState({ isAuthenticated: true });
     return true;

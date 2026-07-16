@@ -15,6 +15,7 @@ import {
   Sun,
   KeyRound,
   ShieldCheck,
+  ShieldAlert,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuthStore } from '../../stores/auth.store';
@@ -41,8 +42,15 @@ export default function StaffLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { user, logout, mfaWarningEnabled } = useAuthStore();
   const { theme, toggle } = useTheme();
+  // Ayrıcalıklı hesap (kasa erişimi) MFA kurmamışsa uyar — zorunluluk değil.
+  const showMfaWarning =
+    mfaWarningEnabled &&
+    !!user &&
+    (user.role === 'admin' || user.role === 'it_manager') &&
+    user.mfaEnabled === false &&
+    location.pathname !== '/staff/account';
   const currentItem = navItems
     .filter((item) => !item.roles || (user && item.roles.includes(user.role)))
     .find((item) => location.pathname === item.path || (item.path !== '/staff' && location.pathname.startsWith(item.path)));
@@ -169,7 +177,26 @@ export default function StaffLayout() {
 
         {/* Page content */}
         <main className="flex-1 overflow-auto p-4 sm:p-5 lg:p-8">
-          <div className="mx-auto w-full max-w-[1600px]"><Outlet /></div>
+          <div className="mx-auto w-full max-w-[1600px] space-y-4">
+            {showMfaWarning && (
+              <div className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+                <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" />
+                <div className="flex-1">
+                  <p className="font-semibold">İki adımlı doğrulama (MFA) kapalı</p>
+                  <p className="text-amber-800/90 dark:text-amber-200/80">
+                    Yönetici ve şifre kasası yetkiniz var. Hesabınızı korumak için MFA kurmanız önerilir.
+                  </p>
+                </div>
+                <Link
+                  to="/staff/account"
+                  className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700"
+                >
+                  Şimdi kur
+                </Link>
+              </div>
+            )}
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

@@ -41,6 +41,54 @@ export function isAllowedMimeType(mimeType: string): boolean {
 }
 
 /**
+ * İçerik (magic-byte) doğrulaması.
+ *
+ * `Content-Type` istemci beyanıdır. `nosniff` + `Content-Disposition: attachment`
+ * zaten aktif-içerik çalıştırmayı engelliyor; bu katman bir adım öteye gider:
+ * beyan edilen tipin GERÇEK dosya imzasıyla tutarlı olmasını şart koşar. Böylece
+ * "image/png diyeyim ama içine HTML/exe koyayım" gibi tür karıştırma denemeleri
+ * diske hiç yazılmadan reddedilir.
+ *
+ * İmzası olmayan düz metin tipleri (`text/plain`, `text/csv`) doğal olarak
+ * doğrulanamaz — onlar için beyan kabul edilir (aktif-içerik riski nosniff +
+ * attachment ile zaten kapalı).
+ */
+type SignatureCheck = (buf: Buffer) => boolean;
+
+const startsWith = (bytes: number[]): SignatureCheck => (buf) =>
+  buf.length >= bytes.length && bytes.every((b, i) => buf[i] === b);
+
+// MIME → beyanın geçerli sayılması için eşleşmesi gereken imzalar (biri yeterli).
+// İmzası tanımlı OLMAYAN tipler (text/plain, text/csv) bilerek dışarıda: onlar
+// için içerik doğrulaması yapılmaz.
+const MIME_SIGNATURES: Record<string, SignatureCheck[]> = {
+  'image/jpeg': [startsWith([0xff, 0xd8, 0xff])],
+  'image/png': [startsWith([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
+  'image/gif': [startsWith([0x47, 0x49, 0x46, 0x38])], // GIF8
+  // RIFF....WEBP — ilk 4 byte RIFF, 8-11 arası WEBP.
+  'image/webp': [(buf) =>
+    buf.length >= 12 &&
+    startsWith([0x52, 0x49, 0x46, 0x46])(buf) &&
+    buf.slice(8, 12).toString('ascii') === 'WEBP'],
+  'application/pdf': [startsWith([0x25, 0x50, 0x44, 0x46])], // %PDF
+  // ZIP tabanlı (docx/xlsx dahil) — PK\x03\x04 / boş arşiv / spanned.
+  'application/zip': [startsWith([0x50, 0x4b, 0x03, 0x04]), startsWith([0x50, 0x4b, 0x05, 0x06]), startsWith([0x50, 0x4b, 0x07, 0x08])],
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [startsWith([0x50, 0x4b, 0x03, 0x04])],
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': [startsWith([0x50, 0x4b, 0x03, 0x04])],
+  'application/x-rar-compressed': [startsWith([0x52, 0x61, 0x72, 0x21, 0x1a, 0x07])], // Rar!\x1a\x07
+  // Eski Office (OLE Compound File): D0 CF 11 E0 A1 B1 1A E1
+  'application/msword': [startsWith([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])],
+  'application/vnd.ms-excel': [startsWith([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])],
+};
+
+export function isBufferConsistentWithMime(buffer: Buffer, mimeType: string): boolean {
+  const checks = MIME_SIGNATURES[mimeType];
+  // İmza tanımlı değilse (text/plain, text/csv) içerik doğrulanamaz — beyanı kabul et.
+  if (!checks) return true;
+  return checks.some((check) => check(buffer));
+}
+
+/**
  * Logo MIME'ları.
  *
  * `image/svg+xml` BİLEREK YOK. SVG aktif içerik formatıdır: `<img>` içinde

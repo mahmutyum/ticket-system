@@ -30,6 +30,10 @@ const envSchema = z.object({
   MAX_FILE_SIZE: z.coerce.number().default(26214400),
   UPLOAD_DIR: z.string().default('/app/uploads'),
   CREDENTIALS_ENC_KEY: z.string().regex(/^[0-9a-fA-F]{64}$/, 'CREDENTIALS_ENC_KEY 64 karakterlik hex olmalı (32 byte)'),
+  // Ayrıcalıklı hesaplarda (admin/it_manager) MFA kurulu değilse panelde uyarı
+  // göster. Zorunluluk DEĞİL — sadece bilinçli bir hatırlatma. Kapatmak için
+  // MFA_WARNING_ENABLED=false.
+  MFA_WARNING_ENABLED: z.string().transform((v) => v !== 'false').default('true'),
   // Swagger UI (/docs) tüm endpoint listesini yayınlar. İç ağda kabul edilebilir;
   // internete açık bir kurulumda kapatılabilsin diye bayrağa bağlı.
   ENABLE_API_DOCS: z.string().transform((v) => v !== 'false').default('true'),

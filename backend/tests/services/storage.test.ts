@@ -49,6 +49,38 @@ describe('isAllowedMimeType', () => {
   });
 });
 
+describe('isBufferConsistentWithMime — magic-byte doğrulaması', () => {
+  const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]);
+  const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0]);
+  const PDF = Buffer.from('%PDF-1.7\n...');
+  const ZIP = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0, 0]);
+  const WEBP = Buffer.concat([Buffer.from('RIFF'), Buffer.from([0, 0, 0, 0]), Buffer.from('WEBP')]);
+  const HTML = Buffer.from('<!doctype html><script>alert(1)</script>');
+
+  it('gerçek imzayı beyanla eşleşince kabul eder', async () => {
+    const { isBufferConsistentWithMime } = await storage();
+    expect(isBufferConsistentWithMime(PNG, 'image/png')).toBe(true);
+    expect(isBufferConsistentWithMime(JPEG, 'image/jpeg')).toBe(true);
+    expect(isBufferConsistentWithMime(PDF, 'application/pdf')).toBe(true);
+    expect(isBufferConsistentWithMime(WEBP, 'image/webp')).toBe(true);
+    expect(isBufferConsistentWithMime(ZIP, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')).toBe(true);
+  });
+
+  it('tür karıştırmayı REDDEDER (image/png beyan et, HTML gönder)', async () => {
+    const { isBufferConsistentWithMime } = await storage();
+    expect(isBufferConsistentWithMime(HTML, 'image/png')).toBe(false);
+    expect(isBufferConsistentWithMime(HTML, 'application/pdf')).toBe(false);
+    expect(isBufferConsistentWithMime(PNG, 'image/jpeg')).toBe(false);
+  });
+
+  it('imzası olmayan metin tipleri için beyanı kabul eder', async () => {
+    const { isBufferConsistentWithMime } = await storage();
+    // text/plain, text/csv güvenilir imza taşımaz — nosniff+attachment ile korunur.
+    expect(isBufferConsistentWithMime(Buffer.from('herhangi bir metin'), 'text/plain')).toBe(true);
+    expect(isBufferConsistentWithMime(Buffer.from('a,b,c'), 'text/csv')).toBe(true);
+  });
+});
+
 describe('isAllowedLogoMimeType', () => {
   it('SVG logo REDDEDİLİR', async () => {
     // SVG aktif içeriktir: <img> içinde güvenli ama doğrudan gidildiğinde

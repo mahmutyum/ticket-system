@@ -147,7 +147,9 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
             role: staff.role,
             department: staff.department,
             avatarUrl: staff.avatarUrl,
+            mfaEnabled: staff.mfaEnabled,
           },
+          mfaWarningEnabled: config.MFA_WARNING_ENABLED,
         },
       });
   });
@@ -176,8 +178,8 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
       httpOnly: true, secure: config.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: REFRESH_TTL_SECONDS,
     }).send({ success: true, data: { accessToken: tokens.accessToken, user: {
       id: staff.id, email: staff.email, fullName: staff.fullName, role: staff.role,
-      department: staff.department, avatarUrl: staff.avatarUrl,
-    } } });
+      department: staff.department, avatarUrl: staff.avatarUrl, mfaEnabled: staff.mfaEnabled,
+    }, mfaWarningEnabled: config.MFA_WARNING_ENABLED } });
   });
 
   // Refresh token
@@ -236,7 +238,20 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
         })
         .send({
           success: true,
-          data: { accessToken: tokens.accessToken },
+          data: {
+            accessToken: tokens.accessToken,
+            // Yenileme sonrası MFA durumu tazelensin (ör. kullanıcı MFA kurdu).
+            user: {
+              id: staff.id,
+              email: staff.email,
+              fullName: staff.fullName,
+              role: staff.role,
+              department: staff.department,
+              avatarUrl: staff.avatarUrl,
+              mfaEnabled: staff.mfaEnabled,
+            },
+            mfaWarningEnabled: config.MFA_WARNING_ENABLED,
+          },
         });
     } catch {
       return reply.status(401).send({ success: false, error: 'Geçersiz refresh token' });

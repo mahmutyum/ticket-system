@@ -6,7 +6,7 @@ import { paginationSchema, paginate, paginatedResponse } from '../../utils/pagin
 import { requiredText, optionalText, phoneSchema, emailSchema, LIMITS, ATTACHMENT_LIMITS } from '../../utils/validation.js';
 import { Prisma, TicketStatus, Priority } from '@prisma/client';
 import { queueEmail, queueSms } from '../../jobs/queue.js';
-import { saveFile, isAllowedMimeType } from '../../services/storage.service.js';
+import { saveFile, isAllowedMimeType, isBufferConsistentWithMime } from '../../services/storage.service.js';
 import { config } from '../../config/index.js';
 import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.js';
 import { getStaffCompanyScope, resolveCompanyFilter, isCompanyInScope } from '../../utils/staff-scope.js';
@@ -735,6 +735,12 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
     }
 
     const buffer = await file.toBuffer();
+
+    // İçerik doğrulaması: beyan edilen MIME gerçek dosya imzasıyla tutarlı mı.
+    // Tür karıştırma (image/png diyip başka içerik gönderme) diske yazılmadan durur.
+    if (!isBufferConsistentWithMime(buffer, file.mimetype)) {
+      return reply.status(400).send({ success: false, error: 'Dosya içeriği belirtilen türle eşleşmiyor' });
+    }
 
     const totalAfter = (existing._sum.fileSize ?? 0) + buffer.length;
     if (totalAfter > ATTACHMENT_LIMITS.maxTotalBytes) {

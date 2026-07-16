@@ -42,19 +42,31 @@ const staffProfileSchema = z.object({
   role: z.nativeEnum(StaffRole),
   department: z.string().nullable(),
   avatarUrl: z.string().nullable(),
+  // Frontend, ayrıcalıklı hesaplar için MFA uyarısını buna göre gösterir.
+  mfaEnabled: z.boolean(),
 });
 
 export const loginResponseSchema = z.object({
   success: z.literal(true),
   data: z.union([
     z.object({ mfaRequired: z.literal(true), challenge: z.string() }),
-    z.object({ accessToken: z.string(), user: staffProfileSchema }),
+    z.object({
+      accessToken: z.string(),
+      user: staffProfileSchema,
+      // Sunucu tarafı bayrağı; kapalıysa istemci uyarıyı hiç göstermez.
+      mfaWarningEnabled: z.boolean(),
+    }),
   ]),
 });
 
 export const refreshResponseSchema = z.object({
   success: z.literal(true),
-  data: z.object({ accessToken: z.string() }),
+  data: z.object({
+    accessToken: z.string(),
+    // Sayfa yenilendiğinde kullanıcı + MFA durumu tazelensin diye geri döner.
+    user: staffProfileSchema.optional(),
+    mfaWarningEnabled: z.boolean().optional(),
+  }),
 });
 
 export const sessionsResponseSchema = z.object({
