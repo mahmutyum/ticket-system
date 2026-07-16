@@ -12,43 +12,26 @@ Durum: 2026-07-16.
 | Özellik kapsamı | 🟢 Ticket yaşam döngüsü, SLA, raporlar, görevler, kasa, MFA |
 | Kurulum / deploy | 🟢 Docker Compose, Coolify ve Nginx belgeli |
 | Migration | 🟢 Versiyonlu; gerçek PostgreSQL üzerinde doğrulanabilir |
-| Backend testleri | 🟢 220 birim/route/worker testi |
-| Frontend testleri | 🟡 19 birim testi + 3 Playwright smoke/axe senaryosu |
+| Backend testleri | 🟢 230 birim/route/worker testi |
+| Frontend testleri | 🟢 25 birim testi + 6 Playwright smoke/axe/güvenlik senaryosu |
 | Entegrasyon | 🟢 Gerçek PostgreSQL + Redis testi mevcut |
 | CI | 🟡 Güvenlik tercihiyle yalnızca GitHub Actions'tan elle çalıştırılıyor |
-| API dokümantasyonu | 🟡 Request/path/query şemaları geniş ölçüde bağlı; response şemaları kısmi |
+| API dokümantasyonu | 🟢 Kritik yönetim route'larında request, parametre ve response sözleşmeleri bağlı |
 | Kod kalitesi | 🟢 Backend ve frontend lint temiz; gevşek `any` tipleri kaldırıldı |
 | Public repo hijyeni | 🟢 Yerel kontrol script'i, geniş ignore politikası ve yayın rehberi |
 
 ## Sıradaki çalışmalar
 
-### 1. Kod kalitesi
-
-- Büyük yönetim sayfalarını davranış değiştirmeden küçük bileşen ve hook'lara ayır.
-- Domain tipleri ve provider yardımcıları tamamlandı; yeni API tüketimlerinde aynı
-  tipli React Query desenini koru.
-
-### 2. OpenAPI sözleşmesi
-
-- Başarılı ve hatalı cevaplar için ortak Zod response şemaları tanımla.
-- Route response durumlarını (`200`, `201`, `400`, `401`, `403`, `404`) yayınla.
-- Fastify type-provider çıkarımı tamamlandıkça handler içindeki tekrarlı `.parse()`
-  çağrılarını kaldır.
-- OpenAPI dokümanının kritik route'ları yayınladığını entegrasyon testinde koru.
-
-### 3. Test kapsamı
-
-- Onsite, rapor, şablon ve görev route'larının kapsam/RBAC senaryolarını genişlet.
-- MFA, kasa reveal ve dosya yükleme/indirme için tarayıcı akışları ekle.
-- Gerçek servis entegrasyon testini şema değişikliklerinden sonra manuel CI ile çalıştır.
-
-### 4. Operasyon
+### Operasyon
 
 - Yedek alma kadar geri yükleme tatbikatını da periyodik çalıştır.
 - `db:retention:check` sonucunu izle; onaylı bakım penceresinde
   `db:retention:apply` çalıştır.
 - Public internete açık kurulumlarda `ENABLE_API_DOCS=false`, proxy erişim kontrolü
   ve doğru `TRUST_PROXY` değerini zorunlu kabul et.
+
+Kod kalitesi, OpenAPI ve güvenlik akışları mevcut paket içinde tamamlandı; yeni route
+ve ekranlarda aynı tipli sözleşme, kapsam/RBAC ve regresyon testi standardını koru.
 
 ## Bilinen ve kabul edilmiş güvenlik sınırları
 

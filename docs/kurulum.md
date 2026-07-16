@@ -134,6 +134,7 @@ panelden yönetirsin — kod değişikliği gerekmez.
 
 ```bash
 cp .env.example .env      # değerleri doldur
+./scripts/check-production-env.sh .env
 docker compose up -d --build
 ```
 
@@ -180,8 +181,9 @@ sırasında **self-signed** sertifika üretir — gerçek kurulumda kendi sertif
 4. `APP_URL`'e NPM'de tanımladığın FQDN'lerin **tamamını** virgülle ayırarak yaz — aksi halde
    CORS istekleri reddeder.
 
-Backend `trustProxy: true` ile çalışır: NPM'in `X-Forwarded-For/Proto/Host` header'ları
-rate-limit ve audit log'da gerçek client IP olarak kullanılır.
+Backend yalnızca `TRUST_PROXY` ile belirtilen hop sayısına güvenir. NPM/Coolify +
+frontend nginx topolojisinde tipik değer `2`'dir; topolojinizi
+[güvenlik kontrol listesine](../SECURITY.md#kurmadan-önce-kontrol-listesi) göre doğrulayın.
 
 ---
 
