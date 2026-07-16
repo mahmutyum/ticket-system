@@ -83,7 +83,7 @@ export function addClient(
  * `companyId = null` → şirkete bağlı olmayan olay; yalnızca admin görür.
  * Bu, kasadaki/kategorilerdeki "global kayıt yalnızca admin" politikasıyla aynıdır.
  */
-export function broadcastToStaff(event: string, data: any, companyId: string | null): void {
+export function broadcastToStaff(event: string, data: unknown, companyId: string | null): void {
   for (const client of clients.values()) {
     if (client.type !== 'staff') continue;
 
@@ -99,7 +99,7 @@ export function broadcastToStaff(event: string, data: any, companyId: string | n
   }
 }
 
-export function broadcastToTicket(accessToken: string, event: string, data: any): void {
+export function broadcastToTicket(accessToken: string, event: string, data: unknown): void {
   for (const client of clients.values()) {
     if (client.type === 'public' && client.ticketAccessToken === accessToken) {
       try {

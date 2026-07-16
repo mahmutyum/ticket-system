@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { OnsiteType, OnsiteStatus } from '@prisma/client';
+import { Prisma, OnsiteType, OnsiteStatus } from '@prisma/client';
 import { queueEmail } from '../../jobs/queue.js';
 import { ONSITE_TYPE_LABELS } from '../../config/constants.js';
 import { getStaffCompanyScope } from '../../utils/staff-scope.js';
@@ -124,7 +124,7 @@ export const onsiteRoutes: FastifyPluginAsync = async (app) => {
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
 
-    const where: any = {};
+    const where: Prisma.OnsiteSupportWhereInput = {};
     if (scopeCompanyIds) {
       where.ticket = { companyId: { in: scopeCompanyIds } };
     }
@@ -176,7 +176,11 @@ export const onsiteRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(403).send({ success: false, error: 'Bu randevuya erişim yetkiniz yok' });
     }
 
-    const updateData: any = { ...body };
+    const updateData: Prisma.OnsiteSupportUpdateInput = {
+      status: body.status,
+      notes: body.notes,
+      roomInfo: body.roomInfo,
+    };
     if (body.scheduledAt) updateData.scheduledAt = new Date(body.scheduledAt);
     if (body.scheduledEnd) updateData.scheduledEnd = new Date(body.scheduledEnd);
     if (body.status === 'completed') updateData.completedAt = new Date();

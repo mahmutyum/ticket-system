@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { Priority, TicketStatus } from '@prisma/client';
+import { Prisma, Priority, TicketStatus } from '@prisma/client';
 import { getStaffCompanyScope, companyWhereClause , resolveCompanyFilter } from '../../utils/staff-scope.js';
 
 const dashboardFilterSchema = z.object({
@@ -28,7 +28,7 @@ export const dashboardRoutes: FastifyPluginAsync = async (app) => {
     const scopeWhere = companyWhereClause(scopeCompanyIds);
 
     // Build filter where clause
-    const filterWhere: any = { ...resolveCompanyFilter(scopeCompanyIds, query.companyId) };
+    const filterWhere: Prisma.TicketWhereInput = { ...resolveCompanyFilter(scopeCompanyIds, query.companyId) };
     if (query.status) filterWhere.status = query.status;
     if (query.priority) filterWhere.priority = query.priority;
     if (query.assignedToId) filterWhere.assignedToId = query.assignedToId;

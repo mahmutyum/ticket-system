@@ -1,5 +1,9 @@
 import { PrismaClient } from '@prisma/client';
 
+export type CompanyFilter = {
+  companyId?: string | { in: string[] };
+};
+
 /**
  * Bir personelin erişebileceği şirket id'leri.
  *
@@ -33,7 +37,7 @@ export async function getStaffCompanyScope(
  * Kapsamı Prisma `where` fragment'ine çevirir.
  * `null` → `{}` (kısıt yok). Boş dizi → hiçbir kayıt eşleşmez.
  */
-export function companyWhereClause(companyIds: string[] | null): Record<string, any> {
+export function companyWhereClause(companyIds: string[] | null): CompanyFilter {
   if (!companyIds) return {};
   return { companyId: { in: companyIds } };
 }
@@ -71,7 +75,7 @@ export function isCompanyInScope(
 export function resolveCompanyFilter(
   scope: string[] | null,
   requested?: string | null,
-): Record<string, any> {
+): CompanyFilter {
   if (scope === null) {
     // admin: ne isterse
     return requested ? { companyId: requested } : {};

@@ -1,6 +1,6 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { StaffRole } from '@prisma/client';
+import { Prisma, StaffRole } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { createAuditLog } from '../../middleware/audit.js';
 import { invalidateAccessTokens } from '../../plugins/auth.js';
@@ -34,7 +34,7 @@ const staffCompaniesSchema = z.object({ companyIds: z.array(z.string().cuid()).m
  * tek bir DEL yetmez — desen taranır. `scanStream` KEYS yerine kullanılır:
  * KEYS tüm Redis'i bloklar.
  */
-async function deleteAllSessions(app: any, staffId: string): Promise<void> {
+async function deleteAllSessions(app: FastifyInstance, staffId: string): Promise<void> {
   const pattern = `refresh:${staffId}:*`;
   const stream = app.redis.scanStream({ match: pattern, count: 100 });
   for await (const keys of stream as AsyncIterable<string[]>) {
@@ -50,7 +50,7 @@ export const staffRoutes: FastifyPluginAsync = async (app) => {
   }, async (request, reply) => {
     const { companyId } = request.query as { companyId?: string };
 
-    const where: any = {};
+    const where: Prisma.StaffWhereInput = {};
     if (companyId) {
       // Bu şirkete erişebilen personel: o şirkete atanmış olanlar VEYA admin
       // (rolü gereği sınırsız).
@@ -139,10 +139,10 @@ export const staffRoutes: FastifyPluginAsync = async (app) => {
     });
     if (!before) return reply.status(404).send({ success: false, error: 'Personel bulunamadı' });
 
-    const updateData: any = { ...body };
-    if (body.password) {
-      updateData.passwordHash = await bcrypt.hash(body.password, 12);
-      delete updateData.password;
+    const { password, ...profileData } = body;
+    const updateData: Prisma.StaffUpdateInput = { ...profileData };
+    if (password) {
+      updateData.passwordHash = await bcrypt.hash(password, 12);
 
       // Şifre değişti → TÜM oturumlar kapanır (hangi cihazlar olduğu bilinmez).
       await deleteAllSessions(app, id);
@@ -180,9 +180,7 @@ export const staffRoutes: FastifyPluginAsync = async (app) => {
       await deleteAllSessions(app, id);
     }
 
-    const auditChanges: Record<string, any> = { ...body };
-    delete auditChanges.password;
-    await createAuditLog({ entityType: 'staff', entityId: id, action: 'update', changes: auditChanges, performedBy: request.staffUser!.email, ipAddress: request.headers['x-real-ip'] as string });
+    await createAuditLog({ entityType: 'staff', entityId: id, action: 'update', changes: profileData, performedBy: request.staffUser!.email, ipAddress: request.headers['x-real-ip'] as string });
 
     reply.send({ success: true, data: staff });
   });

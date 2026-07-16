@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { NotificationType, NotificationStatus } from '@prisma/client';
+import { Prisma, NotificationType, NotificationStatus } from '@prisma/client';
 import { queueEmail, queueSms } from '../../jobs/queue.js';
 
 const notificationFilterSchema = z.object({
@@ -20,7 +20,7 @@ export const notificationRoutes: FastifyPluginAsync = async (app) => {
   }, async (request, reply) => {
     const query = notificationFilterSchema.parse(request.query);
 
-    const where: any = {};
+    const where: Prisma.NotificationWhereInput = {};
     if (query.status) where.status = query.status;
     if (query.type) where.type = query.type;
     if (query.ticketId) where.ticketId = query.ticketId;

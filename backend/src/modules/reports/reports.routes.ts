@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { Prisma, Priority, TicketStatus } from '@prisma/client';
 import { paginationSchema, paginate, paginatedResponse } from '../../utils/pagination.js';
 import { getStaffCompanyScope, resolveCompanyFilter } from '../../utils/staff-scope.js';
 
@@ -9,8 +10,8 @@ const reportFilterSchema = paginationSchema.extend({
   companyId: z.string().optional(),
   categoryId: z.string().optional(),
   assignedToId: z.string().optional(),
-  status: z.string().optional(),
-  priority: z.string().optional(),
+  status: z.nativeEnum(TicketStatus).optional(),
+  priority: z.nativeEnum(Priority).optional(),
 });
 const commonReportFilterSchema = reportFilterSchema.omit({ page: true, limit: true });
 const overviewFilterSchema = commonReportFilterSchema.extend({ period: z.enum(['daily', 'weekly', 'monthly']).optional() });
@@ -22,14 +23,14 @@ type CommonFilters = {
   companyId?: string;
   categoryId?: string;
   assignedToId?: string;
-  priority?: string;
-  status?: string;
+  priority?: Priority;
+  status?: TicketStatus;
 };
 
-function buildTicketWhere(filters: CommonFilters, scopeCompanyIds: string[] | null): any {
+function buildTicketWhere(filters: CommonFilters, scopeCompanyIds: string[] | null): Prisma.TicketWhereInput {
   // companyId filtresi kapsamla kesiştirilir — doğrudan atanırsa kapsamı ezer
   // ve ?companyId=<başka-şirket> ile yetki aşımına açık hale gelir.
-  const where: any = { ...resolveCompanyFilter(scopeCompanyIds, filters.companyId) };
+  const where: Prisma.TicketWhereInput = { ...resolveCompanyFilter(scopeCompanyIds, filters.companyId) };
   if (filters.dateFrom || filters.dateTo) {
     where.createdAt = {};
     if (filters.dateFrom) where.createdAt.gte = new Date(filters.dateFrom);
@@ -90,7 +91,7 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
 
-    const where: any = { ...resolveCompanyFilter(scopeCompanyIds, query.companyId) };
+    const where: Prisma.TicketWhereInput = { ...resolveCompanyFilter(scopeCompanyIds, query.companyId) };
     if (query.dateFrom || query.dateTo) {
       where.createdAt = {};
       if (query.dateFrom) where.createdAt.gte = new Date(query.dateFrom);

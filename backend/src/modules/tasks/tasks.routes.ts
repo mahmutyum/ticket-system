@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { Priority, TaskStatus } from '@prisma/client';
+import { Prisma, Priority, TaskStatus } from '@prisma/client';
 import { queueEmail } from '../../jobs/queue.js';
 import { config } from '../../config/index.js';
 import { broadcastToStaff } from '../../services/sse.service.js';
@@ -20,7 +20,7 @@ import { requiredText, LIMITS } from '../../utils/validation.js';
  * Son iki madde olmasa yönetici kendi görevinden kilitlenirdi (ör. lokasyonu
  * sonradan null'lanmış bir görev).
  */
-function taskScopeWhere(scope: string[] | null, staffId: string): Record<string, any> {
+function taskScopeWhere(scope: string[] | null, staffId: string): Prisma.TaskWhereInput {
   if (scope === null) return {}; // admin
   return {
     OR: [
@@ -94,7 +94,7 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
     const staffUser = request.staffUser!;
     const q = taskListQuerySchema.parse(request.query ?? {});
 
-    const where: any = {};
+    const where: Prisma.TaskWhereInput = {};
     if (q.status) where.status = q.status;
 
     const isManager = staffUser.role === 'admin' || staffUser.role === 'it_manager';
@@ -260,7 +260,7 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(403).send({ success: false, error: 'Bu görev için yetkiniz yok' });
     }
 
-    const updateData: any = {};
+    const updateData: Prisma.TaskUncheckedUpdateInput = {};
     if (body.title !== undefined) updateData.title = body.title;
     if (body.description !== undefined) updateData.description = body.description;
     if (body.priority !== undefined) updateData.priority = body.priority;

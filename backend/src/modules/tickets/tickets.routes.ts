@@ -4,7 +4,7 @@ import { nanoid } from 'nanoid';
 import { generateTicketNumber } from '../../utils/ticket-number.js';
 import { paginationSchema, paginate, paginatedResponse } from '../../utils/pagination.js';
 import { requiredText, optionalText, phoneSchema, emailSchema, LIMITS, ATTACHMENT_LIMITS } from '../../utils/validation.js';
-import { TicketStatus, Priority } from '@prisma/client';
+import { Prisma, TicketStatus, Priority } from '@prisma/client';
 import { queueEmail, queueSms } from '../../jobs/queue.js';
 import { saveFile, isAllowedMimeType } from '../../services/storage.service.js';
 import { config } from '../../config/index.js';
@@ -63,8 +63,8 @@ const ticketUpdateSchema = z.object({
 });
 
 const ticketFilterSchema = paginationSchema.extend({
-  status: z.string().optional(),
-  priority: z.string().optional(),
+  status: z.nativeEnum(TicketStatus).optional(),
+  priority: z.nativeEnum(Priority).optional(),
   companyId: z.string().optional(),
   categoryId: z.string().optional(),
   assignedToId: z.string().optional(),
@@ -312,7 +312,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
     // kesiştirilir; doğrudan atanırsa kapsamı ezer ve yetki aşımına yol açar.
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
 
-    const where: any = { ...resolveCompanyFilter(scopeCompanyIds, query.companyId) };
+    const where: Prisma.TicketWhereInput = { ...resolveCompanyFilter(scopeCompanyIds, query.companyId) };
     if (query.status) where.status = query.status;
     if (query.priority) where.priority = query.priority;
     if (query.categoryId) where.categoryId = query.categoryId;
@@ -445,8 +445,8 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(403).send({ success: false, error: 'Bu talebe erişim yetkiniz yok' });
     }
 
-    const historyEntries: any[] = [];
-    const updateData: any = {};
+    const historyEntries: Prisma.TicketHistoryUncheckedCreateWithoutTicketInput[] = [];
+    const updateData: Prisma.TicketUncheckedUpdateInput = {};
 
     if (body.status && body.status !== currentTicket.status) {
       updateData.status = body.status;
@@ -552,7 +552,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
 
     const staffUser = request.staffUser!;
 
-    const updateData: any = {};
+    const updateData: Prisma.TicketUncheckedUpdateManyInput = {};
     if (body.status) updateData.status = body.status;
     if (body.assignedToId !== undefined) updateData.assignedToId = body.assignedToId;
     if (body.priority) updateData.priority = body.priority;
