@@ -5,12 +5,15 @@
 **Şirket içi IT destek için, Docker ile kurulan çok şirketli ticket sistemi.**
 Talep edenler için şifresiz public portal · IT ekibi için rollü yönetim paneli · **Türkçe / İngilizce çift dil.**
 
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Stack](https://img.shields.io/badge/stack-Fastify%20%2B%20React%20%2B%20Postgres-blue)
 ![i18n](https://img.shields.io/badge/i18n-TR%20%2F%20EN-green)
 ![Tests](https://img.shields.io/badge/tests-261%20passing-success)
 
-[Özellikler](#-özellikler) · [Ekran görüntüleri](#-ekran-görüntüleri) · [Hızlı başlangıç](#-hızlı-başlangıç) · [Dokümantasyon](#-dokümantasyon) · [English](#english)
+🇹🇷 **Türkçe** · [🇬🇧 English](README.en.md)
+
+[Özellikler](#-özellikler) · [Ekran görüntüleri](#-ekran-görüntüleri) · [Hızlı başlangıç](#-hızlı-başlangıç) · [Dokümantasyon](#-dokümantasyon)
 
 </div>
 
@@ -143,6 +146,7 @@ Sadece `frontend` host'a açılır (`FRONTEND_PORT`, varsayılan `1111`); backen
 | [docs/mimari.md](docs/mimari.md) | Mimari: modüller, veri modeli, auth, kuyruk, SSE |
 | [docs/yol-haritasi.md](docs/yol-haritasi.md) | Olgunluk ve planlanan özellikler |
 | [docs/operasyon.md](docs/operasyon.md) | Yedekleme, geri dönüş, retention, sağlık kontrolleri |
+| [CHANGELOG.md](CHANGELOG.md) | Sürüm geçmişi (SemVer) |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Katkı rehberi ve kodlama kuralları |
 | [SECURITY.md](SECURITY.md) | Güvenlik açığı bildirimi |
 
@@ -168,48 +172,8 @@ ekranlarda tipli sözleşme, kapsam/RBAC ve regresyon testi standardını koru.
 
 ---
 
-<a name="english"></a>
+<div align="center">
 
-## English
+**🇬🇧 Looking for English? → [README.en.md](README.en.md)**
 
-**IT Ticket System** — a dockerized, multi-tenant internal IT helpdesk with a **bilingual
-Turkish/English UI** (auto-detected from the browser, switchable instantly). Requesters file
-and track tickets through a passwordless public portal (unguessable access-token links); the
-IT team works them through a role-based staff panel.
-
-**Features:** ticket lifecycle with per-category SLA, dynamic per-company custom fields, file
-attachments, internal vs. public notes, on-site support calendar, task management, reporting
-with CSV export, an admin-only AES-256-GCM credential vault with audit logging, async email/SMS
-via BullMQ, live updates over SSE, per-domain branding, and full TR/EN localization (UI, API
-messages via `Accept-Language`, and notifications in the recipient's language).
-
-**Stack:** Fastify 5 · Prisma 6 · PostgreSQL 16 · Redis 7 (backend) · React 18 · Vite 6 ·
-TailwindCSS (frontend) · Docker Compose (deploy).
-
-**Screenshots:** every screen in both TR & EN — see [docs/screenshots](docs/screenshots/).
-
-**Quick start:**
-
-```bash
-git clone https://github.com/mahmutyum/ticket-system.git
-cd ticket-system
-cp .env.example .env
-# Required, no defaults — generate each:
-#   openssl rand -base64 48  → JWT_SECRET, JWT_REFRESH_SECRET
-#   openssl rand -hex 32     → CREDENTIALS_ENC_KEY (exactly 64 hex)
-# Also set DB_PASSWORD / REDIS_PASSWORD and mirror them into DATABASE_URL / REDIS_URL.
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
-docker compose exec backend npx tsx prisma/seed.ts   # demo data — never in production
-```
-
-UI at http://localhost:1111 · API docs at http://localhost:4000/docs · demo login
-`admin@company.com` / `admin123` (**development only**).
-
-> **Designed to run behind a VPN / on an internal network.** The public portal is intentionally
-> unauthenticated — do not expose it directly to the internet without your own access-control
-> layer. See [SECURITY.md](SECURITY.md).
-
-Docs are in Turkish: [installation](docs/kurulum.md) · [usage](docs/kullanim.md) ·
-[architecture](docs/mimari.md) · [roadmap](docs/yol-haritasi.md) · [contributing](CONTRIBUTING.md)
-
-**License:** [MIT](LICENSE) © Mahmut YUM
+</div>

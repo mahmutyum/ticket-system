@@ -30,6 +30,33 @@ yok — e-posta sahipliği doğrulanır. Mevcut altyapıyı (kısa ömürlü tok
 e-posta kuyruğu, rate limit) kullanır; yeni tablo gerektirmez. Yeni çift dilli
 bildirim şablonu (`my_tickets_link`) ve bir public sayfa (`MyTicketsPage`) eklenir.
 
+### Docker Hub imajları ve tek-komut kurulum
+
+Bugün `docker compose` imajları yerelde **derliyor**. Hedef: backend ve frontend
+imajlarını CI ile **Docker Hub'a yayınlamak** ve sürüm etiketiyle (`:1.0.0`, `:latest`)
+`docker pull` edilip derleme gerektirmeden çalıştırılabilen bir compose sağlamak — böylece
+sistem, kaynağı klonlamadan indirilip kurulabilir.
+
+- GitHub Actions ile `main`/tag push'unda çok mimarili (amd64/arm64) imaj build + push.
+- Published imajları kullanan `docker-compose.hub.yml` (build yerine `image:`).
+- Sürüm etiketleme: `:MAJOR.MINOR.PATCH`, `:MAJOR.MINOR`, `:latest`.
+
+### Sürüm takibi ve otomatik changelog
+
+- SemVer git tag'leri + GitHub Releases.
+- Conventional commit'lerden **otomatik CHANGELOG** üretimi (elle bakım yerine).
+- İmaj etiketleri sürümle senkron.
+
+### S3-uyumlu depolama (AWS S3 / MinIO)
+
+Ekler ve logolar bugün yerel diske yazılır (`UPLOAD_DIR`). Hedef: yükleme katmanını
+**S3-uyumlu object storage** (AWS S3, MinIO, R2) arkasına almak — yatay ölçek, yedeklilik
+ve konteyner-dışı kalıcılık için.
+
+- `storage.service.ts` arkasına takılabilir depolama adaptörü (yerel disk | S3).
+- Env ile seçim (`STORAGE_DRIVER=local|s3`, `S3_ENDPOINT`, `S3_BUCKET`, anahtarlar).
+- İndirme yetkilendirmesi backend'de kalır (imzalı/proxy'li erişim); doğrudan public bucket yok.
+
 ### Operasyon
 
 - Yedek almanın yanında geri yükleme tatbikatını da periyodik çalıştır.
