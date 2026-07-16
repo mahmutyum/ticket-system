@@ -115,6 +115,41 @@ const ticketSearchResponseSchema = z.object({
   })),
 });
 
+const staffTicketBaseSchema = z.object({
+  id: z.string(), ticketNumber: z.string(), companyId: z.string(), locationId: z.string(),
+  categoryId: z.string(), createdByEmail: z.string().email(), createdByUserId: z.string().nullable(),
+  assignedToId: z.string().nullable(), subject: z.string(), description: z.string(),
+  priority: z.nativeEnum(Priority), status: z.nativeEnum(TicketStatus),
+  slaResponseDue: z.date().nullable(), slaResolveDue: z.date().nullable(),
+  slaResponseMet: z.boolean().nullable(), slaResolveMet: z.boolean().nullable(),
+  firstRespondedAt: z.date().nullable(), resolvedAt: z.date().nullable(), closedAt: z.date().nullable(),
+  createdAt: z.date(), updatedAt: z.date(),
+});
+const ticketListItemSchema = staffTicketBaseSchema.pick({
+  id: true, ticketNumber: true, companyId: true, assignedToId: true, createdByEmail: true,
+  subject: true, priority: true, status: true, slaResponseDue: true, slaResolveDue: true,
+  slaResponseMet: true, slaResolveMet: true, firstRespondedAt: true, resolvedAt: true,
+  createdAt: true, updatedAt: true,
+}).extend({
+  company: z.object({ name: z.string() }), location: z.object({ name: z.string() }),
+  category: z.object({ name: z.string() }),
+  assignedTo: z.object({ id: z.string(), fullName: z.string() }).nullable(),
+  createdBy: z.object({ fullName: z.string(), phone: z.string().nullable() }).nullable(),
+});
+const staffTicketDetailSchema = staffTicketBaseSchema.extend({
+  company: z.unknown(), location: z.unknown(), category: z.unknown(),
+  assignedTo: z.unknown(), createdBy: z.unknown(), customValues: z.unknown(),
+  notes: z.unknown(), history: z.unknown(), attachments: z.unknown(), onsiteSupport: z.unknown(),
+});
+const staffTicketUpdateResponseSchema = staffTicketBaseSchema.extend({
+  company: z.object({ name: z.string() }),
+  assignedTo: z.object({ id: z.string(), fullName: z.string() }).nullable(),
+});
+const staffAttachmentSchema = z.object({
+  id: z.string(), ticketId: z.string(), fileName: z.string(), fileSize: z.number().int(),
+  mimeType: z.string(), uploadedBy: z.string(), createdAt: z.date(),
+});
+
 export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
   // PUBLIC: Create ticket
   app.post('/', {
@@ -336,6 +371,15 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
       tags: ['Tickets'],
       summary: 'Destek taleplerini filtreleyerek listeler',
       querystring: ticketFilterSchema,
+      response: {
+        200: z.object({
+          success: z.literal(true), data: z.array(ticketListItemSchema),
+          pagination: z.object({
+            page: z.number().int(), limit: z.number().int(), total: z.number().int(), totalPages: z.number().int(),
+          }),
+        }),
+        ...commonErrorResponses,
+      },
     },
   }, async (request, reply) => {
     const query = request.query;
@@ -413,6 +457,10 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
       tags: ['Tickets'],
       summary: 'Destek talebi ayrıntısını getirir',
       params: ticketIdParamsSchema,
+      response: {
+        200: z.object({ success: z.literal(true), data: staffTicketDetailSchema }),
+        ...commonErrorResponses,
+      },
     },
   }, async (request, reply) => {
     const { id } = request.params;
@@ -476,6 +524,10 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
       summary: 'Destek talebini günceller',
       params: ticketIdParamsSchema,
       body: ticketUpdateSchema,
+      response: {
+        200: z.object({ success: z.literal(true), data: staffTicketUpdateResponseSchema }),
+        ...commonErrorResponses,
+      },
     },
   }, async (request, reply) => {
     const { id } = request.params;
@@ -639,6 +691,10 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
       tags: ['Tickets'],
       summary: 'Destek talebine dosya ekler',
       params: ticketIdParamsSchema,
+      response: {
+        201: z.object({ success: z.literal(true), data: staffAttachmentSchema }),
+        ...commonErrorResponses,
+      },
     },
   }, async (request, reply) => {
     const { id } = request.params;

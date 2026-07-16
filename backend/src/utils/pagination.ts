@@ -39,7 +39,7 @@ export function paginate(params: PaginationParams) {
 export function paginatedResponse<T>(data: T[], total: number, params: PaginationParams) {
   const { page, limit } = params;
   return {
-    success: true,
+    success: true as const,
     data,
     pagination: {
       page,
