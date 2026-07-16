@@ -7,6 +7,7 @@ import { broadcastToStaff } from '../../services/sse.service.js';
 import { createAuditLog } from '../../middleware/audit.js';
 import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
 import { requiredText, LIMITS } from '../../utils/validation.js';
+import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
 
 /**
  * Görev kapsamı — `Task`'ta `companyId` yoktur, şirkete `location → company`
@@ -88,9 +89,34 @@ const TASK_SELECT = {
   _count: { select: { comments: true } },
 } as const;
 
+const taskBaseSchema = z.object({
+  id: z.string(), title: z.string(), description: z.string(), priority: z.nativeEnum(Priority),
+  status: z.nativeEnum(TaskStatus), dueDate: z.date().nullable(), completedAt: z.date().nullable(),
+  createdAt: z.date(), updatedAt: z.date(),
+});
+const taskSelectSchema = taskBaseSchema.extend({
+  createdBy: z.object({ id: z.string(), fullName: z.string(), email: z.string().email() }),
+  location: z.object({
+    id: z.string(), name: z.string(), company: z.object({ id: z.string(), name: z.string() }),
+  }).nullable(),
+  assignees: z.array(z.object({
+    assignedAt: z.date(),
+    staff: z.object({
+      id: z.string(), fullName: z.string(), email: z.string().email(), avatarUrl: z.string().nullable(),
+    }),
+  })),
+  _count: z.object({ comments: z.number().int().nonnegative() }),
+});
+const taskRawSchema = taskBaseSchema.extend({ createdById: z.string(), locationId: z.string().nullable() });
+const taskCommentSchema = z.object({
+  id: z.string(), content: z.string(), createdAt: z.date(),
+  createdBy: z.object({ id: z.string(), fullName: z.string(), role: z.string() }),
+});
+const responseOf = <T extends z.ZodTypeAny>(data: T) => z.object({ success: z.literal(true), data });
+
 export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
   // List tasks — admin/manager: all, staff: only assigned
-  app.get('/', { preValidation: [app.authenticate], schema: { querystring: taskListQuerySchema, tags: ['Tasks'], summary: 'Görevleri listele' } }, async (request, reply) => {
+  app.get('/', { preValidation: [app.authenticate], schema: { querystring: taskListQuerySchema, tags: ['Tasks'], summary: 'Görevleri listele', response: { 200: responseOf(z.array(taskSelectSchema)), ...commonErrorResponses } } }, async (request, reply) => {
     const staffUser = request.staffUser!;
     const q = request.query;
 
@@ -119,7 +145,7 @@ export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
   });
 
   // Get single task with comments
-  app.get('/:id', { preValidation: [app.authenticate], schema: { params: idParamsSchema, tags: ['Tasks'], summary: 'Görev detayını getir' } }, async (request, reply) => {
+  app.get('/:id', { preValidation: [app.authenticate], schema: { params: idParamsSchema, tags: ['Tasks'], summary: 'Görev detayını getir', response: { 200: responseOf(taskSelectSchema.extend({ comments: z.array(taskCommentSchema) })), ...commonErrorResponses } } }, async (request, reply) => {
     const { id } = request.params;
     const staffUser = request.staffUser!;
 
@@ -157,7 +183,7 @@ export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
   });
 
   // Create task — admin/it_manager only
-  app.post('/', { preValidation: [app.requireRole('admin', 'it_manager')], schema: { body: taskCreateSchema, tags: ['Tasks'], summary: 'Görev oluştur' } }, async (request, reply) => {
+  app.post('/', { preValidation: [app.requireRole('admin', 'it_manager')], schema: { body: taskCreateSchema, tags: ['Tasks'], summary: 'Görev oluştur', response: { 201: responseOf(taskSelectSchema), ...commonErrorResponses } } }, async (request, reply) => {
     const body = request.body;
     const staffUser = request.staffUser!;
 
@@ -243,7 +269,7 @@ export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
   });
 
   // Update task — admin/it_manager only (full edit). Assignees can only change status via separate endpoint.
-  app.put('/:id', { preValidation: [app.requireRole('admin', 'it_manager')], schema: { params: idParamsSchema, body: taskUpdateSchema, tags: ['Tasks'], summary: 'Görevi güncelle' } }, async (request, reply) => {
+  app.put('/:id', { preValidation: [app.requireRole('admin', 'it_manager')], schema: { params: idParamsSchema, body: taskUpdateSchema, tags: ['Tasks'], summary: 'Görevi güncelle', response: { 200: responseOf(taskRawSchema), ...commonErrorResponses } } }, async (request, reply) => {
     const { id } = request.params;
     const body = request.body;
     const staffUser = request.staffUser!;
@@ -360,7 +386,7 @@ export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
   });
 
   // Status update — assignees can change own task status
-  app.patch('/:id/status', { preValidation: [app.authenticate], schema: { params: idParamsSchema, body: taskStatusSchema, tags: ['Tasks'], summary: 'Görev durumunu güncelle' } }, async (request, reply) => {
+  app.patch('/:id/status', { preValidation: [app.authenticate], schema: { params: idParamsSchema, body: taskStatusSchema, tags: ['Tasks'], summary: 'Görev durumunu güncelle', response: { 200: responseOf(taskSelectSchema), ...commonErrorResponses } } }, async (request, reply) => {
     const { id } = request.params;
     const body = request.body;
     const staffUser = request.staffUser!;
@@ -425,7 +451,7 @@ export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
   });
 
   // Delete task — admin/it_manager only
-  app.delete('/:id', { preValidation: [app.requireRole('admin', 'it_manager')], schema: { params: idParamsSchema, tags: ['Tasks'], summary: 'Görevi sil' } }, async (request, reply) => {
+  app.delete('/:id', { preValidation: [app.requireRole('admin', 'it_manager')], schema: { params: idParamsSchema, tags: ['Tasks'], summary: 'Görevi sil', response: { 200: successResponseSchema, ...commonErrorResponses } } }, async (request, reply) => {
     const { id } = request.params;
     const staffUser = request.staffUser!;
 
@@ -456,7 +482,7 @@ export const taskRoutes: FastifyPluginAsyncZod = async (app) => {
   });
 
   // Add comment
-  app.post('/:id/comments', { preValidation: [app.authenticate], schema: { params: idParamsSchema, body: commentSchema, tags: ['Tasks'], summary: 'Göreve yorum ekle' } }, async (request, reply) => {
+  app.post('/:id/comments', { preValidation: [app.authenticate], schema: { params: idParamsSchema, body: commentSchema, tags: ['Tasks'], summary: 'Göreve yorum ekle', response: { 201: responseOf(taskCommentSchema), ...commonErrorResponses } } }, async (request, reply) => {
     const { id } = request.params;
     const body = request.body;
     const staffUser = request.staffUser!;
