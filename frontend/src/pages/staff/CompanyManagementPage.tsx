@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit2, MapPin, Building2, Mail, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
+import { getApiError } from '../../utils/api-error';
 
 const GROUP_TYPES = [
   { value: 'call_center', label: 'Çağrı Merkezi' },
@@ -75,8 +76,8 @@ export default function CompanyManagementPage() {
       setShowForm(false);
       setEditId(null);
       setForm(emptyCompanyForm);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Hata');
+    } catch (err: unknown) {
+      toast.error(getApiError(err, 'Hata'));
     }
   };
 
@@ -102,8 +103,8 @@ export default function CompanyManagementPage() {
         toast.success('Logo yüklendi');
         queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Logo yüklenemedi');
+    } catch (err: unknown) {
+      toast.error(getApiError(err, 'Logo yüklenemedi'));
     } finally {
       setLogoUploading(false);
     }
@@ -123,8 +124,8 @@ export default function CompanyManagementPage() {
       setShowLocForm(false);
       setLocEditId(null);
       setLocForm({ name: '', address: '', phone: '', floor: '', itRoom: '' });
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Hata');
+    } catch (err: unknown) {
+      toast.error(getApiError(err, 'Hata'));
     }
   };
 
@@ -147,8 +148,8 @@ export default function CompanyManagementPage() {
       await api.delete(`/locations/${loc.id}`);
       toast.success('Lokasyon silindi');
       queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Silinemedi');
+    } catch (err: unknown) {
+      toast.error(getApiError(err, 'Silinemedi'));
     }
   };
 
@@ -179,8 +180,8 @@ export default function CompanyManagementPage() {
     try {
       await api.post(`/companies/${smtpCompanyId}/smtp/test`, smtpForm);
       toast.success('SMTP bağlantısı başarılı!');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Bağlantı başarısız');
+    } catch (err: unknown) {
+      toast.error(getApiError(err, 'Bağlantı başarısız'));
     } finally {
       setSmtpTesting(false);
     }
@@ -196,8 +197,8 @@ export default function CompanyManagementPage() {
       toast.success('SMTP ayarları kaydedildi');
       queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
       setShowSmtpForm(false);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Kayıt başarısız');
+    } catch (err: unknown) {
+      toast.error(getApiError(err, 'Kayıt başarısız'));
     }
   };
 
@@ -216,8 +217,8 @@ export default function CompanyManagementPage() {
         toast.success('Şirket tekrar aktif edildi');
       }
       queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'İşlem başarısız');
+    } catch (err: unknown) {
+      toast.error(getApiError(err, 'İşlem başarısız'));
     }
   };
 
