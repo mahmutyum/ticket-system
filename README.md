@@ -137,6 +137,7 @@ Sadece `frontend` host'a açılır (`FRONTEND_PORT`, varsayılan `1111`). Backen
 | [docs/mimari.md](docs/mimari.md) | Mimari: modüller, veri modeli, auth, kuyruk, SSE, mimari kararlar |
 | [docs/yol-haritasi.md](docs/yol-haritasi.md) | Bilinen eksikler ve yol haritası — katkı vermeden önce oku |
 | [docs/operasyon.md](docs/operasyon.md) | Yedekleme, geri dönüş, retention ve sağlık kontrolleri |
+| [docs/public-repo.md](docs/public-repo.md) | Public repo veri/secret politikası ve olay müdahalesi |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Katkı rehberi, kodlama kuralları |
 | [SECURITY.md](SECURITY.md) | Güvenlik açığı bildirimi ve bilinen güvenlik sınırları |
 

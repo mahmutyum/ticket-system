@@ -11,6 +11,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  public-repo:
+    name: Public repo — secret ve veri dosyası kontrolü
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Takip edilen dosyaları ve secret kalıplarını denetle
+        run: ./scripts/check-public-repo.sh
+
   backend:
     name: Backend — tip kontrolü, lint, test
     runs-on: ubuntu-latest

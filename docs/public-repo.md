@@ -35,6 +35,12 @@ commitlenebilir.
 git diff --cached
 ```
 
+GitHub Actions otomatik tetiklemeleri proje tercihi gereği kapalıdır. Actions
+ekranından `CI` workflow'u elle çalıştırıldığında `Public repo — secret ve veri
+dosyası kontrolü` işi aynı denetimi temiz bir clone üzerinde tekrarlar. Bu kontrol;
+özel anahtar, yaygın sağlayıcı token'ları, sertifika/keystore, arşiv/yedek,
+veritabanı ve yerel agent dosyalarını reddeder.
+
 Varsa ayrıca tüm geçmişi Gitleaks veya eşdeğer bir secret scanner ile tara:
 
 ```bash
@@ -44,6 +50,9 @@ gitleaks git --redact
 Tarayıcı sonucu temiz olsa bile diff insan gözüyle incelenmelidir. Sentetik örnekler
 `company.com`, RFC 5737 dokümantasyon IP'leri ve açıkça `changeme_` ile başlayan
 değerler kullanmalıdır.
+
+Migration SQL dosyaları tekrar üretilebilir şema geçmişidir ve repoda tutulur;
+üretimden alınmış `.sql` export/dump dosyaları migration klasörüne konulmamalıdır.
 
 ## Bir secret commitlendiyse
 
