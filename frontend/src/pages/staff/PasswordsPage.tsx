@@ -7,6 +7,7 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../api/client';
 import { useAuthStore } from '../../stores/auth.store';
+import { getApiError } from '../../utils/api-error';
 
 type Entry = {
   id: string; title: string; category?: string | null; url?: string | null;
@@ -118,8 +119,8 @@ export default function PasswordsPage() {
       setRevealed((r) => ({ ...r, [id]: { value: password, expiresAt: Date.now() + REVEAL_SECONDS * 1000 } }));
       clearTimeout(timers.current[id]);
       timers.current[id] = setTimeout(() => hide(id), REVEAL_SECONDS * 1000);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Şifre alınamadı');
+    } catch (err: unknown) {
+      toast.error(getApiError(err, 'Şifre alınamadı'));
     }
   };
 
@@ -133,8 +134,8 @@ export default function PasswordsPage() {
       }
       await navigator.clipboard.writeText(value);
       toast.success('Şifre kopyalandı');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Kopyalanamadı');
+    } catch (err: unknown) {
+      toast.error(getApiError(err, 'Kopyalanamadı'));
     }
   };
 
