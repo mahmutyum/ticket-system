@@ -148,6 +148,24 @@ export async function buildApp() {
   }
 
   // Health check
+  app.get('/health/live', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
+
+  app.get('/health/ready', async (_request, reply) => {
+    try {
+      await Promise.all([
+        app.prisma.$queryRaw`SELECT 1`,
+        app.redis.ping().then((result) => {
+          if (result !== 'PONG') throw new Error('Redis ping başarısız');
+        }),
+      ]);
+      return { status: 'ready', timestamp: new Date().toISOString() };
+    } catch (error) {
+      app.log.warn({ err: error }, 'Readiness check failed');
+      return reply.status(503).send({ status: 'not_ready', timestamp: new Date().toISOString() });
+    }
+  });
+
+  // Geriye dönük uyumluluk: eski monitörler process canlılığını ölçmeye devam eder.
   app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
 
   // Global error handler

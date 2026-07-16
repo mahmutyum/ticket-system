@@ -16,6 +16,8 @@
     "typecheck": "tsc --noEmit",
     "typecheck:tests": "tsc -p tsconfig.test.json",
     "db:encrypt-smtp": "tsx prisma/scripts/encrypt-smtp-passwords.ts",
+    "db:retention:check": "tsx prisma/scripts/retention.ts",
+    "db:retention:apply": "tsx prisma/scripts/retention.ts --apply",
     "lint": "eslint src tests",
     "lint:fix": "eslint src tests --fix",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\""

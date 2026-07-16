@@ -3,7 +3,7 @@ import { queueEmail } from './queue.js';
 import { redisConnection } from './queue.js';
 import { prisma } from '../db.js';
 
-const slaCheckWorker = new Worker(
+export const slaCheckWorker = new Worker(
   'sla-check',
   async () => {
     const now = new Date();

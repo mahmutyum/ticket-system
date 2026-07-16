@@ -55,7 +55,8 @@ docker compose exec backend npx tsx prisma/seed.ts
 | http://localhost:1111 | Arayüz (public portal + staff paneli) |
 | http://localhost:1111/staff/login | Staff girişi |
 | http://localhost:4000/docs | API endpoint listesi (Swagger UI) |
-| http://localhost:4000/health | Sağlık kontrolü |
+| http://localhost:4000/health/live | Process canlılık kontrolü |
+| http://localhost:4000/health/ready | PostgreSQL + Redis hazır olma kontrolü |
 
 **Seed giriş bilgileri:** `admin@company.com` / `admin123` · `manager@company.com` / `staff123` · `it@company.com` / `staff123`
 
@@ -91,8 +92,7 @@ panelden yönetirsin — kod değişikliği gerekmez.
 > **`CREDENTIALS_ENC_KEY` hakkında:** Şifre kasasındaki (`/staff/passwords`) kayıtları
 > AES-256-GCM ile şifreler. **Bu anahtarı kaybedersen veya değiştirirsen kasadaki tüm
 > şifreler kalıcı olarak çözülemez hale gelir.** Ayrıca doğrulama yalnızca uzunluğa bakar,
-> hex geçerliliğine bakmaz — 64 karakterlik ama hex olmayan bir değer açılışı geçer, sonra
-> kasa kullanıldığında hata verir. Değeri mutlaka `openssl rand -hex 32` ile üret.
+> hex karakter kümesini de açılışta doğrular. Değeri `openssl rand -hex 32` ile üret.
 
 > **`REDIS_PASSWORD` neden iki yerde?** Hem `redis` container'ı `--requirepass` ile
 > başlatılırken hem de `REDIS_URL` içinde kullanılır. İkisi farklıysa backend Redis'e

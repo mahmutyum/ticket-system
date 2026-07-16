@@ -1,17 +1,42 @@
 import { buildApp } from './app.js';
 import { config } from './config/index.js';
-import { slaCheckQueue } from './jobs/queue.js';
+import { closeQueues, slaCheckQueue } from './jobs/queue.js';
 import { warmTicketCounter } from './utils/ticket-number.js';
 import { ensureTaskEmailTemplates } from './modules/tasks/task-templates.js';
 import { PrismaClient } from '@prisma/client';
 
 // Import workers to start them
-import './jobs/email.worker.js';
-import './jobs/sms.worker.js';
-import './jobs/sla-check.worker.js';
+import { emailWorker } from './jobs/email.worker.js';
+import { smsWorker } from './jobs/sms.worker.js';
+import { slaCheckWorker } from './jobs/sla-check.worker.js';
 
 async function start() {
   const app = await buildApp();
+  let shuttingDown = false;
+
+  const shutdown = async (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    app.log.info({ signal }, 'Graceful shutdown started');
+    const forceExit = setTimeout(() => {
+      app.log.error('Graceful shutdown timed out');
+      process.exit(1);
+    }, 30_000);
+    forceExit.unref();
+    try {
+      await app.close();
+      await Promise.all([emailWorker.close(), smsWorker.close(), slaCheckWorker.close()]);
+      await closeQueues();
+      clearTimeout(forceExit);
+      process.exit(0);
+    } catch (err) {
+      app.log.error({ err }, 'Graceful shutdown failed');
+      process.exit(1);
+    }
+  };
+
+  process.once('SIGTERM', () => void shutdown('SIGTERM'));
+  process.once('SIGINT', () => void shutdown('SIGINT'));
 
   try {
     await app.listen({ port: config.PORT, host: '0.0.0.0' });

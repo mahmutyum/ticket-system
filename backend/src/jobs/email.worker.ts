@@ -4,7 +4,7 @@ import { prisma } from '../db.js';
 import { redisConnection } from './queue.js';
 import type { EmailJobData } from './queue.js';
 
-const emailWorker = new Worker<EmailJobData>(
+export const emailWorker = new Worker<EmailJobData>(
   'email',
   async (job) => {
     const { to, templateSlug, variables, ticketId, companyId } = job.data;

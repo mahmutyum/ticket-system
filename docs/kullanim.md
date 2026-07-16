@@ -165,8 +165,8 @@ değiştirilebilir.
 - **Şirket bazlı SMTP:** her şirket kendi SMTP'siyle mail gönderebilir. Tanımlı değilse
   global SMTP kullanılır. Panelden **test maili** gönderilebilir.
 
-> ⚠️ Şirket SMTP şifreleri veritabanında **düz metin** saklanır (panelde maskelenir ama
-> şifrelenmez). Bkz. [SECURITY.md](../SECURITY.md).
+> Şirket SMTP şifreleri AES-256-GCM ile şifrelenir. Eski kurulumlar için tek seferlik
+> dönüşüm adımı [SECURITY.md](../SECURITY.md) içinde belgelenmiştir.
 
 ### Şablonlar — `/staff/templates` (`admin`, `it_manager`)
 

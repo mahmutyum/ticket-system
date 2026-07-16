@@ -46,3 +46,12 @@ export async function queueSms(data: SmsJobData) {
     removeOnFail: 200,
   });
 }
+
+export async function closeQueues(): Promise<void> {
+  await Promise.all([
+    emailQueue.close(),
+    smsQueue.close(),
+    slaCheckQueue.close(),
+  ]);
+  await redisConnection.quit();
+}

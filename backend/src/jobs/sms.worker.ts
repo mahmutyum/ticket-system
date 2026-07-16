@@ -5,7 +5,7 @@ import { prisma } from '../db.js';
 import { redisConnection } from './queue.js';
 import type { SmsJobData } from './queue.js';
 
-const smsWorker = new Worker<SmsJobData>(
+export const smsWorker = new Worker<SmsJobData>(
   'sms',
   async (job) => {
     const { to, templateSlug, variables, ticketId } = job.data;
