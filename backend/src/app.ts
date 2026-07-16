@@ -9,6 +9,7 @@ import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
+import { jsonSchemaTransform, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { config } from './config/index.js';
 import { prismaPlugin } from './plugins/prisma.js';
 import { redisPlugin } from './plugins/redis.js';
@@ -31,6 +32,7 @@ import { reportRoutes } from './modules/reports/reports.routes.js';
 import { taskRoutes } from './modules/tasks/tasks.routes.js';
 import { credentialRoutes } from './modules/credentials/credentials.routes.js';
 import { attachmentRoutes, brandingRoutes } from './modules/attachments/attachments.routes.js';
+import { registerMutationAuditHook } from './middleware/audit.js';
 
 export async function buildApp() {
   const app = Fastify({
@@ -47,6 +49,9 @@ export async function buildApp() {
         : undefined,
     },
   });
+
+  app.setValidatorCompiler(validatorCompiler);
+  app.setSerializerCompiler(serializerCompiler);
 
   // Core plugins
   await app.register(rateLimit, {
@@ -105,6 +110,7 @@ export async function buildApp() {
   await app.register(prismaPlugin);
   await app.register(redisPlugin);
   await app.register(authPlugin);
+  registerMutationAuditHook(app);
 
   // NOT: /uploads ARTIK STATİK SERVİS EDİLMİYOR.
   //
@@ -126,6 +132,7 @@ export async function buildApp() {
   // (method + path) üretir. Gövde formatları için ilgili modülün Zod şemasına bak.
   if (config.ENABLE_API_DOCS) {
     await app.register(swagger, {
+      transform: jsonSchemaTransform,
       openapi: {
         info: {
           title: 'IT Ticket System API',

@@ -55,6 +55,7 @@ const DUMMY_HASH = '$2b$12$C6UzMDM.H6dfI/f/IKcEe.7iHW7hVQZ2Nl3xkZL8XxJvGqZ0hqZ0G
 export const authRoutes: FastifyPluginAsync = async (app) => {
   // Staff login
   app.post('/staff/login', {
+    schema: { body: staffLoginSchema },
     config: {
       rateLimit: { max: 5, timeWindow: '1 minute' },
     },
@@ -146,6 +147,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.post('/staff/mfa/verify-login', {
+    schema: { body: mfaVerifySchema },
     config: { rateLimit: { max: 10, timeWindow: '5 minutes' } },
   }, async (request, reply) => {
     const body = mfaVerifySchema.parse(request.body);
@@ -169,6 +171,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   // Refresh token
   app.post('/staff/refresh', {
+    schema: { body: refreshTokenSchema.optional() },
     config: { rateLimit: { max: 20, timeWindow: '1 minute' } },
   }, async (request, reply) => {
     const bodyToken = refreshTokenSchema.safeParse(request.body);
@@ -257,7 +260,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     reply.send({ success: true, data: { revoked: keys.length } });
   });
 
-  app.post('/staff/change-password', { preHandler: [app.authenticate] }, async (request, reply) => {
+  app.post('/staff/change-password', { preHandler: [app.authenticate], schema: { body: changePasswordSchema } }, async (request, reply) => {
     const body = changePasswordSchema.parse(request.body);
     const staff = await app.prisma.staff.findUnique({ where: { id: request.staffUser!.id } });
     if (!staff || !(await bcrypt.compare(body.currentPassword, staff.passwordHash))) {
@@ -284,7 +287,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     reply.send({ success: true, data: { secret, uri: totpUri(secret, staff.email, config.APP_NAME) } });
   });
 
-  app.post('/staff/mfa/enable', { preHandler: [app.authenticate] }, async (request, reply) => {
+  app.post('/staff/mfa/enable', { preHandler: [app.authenticate], schema: { body: mfaCodeSchema } }, async (request, reply) => {
     const { code } = mfaCodeSchema.parse(request.body);
     const pending = await app.redis.get(mfaSetupKey(request.staffUser!.id));
     if (!pending || !verifyTotp(decrypt(pending), code)) {
@@ -296,7 +299,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     reply.send({ success: true });
   });
 
-  app.post('/staff/mfa/disable', { preHandler: [app.authenticate] }, async (request, reply) => {
+  app.post('/staff/mfa/disable', { preHandler: [app.authenticate], schema: { body: disableMfaSchema } }, async (request, reply) => {
     const body = disableMfaSchema.parse(request.body);
     const staff = await app.prisma.staff.findUnique({ where: { id: request.staffUser!.id } });
     if (!staff?.mfaSecretEnc || !(await bcrypt.compare(body.password, staff.passwordHash)) || !verifyTotp(decrypt(staff.mfaSecretEnc), body.code)) {
@@ -323,6 +326,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
    */
   app.post('/lookup', {
     preHandler: [app.authenticate],
+    schema: { body: emailLookupSchema },
     config: { rateLimit: { max: 30, timeWindow: '5 minutes' } },
   }, async (request, reply) => {
     const body = emailLookupSchema.parse(request.body);
