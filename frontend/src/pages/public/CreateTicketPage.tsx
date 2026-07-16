@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle, ArrowLeft, ArrowRight, Building2, MapPin, Tag, FileText, Upload, Paperclip, XCircle, AlertTriangle } from 'lucide-react';
 import axios from 'axios';
@@ -7,8 +8,7 @@ import toast from 'react-hot-toast';
 import type { Company, Location, Category, CustomField } from '../../types';
 import FieldHint from '../../components/FieldHint';
 import { INPUT_LIMITS as LIMITS } from '../../types';
-
-const STEPS = ['Email', 'Şirket', 'Lokasyon', 'Kategori', 'Detay', 'Onay'];
+import { useEnumLabels } from '../../i18n/labels';
 
 interface FormData {
   email: string;
@@ -30,6 +30,16 @@ interface TicketCreationResult {
 }
 
 export default function CreateTicketPage() {
+  const { t, i18n } = useTranslation();
+  const labels = useEnumLabels();
+  const STEPS = [
+    t('common.email'),
+    t('common.company'),
+    t('common.location'),
+    t('common.category'),
+    t('createTicket.steps.details'),
+    t('createTicket.steps.confirm'),
+  ];
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<TicketCreationResult | null>(null);
@@ -195,6 +205,8 @@ export default function CreateTicketPage() {
     try {
       const payload = {
         ...form,
+        // Bildirim dili — talep sahibi e-posta/SMS'lerini portal diliyle alsın.
+        locale: i18n.language?.startsWith('tr') ? 'tr' : 'en',
         customFields: Object.entries(form.customFields)
           .filter(([, v]) => v)
           .map(([fieldId, value]) => ({ fieldId, value })),
@@ -218,9 +230,9 @@ export default function CreateTicketPage() {
       }
 
       setResult(ticketData);
-      toast.success('Destek talebiniz oluşturuldu!');
+      toast.success(t('createTicket.toast.created'));
     } catch (err: unknown) {
-      toast.error(getApiError(err, 'Bir hata oluştu'));
+      toast.error(getApiError(err, t('common.error')));
     } finally {
       setSubmitting(false);
     }
@@ -231,19 +243,19 @@ export default function CreateTicketPage() {
     return (
       <div className="max-w-lg mx-auto card text-center py-12">
         <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold mb-2">Talebiniz Oluşturuldu!</h2>
-        <p className="text-muted mb-6">Talep numaranız:</p>
+        <h2 className="text-2xl font-bold mb-2">{t('createTicket.success.title')}</h2>
+        <p className="text-muted mb-6">{t('createTicket.success.ticketNumberLabel')}</p>
         <div className="text-3xl font-mono font-bold text-primary-700 mb-6">
           {result.ticketNumber}
         </div>
         <p className="text-sm text-muted mb-4">
-          Bu numara ile talebinizi takip edebilirsiniz. Ayrıca email adresinize bilgilendirme gönderilecektir.
+          {t('createTicket.success.info')}
         </p>
         <a
           href={`/ticket/${result.accessToken}`}
           className="btn-primary inline-block"
         >
-          Talebi Görüntüle
+          {t('createTicket.success.view')}
         </a>
       </div>
     );
@@ -252,14 +264,14 @@ export default function CreateTicketPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-8 text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-600 dark:text-primary-300">Yeni destek talebi</p>
-        <h2 className="mt-2 text-3xl font-bold tracking-tight">Sorununu birlikte çözelim</h2>
-        <p className="mx-auto mt-2 max-w-xl text-sm text-muted">Gerekli bilgileri adım adım tamamla. Göndermeden önce tüm detayları kontrol edebilirsin.</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-600 dark:text-primary-300">{t('createTicket.header.eyebrow')}</p>
+        <h2 className="mt-2 text-3xl font-bold tracking-tight">{t('createTicket.header.title')}</h2>
+        <p className="mx-auto mt-2 max-w-xl text-sm text-muted">{t('createTicket.header.subtitle')}</p>
       </div>
       {/* Step indicator */}
-      <div className="mb-3 flex items-center justify-between sm:hidden"><span className="text-sm font-semibold">{STEPS[step]}</span><span className="text-xs text-muted">Adım {step + 1} / {STEPS.length}</span></div>
+      <div className="mb-3 flex items-center justify-between sm:hidden"><span className="text-sm font-semibold">{STEPS[step]}</span><span className="text-xs text-muted">{t('createTicket.stepProgress', { current: step + 1, total: STEPS.length })}</span></div>
       <div className="mb-8 h-2 overflow-hidden rounded-full bg-gray-200 sm:hidden dark:bg-slate-800"><div className="h-full rounded-full bg-primary-600 transition-all" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} /></div>
-      <div className="mb-8 hidden items-center justify-between sm:flex" aria-label="Talep oluşturma adımları">
+      <div className="mb-8 hidden items-center justify-between sm:flex" aria-label={t('createTicket.stepsAria')}>
         {STEPS.map((label, i) => (
           <div key={label} className="flex items-center">
             <div
@@ -286,16 +298,16 @@ export default function CreateTicketPage() {
         {/* Step 0: Email */}
         {step === 0 && (
           <div className="space-y-4">
-            <div><p className="text-xs font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-300">Adım 1</p><h3 className="mt-1 text-xl font-semibold">İletişim bilgileriniz</h3></div>
+            <div><p className="text-xs font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-300">{t('createTicket.step1.eyebrow')}</p><h3 className="mt-1 text-xl font-semibold">{t('createTicket.step1.title')}</h3></div>
             {isPortalLocked && portalCompany && (
               <div className="flex items-center gap-2 bg-primary-50 text-primary-700 px-3 py-2 rounded-lg text-sm">
                 <Building2 className="w-4 h-4" />
-                <span><strong>{portalCompany.name}</strong> destek portalı</span>
+                <span><strong>{portalCompany.name}</strong> {t('createTicket.step1.supportPortal')}</span>
               </div>
             )}
-            <p className="text-sm text-muted">Talep bağlantısı ve bilgilendirmeler bu e-posta adresine gönderilir.</p>
+            <p className="text-sm text-muted">{t('createTicket.step1.emailInfo')}</p>
             <div>
-              <label htmlFor="requester-email" className="block text-sm font-medium mb-1">Email Adresiniz *</label>
+              <label htmlFor="requester-email" className="block text-sm font-medium mb-1">{t('createTicket.step1.emailLabel')} *</label>
               <input
                 id="requester-email"
                 type="email"
@@ -308,12 +320,12 @@ export default function CreateTicketPage() {
               {form.email && emailDomain && allCompanies && !hasAccessibleCompanies && (
                 <div className="mt-2 flex items-start gap-2 text-red-700 bg-red-50 rounded-lg p-3 text-sm dark:bg-red-500/15 dark:text-red-300">
                   <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <span>Bu email adresi ile destek talebi oluşturamazsınız. Lütfen kurumsal email adresinizi kullanın.</span>
+                  <span>{t('createTicket.step1.domainRejected')}</span>
                 </div>
               )}
             </div>
             <div>
-              <label htmlFor="requester-name" className="block text-sm font-medium mb-1">Ad Soyad *</label>
+              <label htmlFor="requester-name" className="block text-sm font-medium mb-1">{t('common.fullName')} *</label>
               <input
                 id="requester-name"
                 type="text"
@@ -326,7 +338,7 @@ export default function CreateTicketPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="requester-phone" className="block text-sm font-medium mb-1">Telefon</label>
+                <label htmlFor="requester-phone" className="block text-sm font-medium mb-1">{t('common.phone')}</label>
                 <input
                   id="requester-phone"
                   type="tel"
@@ -337,7 +349,7 @@ export default function CreateTicketPage() {
                 />
               </div>
               <div>
-                <label htmlFor="requester-department" className="block text-sm font-medium mb-1">Departman</label>
+                <label htmlFor="requester-department" className="block text-sm font-medium mb-1">{t('common.department')}</label>
                 <input
                   id="requester-department"
                   type="text"
@@ -354,7 +366,7 @@ export default function CreateTicketPage() {
         {step === 1 && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Building2 className="w-5 h-5" /> Şirket Seçimi
+              <Building2 className="w-5 h-5" /> {t('createTicket.step2.title')}
             </h3>
             <div className="grid gap-3 sm:grid-cols-2">
               {companies?.map(company => (
@@ -368,12 +380,12 @@ export default function CreateTicketPage() {
                   }`}
                 >
                   <span className="font-medium">{company.name}</span>
-                  <span className="block text-xs text-muted mt-1">{company.groupType}</span>
+                  <span className="block text-xs text-muted mt-1">{labels.groupType(company.groupType)}</span>
                 </button>
               ))}
             </div>
             {companies?.length === 0 && (
-              <p className="text-center text-muted py-4">Kullanılabilir şirket bulunamadı.</p>
+              <p className="text-center text-muted py-4">{t('createTicket.step2.empty')}</p>
             )}
           </div>
         )}
@@ -382,11 +394,11 @@ export default function CreateTicketPage() {
         {step === 2 && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <MapPin className="w-5 h-5" /> Lokasyon Seçimi
+              <MapPin className="w-5 h-5" /> {t('createTicket.step3.title')}
             </h3>
-            <p className="text-sm text-muted">{selectedCompany?.name} için lokasyon seçin</p>
+            <p className="text-sm text-muted">{t('createTicket.step3.subtitle', { company: selectedCompany?.name })}</p>
             {locations && locations.length === 0 ? (
-              <p className="text-center text-muted py-4">Bu şirkete tanımlı lokasyon bulunamadı.</p>
+              <p className="text-center text-muted py-4">{t('createTicket.step3.empty')}</p>
             ) : (
               <div className="space-y-2">
                 {locations?.map(loc => (
@@ -412,7 +424,7 @@ export default function CreateTicketPage() {
         {step === 3 && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Tag className="w-5 h-5" /> Sorun Kategorisi
+              <Tag className="w-5 h-5" /> {t('createTicket.step4.title')}
             </h3>
             <div className="space-y-2">
               {categories?.map(cat => (
@@ -437,7 +449,7 @@ export default function CreateTicketPage() {
         {step === 4 && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <FileText className="w-5 h-5" /> Detaylar
+              <FileText className="w-5 h-5" /> {t('createTicket.step5.title')}
             </h3>
             {/*
               maxLength ve sayaçlar backend kurallarıyla HİZALI olmalı
@@ -445,14 +457,14 @@ export default function CreateTicketPage() {
               yazar, gönderir ve sunucudan 400 yer — hata formda değil ağda çıkar.
             */}
             <div>
-              <label htmlFor="ticket-subject" className="block text-sm font-medium mb-1">Konu *</label>
+              <label htmlFor="ticket-subject" className="block text-sm font-medium mb-1">{t('common.subject')} *</label>
               <input
                 id="ticket-subject"
                 type="text"
                 className="input-field"
                 value={form.subject}
                 onChange={e => update({ subject: e.target.value })}
-                placeholder="Sorunu kısaca tanımlayın"
+                placeholder={t('createTicket.step5.subjectPlaceholder')}
                 minLength={LIMITS.subject.min}
                 maxLength={LIMITS.subject.max}
                 required
@@ -460,13 +472,13 @@ export default function CreateTicketPage() {
               <FieldHint value={form.subject} {...LIMITS.subject} />
             </div>
             <div>
-              <label htmlFor="ticket-description" className="block text-sm font-medium mb-1">Açıklama *</label>
+              <label htmlFor="ticket-description" className="block text-sm font-medium mb-1">{t('common.description')} *</label>
               <textarea
                 id="ticket-description"
                 className="input-field min-h-[120px]"
                 value={form.description}
                 onChange={e => update({ description: e.target.value })}
-                placeholder="Sorunu detaylı olarak açıklayın..."
+                placeholder={t('createTicket.step5.descriptionPlaceholder')}
                 minLength={LIMITS.description.min}
                 maxLength={LIMITS.description.max}
                 required
@@ -474,25 +486,25 @@ export default function CreateTicketPage() {
               <FieldHint value={form.description} {...LIMITS.description} />
             </div>
             <div>
-              <label htmlFor="ticket-priority" className="block text-sm font-medium mb-1">Öncelik</label>
+              <label htmlFor="ticket-priority" className="block text-sm font-medium mb-1">{t('common.priority')}</label>
               <select
                 id="ticket-priority"
                 className="input-field"
                 value={form.priority}
                 onChange={e => update({ priority: e.target.value })}
               >
-                <option value="low">Düşük</option>
-                <option value="medium">Orta</option>
-                <option value="high">Yüksek</option>
-                <option value="critical">Kritik</option>
+                <option value="low">{labels.priority('low')}</option>
+                <option value="medium">{labels.priority('medium')}</option>
+                <option value="high">{labels.priority('high')}</option>
+                <option value="critical">{labels.priority('critical')}</option>
               </select>
             </div>
 
             {/* File upload */}
             <div>
-              <span className="block text-sm font-medium mb-1">Dosya Ekle</span>
+              <span className="block text-sm font-medium mb-1">{t('createTicket.step5.attachFile')}</span>
               <label className="flex items-center gap-2 btn-secondary text-sm cursor-pointer w-fit">
-                <Upload className="w-4 h-4" /> Dosya Seç
+                <Upload className="w-4 h-4" /> {t('createTicket.step5.chooseFile')}
                 <input type="file" className="hidden" onChange={handleFileAdd} multiple />
               </label>
               {files.length > 0 && (
@@ -502,7 +514,7 @@ export default function CreateTicketPage() {
                       <Paperclip className="w-3 h-3 text-muted" />
                       <span className="flex-1 truncate">{f.name}</span>
                       <span className="text-xs text-muted">{(f.size / 1024).toFixed(0)} KB</span>
-                      <button onClick={() => handleFileRemove(i)} className="icon-button min-h-8 min-w-8 border-0 text-red-500" aria-label={`${f.name} dosyasını kaldır`}>
+                      <button onClick={() => handleFileRemove(i)} className="icon-button min-h-8 min-w-8 border-0 text-red-500" aria-label={t('createTicket.step5.removeFile', { name: f.name })}>
                         <XCircle className="w-4 h-4" />
                       </button>
                     </div>
@@ -514,7 +526,7 @@ export default function CreateTicketPage() {
             {/* Dynamic custom fields */}
             {customFields && customFields.length > 0 && (
               <div className="border-t pt-4 mt-4 space-y-4">
-                <h4 className="text-sm font-semibold">Ek Bilgiler</h4>
+                <h4 className="text-sm font-semibold">{t('createTicket.step5.additionalInfo')}</h4>
                 {customFields.map(field => (
                   <div key={field.id}>
                     <label htmlFor={`custom-field-${field.id}`} className="block text-sm font-medium mb-1">
@@ -529,7 +541,7 @@ export default function CreateTicketPage() {
                           customFields: { ...form.customFields, [field.id]: e.target.value }
                         })}
                       >
-                        <option value="">Seçin...</option>
+                        <option value="">{t('createTicket.step5.selectOption')}</option>
                         {(field.options as string[] || []).map(opt => (
                           <option key={opt} value={opt}>{opt}</option>
                         ))}
@@ -566,42 +578,42 @@ export default function CreateTicketPage() {
         {/* Step 5: Confirm */}
         {step === 5 && (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Talep Özeti</h3>
+            <h3 className="text-lg font-semibold">{t('createTicket.step6.title')}</h3>
             <div className="surface-2 rounded-2xl p-4 space-y-3 text-sm sm:p-5">
               <div className="flex justify-between">
-                <span className="text-muted">Email:</span>
+                <span className="text-muted">{t('common.email')}:</span>
                 <span className="font-medium">{form.email}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted">Ad Soyad:</span>
+                <span className="text-muted">{t('common.fullName')}:</span>
                 <span className="font-medium">{form.fullName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted">Şirket:</span>
+                <span className="text-muted">{t('common.company')}:</span>
                 <span className="font-medium">{selectedCompany?.name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted">Lokasyon:</span>
+                <span className="text-muted">{t('common.location')}:</span>
                 <span className="font-medium">{selectedLocation?.name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted">Kategori:</span>
+                <span className="text-muted">{t('common.category')}:</span>
                 <span className="font-medium">{selectedCategory?.name}</span>
               </div>
               <hr />
               <div className="flex justify-between">
-                <span className="text-muted">Konu:</span>
+                <span className="text-muted">{t('common.subject')}:</span>
                 <span className="font-medium">{form.subject}</span>
               </div>
               <div>
-                <span className="text-muted">Açıklama:</span>
+                <span className="text-muted">{t('common.description')}:</span>
                 <p className="mt-1 whitespace-pre-wrap">{form.description}</p>
               </div>
               {files.length > 0 && (
                 <>
                   <hr />
                   <div>
-                    <span className="text-muted">Dosyalar ({files.length}):</span>
+                    <span className="text-muted">{t('createTicket.step6.filesLabel', { count: files.length })}</span>
                     <div className="mt-1 space-y-1">
                       {files.map((f, i) => (
                         <div key={i} className="text-muted flex items-center gap-1">
@@ -623,7 +635,7 @@ export default function CreateTicketPage() {
             disabled={step === 0}
             className="btn-secondary flex items-center gap-2 disabled:opacity-30"
           >
-            <ArrowLeft className="w-4 h-4" /> Geri
+            <ArrowLeft className="w-4 h-4" /> {t('common.back')}
           </button>
 
           {step < STEPS.length - 1 ? (
@@ -632,7 +644,7 @@ export default function CreateTicketPage() {
               disabled={!canNext()}
               className="btn-primary flex items-center gap-2"
             >
-              İleri <ArrowRight className="w-4 h-4" />
+              {t('common.next')} <ArrowRight className="w-4 h-4" />
             </button>
           ) : (
             <button
@@ -640,7 +652,7 @@ export default function CreateTicketPage() {
               disabled={submitting}
               className="btn-primary flex items-center gap-2"
             >
-              {submitting ? 'Gönderiliyor...' : 'Talebi Oluştur'}
+              {submitting ? t('createTicket.submitting') : t('createTicket.submit')}
             </button>
           )}
         </div>

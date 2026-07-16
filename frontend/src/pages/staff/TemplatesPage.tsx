@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit2, Trash2, Mail, MessageSquare, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -24,6 +25,7 @@ function parseVariables(value: unknown): string[] {
 }
 
 export default function TemplatesPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabType>('email');
   const [showForm, setShowForm] = useState(false);
@@ -73,9 +75,9 @@ export default function TemplatesPage() {
       }
       queryClient.invalidateQueries({ queryKey: ['templates-email'] });
       resetForms();
-      toast.success('Email şablonu kaydedildi');
+      toast.success(t('templates.emailSaved'));
     } catch (err: unknown) {
-      toast.error(getApiError(err, 'Hata'));
+      toast.error(getApiError(err, t('templates.saveError')));
     }
   };
 
@@ -93,9 +95,9 @@ export default function TemplatesPage() {
       }
       queryClient.invalidateQueries({ queryKey: ['templates-sms'] });
       resetForms();
-      toast.success('SMS şablonu kaydedildi');
+      toast.success(t('templates.smsSaved'));
     } catch (err: unknown) {
-      toast.error(getApiError(err, 'Hata'));
+      toast.error(getApiError(err, t('templates.saveError')));
     }
   };
 
@@ -109,37 +111,37 @@ export default function TemplatesPage() {
       }
       queryClient.invalidateQueries({ queryKey: ['templates-canned'] });
       resetForms();
-      toast.success('Hazır yanıt kaydedildi');
+      toast.success(t('templates.cannedSaved'));
     } catch (err: unknown) {
-      toast.error(getApiError(err, 'Hata'));
+      toast.error(getApiError(err, t('templates.saveError')));
     }
   };
 
   const handleDelete = async (type: TabType, id: string) => {
-    if (!confirm('Silmek istediğinize emin misiniz?')) return;
+    if (!confirm(t('common.confirmDelete'))) return;
     try {
       await api.delete(`/templates/${type}/${id}`);
       queryClient.invalidateQueries({ queryKey: [`templates-${type}`] });
-      toast.success('Silindi');
+      toast.success(t('templates.deleted'));
     } catch {
-      toast.error('Silinemedi');
+      toast.error(t('templates.deleteError'));
     }
   };
 
   const tabs = [
-    { key: 'email' as TabType, label: 'Email Şablonları', icon: Mail },
-    { key: 'sms' as TabType, label: 'SMS Şablonları', icon: MessageSquare },
-    { key: 'canned' as TabType, label: 'Hazır Yanıtlar', icon: MessageCircle },
+    { key: 'email' as TabType, label: t('templates.tabEmail'), icon: Mail },
+    { key: 'sms' as TabType, label: t('templates.tabSms'), icon: MessageSquare },
+    { key: 'canned' as TabType, label: t('templates.tabCanned'), icon: MessageCircle },
   ];
 
   return (
     <div className="space-y-4">
-      <PageHeader eyebrow="İletişim içeriği" title="Şablonlar" description="E-posta, SMS ve hazır yanıt içeriklerini tek merkezden düzenle." actions={
+      <PageHeader eyebrow={t('templates.eyebrow')} title={t('templates.title')} description={t('templates.description')} actions={
         <button
           onClick={() => { setShowForm(true); setEditId(null); }}
           className="btn-primary flex items-center gap-2"
         >
-          <Plus className="w-4 h-4" /> Yeni Ekle
+          <Plus className="w-4 h-4" /> {t('templates.addNew')}
         </button>
       } />
 
@@ -163,34 +165,34 @@ export default function TemplatesPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="card w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold mb-4">
-              {editId ? 'Düzenle' : 'Yeni'} — {tabs.find(t => t.key === tab)?.label}
+              {editId ? t('common.edit') : t('common.new')} — {tabs.find(x => x.key === tab)?.label}
             </h2>
 
             {tab === 'email' && (
               <form onSubmit={handleSubmitEmail} className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Slug (benzersiz anahtar) *</label>
+                  <label className="block text-sm font-medium mb-1">{t('templates.emailSlugLabel')} *</label>
                   <input type="text" className="input-field" value={emailForm.slug} onChange={e => setEmailForm({ ...emailForm, slug: e.target.value })} required disabled={!!editId} placeholder="ticket_created" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Konu *</label>
+                  <label className="block text-sm font-medium mb-1">{t('common.subject')} *</label>
                   <input type="text" className="input-field" value={emailForm.subject} onChange={e => setEmailForm({ ...emailForm, subject: e.target.value })} required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">HTML İçerik *</label>
+                  <label className="block text-sm font-medium mb-1">{t('templates.htmlContent')} *</label>
                   <textarea className="input-field min-h-[150px] font-mono text-sm" value={emailForm.bodyHtml} onChange={e => setEmailForm({ ...emailForm, bodyHtml: e.target.value })} required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Düz Metin *</label>
+                  <label className="block text-sm font-medium mb-1">{t('templates.plainText')} *</label>
                   <textarea className="input-field min-h-[80px]" value={emailForm.bodyText} onChange={e => setEmailForm({ ...emailForm, bodyText: e.target.value })} required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Değişkenler (virgülle ayırın)</label>
+                  <label className="block text-sm font-medium mb-1">{t('templates.variablesComma')}</label>
                   <input type="text" className="input-field" value={emailForm.variables} onChange={e => setEmailForm({ ...emailForm, variables: e.target.value })} placeholder="ticketNumber, userName, trackingUrl" />
                 </div>
                 <div className="flex gap-3 pt-2">
-                  <button type="submit" className="btn-primary flex-1">Kaydet</button>
-                  <button type="button" onClick={resetForms} className="btn-secondary flex-1">İptal</button>
+                  <button type="submit" className="btn-primary flex-1">{t('common.save')}</button>
+                  <button type="button" onClick={resetForms} className="btn-secondary flex-1">{t('common.cancel')}</button>
                 </div>
               </form>
             )}
@@ -198,20 +200,20 @@ export default function TemplatesPage() {
             {tab === 'sms' && (
               <form onSubmit={handleSubmitSms} className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Slug *</label>
+                  <label className="block text-sm font-medium mb-1">{t('templates.slug')} *</label>
                   <input type="text" className="input-field" value={smsForm.slug} onChange={e => setSmsForm({ ...smsForm, slug: e.target.value })} required disabled={!!editId} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Mesaj *</label>
+                  <label className="block text-sm font-medium mb-1">{t('templates.message')} *</label>
                   <textarea className="input-field min-h-[100px]" value={smsForm.body} onChange={e => setSmsForm({ ...smsForm, body: e.target.value })} required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Değişkenler</label>
+                  <label className="block text-sm font-medium mb-1">{t('templates.variables')}</label>
                   <input type="text" className="input-field" value={smsForm.variables} onChange={e => setSmsForm({ ...smsForm, variables: e.target.value })} />
                 </div>
                 <div className="flex gap-3 pt-2">
-                  <button type="submit" className="btn-primary flex-1">Kaydet</button>
-                  <button type="button" onClick={resetForms} className="btn-secondary flex-1">İptal</button>
+                  <button type="submit" className="btn-primary flex-1">{t('common.save')}</button>
+                  <button type="button" onClick={resetForms} className="btn-secondary flex-1">{t('common.cancel')}</button>
                 </div>
               </form>
             )}
@@ -219,26 +221,26 @@ export default function TemplatesPage() {
             {tab === 'canned' && (
               <form onSubmit={handleSubmitCanned} className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Başlık *</label>
+                  <label className="block text-sm font-medium mb-1">{t('templates.cannedTitle')} *</label>
                   <input type="text" className="input-field" value={cannedForm.title} onChange={e => setCannedForm({ ...cannedForm, title: e.target.value })} required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">İçerik *</label>
+                  <label className="block text-sm font-medium mb-1">{t('templates.content')} *</label>
                   <textarea className="input-field min-h-[100px]" value={cannedForm.content} onChange={e => setCannedForm({ ...cannedForm, content: e.target.value })} required />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Kategori</label>
+                    <label className="block text-sm font-medium mb-1">{t('common.category')}</label>
                     <input type="text" className="input-field" value={cannedForm.category} onChange={e => setCannedForm({ ...cannedForm, category: e.target.value })} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Sıra</label>
+                    <label className="block text-sm font-medium mb-1">{t('templates.sortOrder')}</label>
                     <input type="number" className="input-field" value={cannedForm.sortOrder} onChange={e => setCannedForm({ ...cannedForm, sortOrder: parseInt(e.target.value) || 0 })} />
                   </div>
                 </div>
                 <div className="flex gap-3 pt-2">
-                  <button type="submit" className="btn-primary flex-1">Kaydet</button>
-                  <button type="button" onClick={resetForms} className="btn-secondary flex-1">İptal</button>
+                  <button type="submit" className="btn-primary flex-1">{t('common.save')}</button>
+                  <button type="button" onClick={resetForms} className="btn-secondary flex-1">{t('common.cancel')}</button>
                 </div>
               </form>
             )}
@@ -249,29 +251,29 @@ export default function TemplatesPage() {
       {/* Content */}
       {tab === 'email' && (
         <div className="space-y-3">
-          {emailTemplates?.map(t => (
-            <div key={t.id} className="card">
+          {emailTemplates?.map(tpl => (
+            <div key={tpl.id} className="card">
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <code className="surface-2 rounded px-2 py-0.5 text-xs">{t.slug}</code>
+                    <code className="surface-2 rounded px-2 py-0.5 text-xs">{tpl.slug}</code>
                   </div>
-                  <h3 className="font-medium">{t.subject}</h3>
-                  <p className="mt-1 text-xs text-muted">Değişkenler: {parseVariables(t.variables).join(', ') || '-'}</p>
+                  <h3 className="font-medium">{tpl.subject}</h3>
+                  <p className="mt-1 text-xs text-muted">{t('templates.variablesList', { list: parseVariables(tpl.variables).join(', ') || '-' })}</p>
                 </div>
                 <div className="flex gap-1">
                   <button
                     onClick={() => {
-                      setEditId(t.id);
-                      setEmailForm({ slug: t.slug, subject: t.subject, bodyHtml: t.bodyHtml, bodyText: t.bodyText, variables: parseVariables(t.variables).join(', ') || '' });
+                      setEditId(tpl.id);
+                      setEmailForm({ slug: tpl.slug, subject: tpl.subject, bodyHtml: tpl.bodyHtml, bodyText: tpl.bodyText, variables: parseVariables(tpl.variables).join(', ') || '' });
                       setShowForm(true);
                     }}
-                    aria-label={`${t.subject} şablonunu düzenle`}
+                    aria-label={t('templates.editEmailAria', { subject: tpl.subject })}
                     className="icon-button border-0"
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
-                  <button aria-label={`${t.subject} şablonunu sil`} onClick={() => handleDelete('email', t.id)} className="icon-button border-0 text-red-500 hover:text-red-600">
+                  <button aria-label={t('templates.deleteEmailAria', { subject: tpl.subject })} onClick={() => handleDelete('email', tpl.id)} className="icon-button border-0 text-red-500 hover:text-red-600">
                     <Trash2 className="w-4 h-4 text-red-500" />
                   </button>
                 </div>
@@ -283,27 +285,27 @@ export default function TemplatesPage() {
 
       {tab === 'sms' && (
         <div className="space-y-3">
-          {smsTemplates?.map(t => (
-            <div key={t.id} className="card">
+          {smsTemplates?.map(tpl => (
+            <div key={tpl.id} className="card">
               <div className="flex items-start justify-between">
                 <div>
-                  <code className="surface-2 rounded px-2 py-0.5 text-xs">{t.slug}</code>
-                  <p className="mt-2 text-sm">{t.body}</p>
-                  <p className="mt-1 text-xs text-muted">Değişkenler: {parseVariables(t.variables).join(', ') || '-'}</p>
+                  <code className="surface-2 rounded px-2 py-0.5 text-xs">{tpl.slug}</code>
+                  <p className="mt-2 text-sm">{tpl.body}</p>
+                  <p className="mt-1 text-xs text-muted">{t('templates.variablesList', { list: parseVariables(tpl.variables).join(', ') || '-' })}</p>
                 </div>
                 <div className="flex gap-1">
                   <button
                     onClick={() => {
-                      setEditId(t.id);
-                      setSmsForm({ slug: t.slug, body: t.body, variables: parseVariables(t.variables).join(', ') || '' });
+                      setEditId(tpl.id);
+                      setSmsForm({ slug: tpl.slug, body: tpl.body, variables: parseVariables(tpl.variables).join(', ') || '' });
                       setShowForm(true);
                     }}
-                    aria-label={`${t.slug} SMS şablonunu düzenle`}
+                    aria-label={t('templates.editSmsAria', { slug: tpl.slug })}
                     className="icon-button border-0"
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
-                  <button aria-label={`${t.slug} SMS şablonunu sil`} onClick={() => handleDelete('sms', t.id)} className="icon-button border-0 text-red-500 hover:text-red-600">
+                  <button aria-label={t('templates.deleteSmsAria', { slug: tpl.slug })} onClick={() => handleDelete('sms', tpl.id)} className="icon-button border-0 text-red-500 hover:text-red-600">
                     <Trash2 className="w-4 h-4 text-red-500" />
                   </button>
                 </div>
@@ -332,12 +334,12 @@ export default function TemplatesPage() {
                       setCannedForm({ title: cr.title, content: cr.content, category: cr.category || '', sortOrder: cr.sortOrder });
                       setShowForm(true);
                     }}
-                    aria-label={`${cr.title} hazır yanıtını düzenle`}
+                    aria-label={t('templates.editCannedAria', { title: cr.title })}
                     className="icon-button border-0"
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
-                  <button aria-label={`${cr.title} hazır yanıtını sil`} onClick={() => handleDelete('canned', cr.id)} className="icon-button border-0 text-red-500 hover:text-red-600">
+                  <button aria-label={t('templates.deleteCannedAria', { title: cr.title })} onClick={() => handleDelete('canned', cr.id)} className="icon-button border-0 text-red-500 hover:text-red-600">
                     <Trash2 className="w-4 h-4 text-red-500" />
                   </button>
                 </div>

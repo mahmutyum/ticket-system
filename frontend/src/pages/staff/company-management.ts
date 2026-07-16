@@ -1,11 +1,8 @@
 import type { Company } from '../../types';
 
-export const GROUP_TYPES = [
-  { value: 'call_center', label: 'Çağrı Merkezi' },
-  { value: 'corporate', label: 'Kurumsal' },
-  { value: 'warehouse', label: 'Depo / Lojistik' },
-  { value: 'retail', label: 'Mağaza / Perakende' },
-];
+// Grup türü kodları dile bağlı değildir (backend enum değerleri). Kullanıcıya
+// görünen etiketler `useEnumLabels().groupType(value)` ile çevrilir.
+export const GROUP_TYPES = ['call_center', 'corporate', 'warehouse', 'retail'] as const;
 
 export const emptySmtpForm = {
   host: '', port: 587, secure: false, user: '', pass: '',

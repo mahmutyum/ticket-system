@@ -1,13 +1,16 @@
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { dateLocale } from '../../i18n/format';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import {
   Clock, Building2, MapPin, Tag, User, Send,
   Calendar, MapPinned, Upload, Paperclip, FileText,
 } from 'lucide-react';
-import { STATUS_LABELS, type Ticket } from '../../types';
+import { type Ticket } from '../../types';
+import { useEnumLabels } from '../../i18n/labels';
 import { useTicketSSE } from '../../hooks/useSSE';
 import { useQueryClient } from '@tanstack/react-query';
 import { publicAttachmentUrl } from '../../utils/download';
@@ -15,6 +18,8 @@ import { EmptyState, SkeletonRows } from '../../components/ui/AsyncState';
 import { PriorityBadge, StatusBadge } from '../../components/ui/Badge';
 
 export default function TicketStatusPage() {
+  const { t } = useTranslation();
+  const labels = useEnumLabels();
   const { accessToken } = useParams<{ accessToken: string }>();
   const queryClient = useQueryClient();
   const [reply, setReply] = useState('');
@@ -39,10 +44,10 @@ export default function TicketStatusPage() {
     try {
       await axios.post(`/api/public/ticket/${accessToken}/reply`, { content: reply });
       setReply('');
-      toast.success('Yanıtınız gönderildi');
+      toast.success(t('ticketStatus.replySent'));
       refetch();
     } catch {
-      toast.error('Bir hata oluştu');
+      toast.error(t('common.error'));
     } finally {
       setSending(false);
     }
@@ -54,7 +59,7 @@ export default function TicketStatusPage() {
 
   if (!ticket) {
     return (
-      <div className="card mx-auto max-w-2xl"><EmptyState title="Talep bulunamadı" description="Bağlantı geçersiz veya erişim süresi dolmuş olabilir. Talep takip ekranından yeniden erişim isteyin." /></div>
+      <div className="card mx-auto max-w-2xl"><EmptyState title={t('ticketStatus.notFoundTitle')} description={t('ticketStatus.notFoundDesc')} /></div>
     );
   }
 
@@ -90,28 +95,28 @@ export default function TicketStatusPage() {
           </div>
           <div className="flex items-center gap-2 text-muted">
             <Clock className="w-4 h-4" />
-            <span>{new Date(ticket.createdAt).toLocaleDateString('tr-TR')}</span>
+            <span>{new Date(ticket.createdAt).toLocaleDateString(dateLocale())}</span>
           </div>
         </div>
 
         {ticket.assignedTo && (
           <div className="mt-4 flex items-center gap-2 text-sm text-muted">
             <User className="w-4 h-4" />
-            <span>Atanan: <strong>{ticket.assignedTo.fullName}</strong></span>
+            <span>{t('common.assignedTo')}: <strong>{ticket.assignedTo.fullName}</strong></span>
           </div>
         )}
       </div>
 
       {/* Description */}
       <div className="card">
-        <h3 className="mb-3 font-semibold">Talep açıklaması</h3>
+        <h3 className="mb-3 font-semibold">{t('ticketStatus.descriptionTitle')}</h3>
         <p className="whitespace-pre-wrap leading-7">{ticket.description}</p>
       </div>
 
       {/* Custom field values */}
       {ticket.customValues && ticket.customValues.length > 0 && (
         <div className="card">
-          <h3 className="mb-3 font-semibold">Ek bilgiler</h3>
+          <h3 className="mb-3 font-semibold">{t('ticketStatus.extraInfoTitle')}</h3>
           <div className="grid gap-3 text-sm sm:grid-cols-2">
             {ticket.customValues.map(cv => (
               <div key={cv.id} className="surface-2 rounded-xl p-3">
@@ -127,18 +132,20 @@ export default function TicketStatusPage() {
       {ticket.onsiteSupport && ticket.onsiteSupport.length > 0 && (
         <div className="card border-l-4 border-l-orange-400">
           <h3 className="text-sm font-semibold text-orange-600 mb-3 flex items-center gap-2">
-            <MapPinned className="w-4 h-4" /> Yerinde Destek
+            <MapPinned className="w-4 h-4" /> {t('ticketStatus.onsiteTitle')}
           </h3>
           {ticket.onsiteSupport.map(os => (
             <div key={os.id} className="text-sm space-y-1">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-muted" />
-                <span>{new Date(os.scheduledAt).toLocaleString('tr-TR')}</span>
+                <span>{new Date(os.scheduledAt).toLocaleString(dateLocale())}</span>
               </div>
               <span className="text-muted">
                 {os.type === 'come_to_it_room'
-                  ? `Lütfen IT odasına geliniz${os.roomInfo ? `: ${os.roomInfo}` : ''}`
-                  : 'Teknik ekip size gelecek'}
+                  ? (os.roomInfo
+                      ? t('ticketStatus.comeToItRoomWithInfo', { room: os.roomInfo })
+                      : t('ticketStatus.comeToItRoom'))
+                  : t('ticketStatus.teamWillCome')}
               </span>
             </div>
           ))}
@@ -147,22 +154,22 @@ export default function TicketStatusPage() {
 
       {/* Timeline */}
       <div className="card">
-        <h3 className="mb-4 font-semibold">Süreç geçmişi</h3>
+        <h3 className="mb-4 font-semibold">{t('ticketStatus.timelineTitle')}</h3>
         <div className="space-y-4">
           {ticket.history?.map(h => (
             <div key={h.id || h.createdAt} className="flex gap-3 text-sm">
               <div className="w-2 h-2 rounded-full bg-gray-300 mt-1.5 flex-shrink-0" />
               <div className="flex-1">
                 <span className="text-muted">
-                  {new Date(h.createdAt).toLocaleString('tr-TR')}
+                  {new Date(h.createdAt).toLocaleString(dateLocale())}
                 </span>
                 <span className="ml-2">
-                  {h.action === 'status_changed' && `Durum değişti: ${STATUS_LABELS[h.oldValue ?? ''] || h.oldValue} → ${STATUS_LABELS[h.newValue ?? ''] || h.newValue}`}
-                  {h.action === 'ticket_created' && 'Talep oluşturuldu'}
-                  {h.action === 'assigned' && 'Talep atandı'}
-                  {h.action === 'user_reply' && `Kullanıcı yanıtı: ${h.newValue}`}
-                  {h.action === 'note_added' && 'Not eklendi'}
-                  {h.action === 'onsite_scheduled' && 'Yerinde destek planlandı'}
+                  {h.action === 'status_changed' && t('ticketStatus.statusChanged', { from: labels.status(h.oldValue ?? ''), to: labels.status(h.newValue ?? '') })}
+                  {h.action === 'ticket_created' && t('ticketStatus.ticketCreated')}
+                  {h.action === 'assigned' && t('ticketStatus.assigned')}
+                  {h.action === 'user_reply' && t('ticketStatus.userReply', { content: h.newValue })}
+                  {h.action === 'note_added' && t('ticketStatus.noteAdded')}
+                  {h.action === 'onsite_scheduled' && t('ticketStatus.onsiteScheduled')}
                 </span>
               </div>
             </div>
@@ -176,7 +183,7 @@ export default function TicketStatusPage() {
                 <div className="flex justify-between mb-1">
                   <span className="font-medium text-primary-700">{note.createdBy.fullName}</span>
                   <span className="text-muted text-xs">
-                    {new Date(note.createdAt).toLocaleString('tr-TR')}
+                    {new Date(note.createdAt).toLocaleString(dateLocale())}
                   </span>
                 </div>
                 <p>{note.content}</p>
@@ -190,7 +197,7 @@ export default function TicketStatusPage() {
       {(ticket.attachments?.length ?? 0) > 0 && (
         <div className="card">
           <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <Paperclip className="w-4 h-4" /> Dosyalar
+            <Paperclip className="w-4 h-4" /> {t('ticketStatus.attachmentsTitle')}
           </h3>
           <div className="space-y-2">
             {ticket.attachments?.map(att => (
@@ -216,23 +223,23 @@ export default function TicketStatusPage() {
       {/* Reply form + file upload */}
       {!closedStatuses.includes(ticket.status) && (
         <div className="card">
-          <h3 className="mb-1 font-semibold">Yanıt gönder</h3>
-          <p className="mb-4 text-sm text-muted">Mesajınız destek ekibine iletilir ve süreç geçmişinde görünür.</p>
+          <h3 className="mb-1 font-semibold">{t('ticketStatus.replyTitle')}</h3>
+          <p className="mb-4 text-sm text-muted">{t('ticketStatus.replyDesc')}</p>
           <form onSubmit={handleReply} className="space-y-3">
             <textarea
               className="input-field min-h-[120px]"
               value={reply}
               onChange={e => setReply(e.target.value)}
-              placeholder="Mesajınızı yazın..."
+              placeholder={t('ticketStatus.replyPlaceholder')}
             />
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <button type="submit" disabled={sending || !reply.trim()} className="btn-primary flex items-center gap-2">
                 <Send className="w-4 h-4" />
-                {sending ? 'Gönderiliyor...' : 'Gönder'}
+                {sending ? t('ticketStatus.sending') : t('ticketStatus.send')}
               </button>
               <label className={`btn-secondary text-sm flex items-center gap-1 cursor-pointer ${uploading ? 'opacity-50' : ''}`}>
                 <Upload className="w-4 h-4" />
-                {uploading ? 'Yükleniyor...' : 'Dosya Ekle'}
+                {uploading ? t('ticketStatus.uploading') : t('ticketStatus.addFile')}
                 <input
                   type="file"
                   className="hidden"
@@ -248,9 +255,9 @@ export default function TicketStatusPage() {
                         headers: { 'Content-Type': 'multipart/form-data' },
                       });
                       refetch();
-                      toast.success('Dosya yüklendi');
+                      toast.success(t('ticketStatus.fileUploaded'));
                     } catch {
-                      toast.error('Dosya yüklenemedi');
+                      toast.error(t('ticketStatus.fileUploadError'));
                     } finally {
                       setUploading(false);
                       e.target.value = '';

@@ -1,27 +1,34 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import { dateLocale } from '../../i18n/format';
 import { Link } from 'react-router-dom';
 import { Plus, Edit2, Trash2, Users, Clock, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
 import { useAuthStore } from '../../stores/auth.store';
 // Öncelik sözlüğü ticket'larla ORTAK — burada kopyalama, tek kaynaktan al.
-import { PRIORITY_LABELS as PRIORITY_LABEL, PRIORITY_COLORS as PRIORITY_COLOR, PRIORITY_WEIGHT } from '../../types';
+import { PRIORITY_COLORS as PRIORITY_COLOR, PRIORITY_WEIGHT } from '../../types';
 import type { Company, Location, Staff, Task } from '../../types';
+import { useEnumLabels } from '../../i18n/labels';
 import { getApiError } from '../../utils/api-error';
 import TaskFilters from './tasks/TaskFilters';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { EmptyState, SkeletonRows } from '../../components/ui/AsyncState';
 import {
-  EMPTY_TASK_FORM, TASK_STATUS_COLORS, TASK_STATUS_LABELS, isTaskOverdue, taskDaysOpen,
+  EMPTY_TASK_FORM, TASK_STATUS_COLORS, TASK_STATUS_KEYS, isTaskOverdue, taskDaysOpen,
   type TaskFormState, type TaskPayload, type TaskScope, type TaskSortKey,
 } from './tasks/task-ui';
+
+const PRIORITY_KEYS = Object.keys(PRIORITY_COLOR);
 
 /** Türkçe'ye duyarlı arama — 'İ/ı' İngilizce toLowerCase ile bozulur. */
 const tr = (s: string) => s.toLocaleLowerCase('tr');
 
 
 export default function TasksPage() {
+  const { t } = useTranslation();
+  const labels = useEnumLabels();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const isManager = user?.role === 'admin' || user?.role === 'it_manager';
@@ -74,11 +81,11 @@ export default function TasksPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.assigneeIds.length === 0) {
-      toast.error('En az bir personel seçmelisiniz');
+      toast.error(t('tasks.errAssigneeRequired'));
       return;
     }
     if (!editId && !form.locationId) {
-      toast.error('Lokasyon seçmelisiniz');
+      toast.error(t('tasks.errLocationRequired'));
       return;
     }
     try {
@@ -93,42 +100,42 @@ export default function TasksPage() {
 
       if (editId) {
         await api.put(`/tasks/${editId}`, payload);
-        toast.success('Görev güncellendi');
+        toast.success(t('tasks.updated'));
       } else {
         await api.post('/tasks', payload);
-        toast.success('Görev oluşturuldu ve atananlara bildirim gönderildi');
+        toast.success(t('tasks.createdWithNotify'));
       }
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       setShowForm(false);
       setEditId(null);
       setForm(EMPTY_TASK_FORM);
     } catch (err: unknown) {
-      toast.error(getApiError(err, 'İşlem başarısız'));
+      toast.error(getApiError(err, t('common.operationFailed')));
     }
   };
 
-  const handleEdit = (t: Task) => {
-    setEditId(t.id);
+  const handleEdit = (task: Task) => {
+    setEditId(task.id);
     setForm({
-      title: t.title,
-      description: t.description,
-      priority: t.priority,
-      dueDate: t.dueDate ? new Date(t.dueDate).toISOString().slice(0, 16) : '',
-      assigneeIds: t.assignees.map(a => a.staff.id),
-      companyId: t.location?.company?.id || '',
-      locationId: t.location?.id || '',
+      title: task.title,
+      description: task.description,
+      priority: task.priority,
+      dueDate: task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : '',
+      assigneeIds: task.assignees.map(a => a.staff.id),
+      companyId: task.location?.company?.id || '',
+      locationId: task.location?.id || '',
     });
     setShowForm(true);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Bu görevi silmek istediğinizden emin misiniz?')) return;
+    if (!confirm(t('tasks.confirmDelete'))) return;
     try {
       await api.delete(`/tasks/${id}`);
-      toast.success('Görev silindi');
+      toast.success(t('tasks.deleted'));
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     } catch {
-      toast.error('Silme başarısız');
+      toast.error(t('tasks.deleteFailed'));
     }
   };
 
@@ -136,9 +143,9 @@ export default function TasksPage() {
     try {
       await api.patch(`/tasks/${id}/status`, { status });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      toast.success('Durum güncellendi');
+      toast.success(t('tasks.statusUpdated'));
     } catch {
-      toast.error('Güncelleme başarısız');
+      toast.error(t('tasks.updateFailed'));
     }
   };
 
@@ -201,12 +208,12 @@ export default function TasksPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader eyebrow="Ekip çalışması" title="Görevler" description="Ticket dışındaki ekip işlerini planla, ata ve sonuçlarını takip et." actions={isManager ? (
+      <PageHeader eyebrow={t('tasks.eyebrow')} title={t('tasks.title')} description={t('tasks.description')} actions={isManager ? (
           <button
             onClick={() => { setShowForm(true); setEditId(null); setForm(EMPTY_TASK_FORM); }}
             className="btn-primary flex items-center gap-2"
           >
-            <Plus className="w-4 h-4" /> Yeni Görev
+            <Plus className="w-4 h-4" /> {t('tasks.newTask')}
           </button>
         ) : undefined} />
 
@@ -216,13 +223,13 @@ export default function TasksPage() {
           onClick={clearFilters}
           className={`card p-3 text-left transition-shadow hover:shadow-md ${!filtersActive ? 'ring-2 ring-primary-500' : ''}`}
         >
-          <div className="text-xs text-gray-500">Toplam</div>
+          <div className="text-xs text-gray-500">{t('common.total')}</div>
           <div className="text-2xl font-bold">{stats.total}</div>
         </button>
         {([
-          ['open', 'Açık', stats.open, 'text-blue-600'],
-          ['in_progress', 'Devam', stats.inProgress, 'text-yellow-600'],
-          ['done', 'Tamamlanan', stats.done, 'text-green-600'],
+          ['open', t('tasks.statOpen'), stats.open, 'text-blue-600'],
+          ['in_progress', t('tasks.statInProgress'), stats.inProgress, 'text-yellow-600'],
+          ['done', t('tasks.statDone'), stats.done, 'text-green-600'],
         ] as const).map(([key, label, value, color]) => (
           <button
             key={key}
@@ -237,7 +244,7 @@ export default function TasksPage() {
           onClick={() => { setStatusFilter(''); setOverdueOnly(v => !v); }}
           className={`card p-3 text-left transition-shadow hover:shadow-md ${overdueOnly ? 'ring-2 ring-red-500' : ''}`}
         >
-          <div className="text-xs text-gray-500">Süresi Geçen</div>
+          <div className="text-xs text-gray-500">{t('tasks.overdue')}</div>
           <div className="text-2xl font-bold text-red-600">{stats.overdue}</div>
         </button>
       </div>
@@ -267,45 +274,45 @@ export default function TasksPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           {/* .card zaten dark: karşılığını içerir — ham bg-white karanlık modda beyaz kalıyordu. */}
           <div className="card w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-bold mb-4">{editId ? 'Görevi Düzenle' : 'Yeni Görev'}</h2>
+            <h2 className="text-lg font-bold mb-4">{editId ? t('tasks.editTask') : t('tasks.newTask')}</h2>
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label className="block text-sm font-medium mb-1">Başlık *</label>
+                <label className="block text-sm font-medium mb-1">{t('tasks.fieldTitle')} *</label>
                 <input className="input-field" value={form.title} onChange={e => update({ title: e.target.value })} required maxLength={300} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Açıklama *</label>
+                <label className="block text-sm font-medium mb-1">{t('common.description')} *</label>
                 <textarea className="input-field" rows={4} value={form.description} onChange={e => update({ description: e.target.value })} required />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Öncelik</label>
+                  <label className="block text-sm font-medium mb-1">{t('common.priority')}</label>
                   <select className="input-field" value={form.priority} onChange={e => update({ priority: e.target.value })}>
-                    {Object.entries(PRIORITY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    {PRIORITY_KEYS.map(k => <option key={k} value={k}>{labels.priority(k)}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Bitiş Tarihi</label>
+                  <label className="block text-sm font-medium mb-1">{t('tasks.dueDate')}</label>
                   <input type="datetime-local" className="input-field" value={form.dueDate} onChange={e => update({ dueDate: e.target.value })} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Şirket {!editId && '*'}</label>
+                  <label className="block text-sm font-medium mb-1">{t('common.company')} {!editId && '*'}</label>
                   <select
                     className="input-field"
                     value={form.companyId}
                     onChange={e => update({ companyId: e.target.value, locationId: '' })}
                     required={!editId}
                   >
-                    <option value="">Şirket seçin</option>
+                    <option value="">{t('tasks.selectCompany')}</option>
                     {companies?.map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Lokasyon {!editId && '*'}</label>
+                  <label className="block text-sm font-medium mb-1">{t('common.location')} {!editId && '*'}</label>
                   <select
                     className="input-field"
                     value={form.locationId}
@@ -313,7 +320,7 @@ export default function TasksPage() {
                     required={!editId}
                     disabled={!form.companyId}
                   >
-                    <option value="">{form.companyId ? 'Lokasyon seçin' : 'Önce şirket seçin'}</option>
+                    <option value="">{form.companyId ? t('tasks.selectLocation') : t('tasks.selectCompanyFirst')}</option>
                     {locations?.map(l => (
                       <option key={l.id} value={l.id}>{l.name}</option>
                     ))}
@@ -321,7 +328,7 @@ export default function TasksPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Atanan Personeller * ({form.assigneeIds.length} seçili)</label>
+                <label className="block text-sm font-medium mb-1">{t('tasks.assigneesLabel', { count: form.assigneeIds.length })}</label>
                 <div className="border rounded-lg max-h-60 overflow-y-auto p-2 space-y-1">
                   {staffList?.filter(s => s.isActive).map(s => (
                     <label key={s.id} className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-colors ${form.assigneeIds.includes(s.id) ? 'bg-primary-50 border border-primary-300' : 'hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>
@@ -333,15 +340,15 @@ export default function TasksPage() {
                       />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium">{s.fullName}</div>
-                        <div className="text-xs text-gray-500">{s.email} · {s.role}</div>
+                        <div className="text-xs text-gray-500">{s.email} · {labels.role(s.role)}</div>
                       </div>
                     </label>
                   ))}
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
-                <button type="submit" className="btn-primary flex-1">Kaydet</button>
-                <button type="button" onClick={() => { setShowForm(false); setEditId(null); }} className="btn-secondary flex-1">İptal</button>
+                <button type="submit" className="btn-primary flex-1">{t('common.save')}</button>
+                <button type="button" onClick={() => { setShowForm(false); setEditId(null); }} className="btn-secondary flex-1">{t('common.cancel')}</button>
               </div>
             </form>
           </div>
@@ -354,37 +361,37 @@ export default function TasksPage() {
       ) : !visible.length ? (
         <div className="card">
           {tasks?.length ? (
-            <div className="text-center"><EmptyState title="Filtrelerle eşleşen görev yok" description="Arama ve filtre seçeneklerini değiştirerek tekrar deneyin." /><button onClick={clearFilters} className="btn-secondary text-sm -mt-8 mb-6">Filtreleri temizle</button></div>
+            <div className="text-center"><EmptyState title={t('tasks.noMatchTitle')} description={t('tasks.noMatchDesc')} /><button onClick={clearFilters} className="btn-secondary text-sm -mt-8 mb-6">{t('common.clearFilters')}</button></div>
           ) : (
-            <EmptyState title="Henüz görev yok" description="Ekip içi işleri takip etmek için ilk görevi oluşturun." />
+            <EmptyState title={t('tasks.emptyTitle')} description={t('tasks.emptyDesc')} />
           )}
         </div>
       ) : (
         <div className="space-y-2">
-          {visible.map(t => {
-            const days = taskDaysOpen(t.createdAt, t.completedAt);
-            const overdue = isTaskOverdue(t);
+          {visible.map(task => {
+            const days = taskDaysOpen(task.createdAt, task.completedAt);
+            const overdue = isTaskOverdue(task);
             return (
-              <div key={t.id} className={`card p-4 hover:shadow-md transition-shadow ${overdue ? 'border-l-4 border-l-red-500' : ''}`}>
+              <div key={task.id} className={`card p-4 hover:shadow-md transition-shadow ${overdue ? 'border-l-4 border-l-red-500' : ''}`}>
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <Link to={`/staff/tasks/${t.id}`} className="text-base font-semibold hover:text-primary-600">{t.title}</Link>
+                      <Link to={`/staff/tasks/${task.id}`} className="text-base font-semibold hover:text-primary-600">{task.title}</Link>
                       {/* Durum rozeti yok — sağdaki seçici hem durumu gösterir hem değiştirir. */}
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${PRIORITY_COLOR[t.priority]}`}>{PRIORITY_LABEL[t.priority]}</span>
-                      {overdue && <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300 flex items-center gap-1"><AlertCircle className="w-3 h-3" />Süresi Geçti</span>}
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${PRIORITY_COLOR[task.priority]}`}>{labels.priority(task.priority)}</span>
+                      {overdue && <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{t('tasks.overdueBadge')}</span>}
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-slate-400 line-clamp-2">{t.description}</p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400 line-clamp-2">{task.description}</p>
                     <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 flex-wrap">
-                      <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{days} gündür açık</span>
-                      <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{t.assignees.length} atanan</span>
-                      {t.dueDate && <span>Bitiş: {new Date(t.dueDate).toLocaleDateString('tr-TR')}</span>}
-                      <span>Oluşturan: {t.createdBy.fullName}</span>
-                      {t.location && <span>Lokasyon: {t.location.company?.name} — {t.location.name}</span>}
-                      {(t._count?.comments ?? 0) > 0 && <span>{t._count?.comments} yorum</span>}
+                      <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{t('tasks.daysOpen', { count: days })}</span>
+                      <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{t('tasks.assigneeCount', { count: task.assignees.length })}</span>
+                      {task.dueDate && <span>{t('tasks.dueLabel', { date: new Date(task.dueDate).toLocaleDateString(dateLocale()) })}</span>}
+                      <span>{t('tasks.createdByLabel', { name: task.createdBy.fullName })}</span>
+                      {task.location && <span>{t('tasks.locationLabel', { company: task.location.company?.name, name: task.location.name })}</span>}
+                      {(task._count?.comments ?? 0) > 0 && <span>{t('tasks.commentCount', { count: task._count?.comments })}</span>}
                     </div>
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {t.assignees.map(a => (
+                      {task.assignees.map(a => (
                         <span
                           key={a.staff.id}
                           className={`text-xs px-2 py-0.5 rounded-full cursor-default ${
@@ -406,22 +413,22 @@ export default function TasksPage() {
                       alınamıyordu (butonun kendisi kayboluyordu).
                     */}
                     <select
-                      value={t.status}
-                      onChange={(e) => handleStatus(t.id, e.target.value)}
+                      value={task.status}
+                      onChange={(e) => handleStatus(task.id, e.target.value)}
                       onClick={(e) => e.stopPropagation()}
-                      aria-label={`${t.title} durumu`}
-                      className={`text-xs rounded-full border-0 px-2 py-1 cursor-pointer focus:ring-2 focus:ring-primary-500 ${TASK_STATUS_COLORS[t.status]}`}
+                      aria-label={t('tasks.statusAria', { title: task.title })}
+                      className={`text-xs rounded-full border-0 px-2 py-1 cursor-pointer focus:ring-2 focus:ring-primary-500 ${TASK_STATUS_COLORS[task.status]}`}
                     >
-                      {Object.entries(TASK_STATUS_LABELS).map(([k, v]) => (
-                        <option key={k} value={k}>{v}</option>
+                      {TASK_STATUS_KEYS.map(k => (
+                        <option key={k} value={k}>{labels.taskStatus(k)}</option>
                       ))}
                     </select>
                     {isManager && (
                       <>
-                        <button onClick={() => handleEdit(t)} className="p-1.5 hover:bg-gray-100 rounded" title="Düzenle">
+                        <button onClick={() => handleEdit(task)} className="p-1.5 hover:bg-gray-100 rounded" title={t('common.edit')}>
                           <Edit2 className="w-4 h-4 text-gray-500" />
                         </button>
-                        <button onClick={() => handleDelete(t.id)} className="p-1.5 hover:bg-red-100 rounded" title="Sil">
+                        <button onClick={() => handleDelete(task.id)} className="p-1.5 hover:bg-red-100 rounded" title={t('common.delete')}>
                           <Trash2 className="w-4 h-4 text-red-500" />
                         </button>
                       </>

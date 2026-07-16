@@ -44,6 +44,9 @@ const ticketCreateSchema = z.object({
   subject: requiredText({ ...LIMITS.ticketSubject, label: 'Konu' }),
   description: requiredText({ ...LIMITS.ticketDescription, label: 'Açıklama' }),
   priority: z.nativeEnum(Priority).default(Priority.medium),
+  // Bildirim dili — public portalın diline göre yakalanır. Talep sahibinin
+  // e-posta/SMS bildirimleri bu dilde gönderilir.
+  locale: z.enum(['tr', 'en']).default('tr'),
   customFields: z
     .array(
       z.object({
@@ -267,6 +270,7 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
         subject: body.subject,
         description: body.description,
         priority: body.priority,
+        locale: body.locale,
         accessToken,
         slaResponseDue,
         slaResolveDue,

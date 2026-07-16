@@ -1,11 +1,14 @@
 import { Outlet, Link } from 'react-router-dom';
 import { Headset, Moon, Sun, Plus, Search } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useBranding } from '../branding-context';
 import { useTheme } from '../theme-context';
+import { LanguageSwitcher } from '../LanguageSwitcher';
 
 export default function PublicLayout() {
   const { branding } = useBranding();
   const { theme, toggle } = useTheme();
+  const { t } = useTranslation();
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden gradient-surface">
@@ -26,17 +29,18 @@ export default function PublicLayout() {
             )}
             <div className="leading-tight">
               <h1 className="text-base font-semibold text-gray-900 dark:text-slate-100">
-                {branding?.name || 'IT Destek Sistemi'}
+                {branding?.name || t('publicLayout.appName')}
               </h1>
-              <p className="text-xs text-muted">Teknik Destek Talep Merkezi</p>
+              <p className="text-xs text-muted">{t('publicLayout.tagline')}</p>
             </div>
           </Link>
-          <nav className="flex items-center gap-2 text-sm" aria-label="Ana navigasyon">
-            <Link to="/create" className="btn-primary flex items-center gap-2 text-sm"><Plus className="h-4 w-4" /><span className="hidden sm:inline">Yeni Talep</span></Link>
-            <Link to="/track" className="btn-secondary flex items-center gap-2 text-sm"><Search className="h-4 w-4" /><span className="hidden sm:inline">Talep Takip</span></Link>
+          <nav className="flex items-center gap-2 text-sm" aria-label={t('publicLayout.mainNav')}>
+            <Link to="/create" className="btn-primary flex items-center gap-2 text-sm"><Plus className="h-4 w-4" /><span className="hidden sm:inline">{t('publicLayout.newTicket')}</span></Link>
+            <Link to="/track" className="btn-secondary flex items-center gap-2 text-sm"><Search className="h-4 w-4" /><span className="hidden sm:inline">{t('publicLayout.trackTicket')}</span></Link>
+            <LanguageSwitcher compact />
             <button
               onClick={toggle}
-              aria-label="Tema değiştir"
+              aria-label={t('layout.toggleTheme')}
               className="icon-button ml-1"
             >
               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -53,8 +57,8 @@ export default function PublicLayout() {
       {/* Footer */}
       <footer className="relative z-10 border-t border-white/30 py-6 text-sm text-muted dark:border-slate-700/40">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 sm:flex-row sm:px-6">
-          <span>{branding?.name || 'IT Destek Sistemi'} &copy; {new Date().getFullYear()}</span>
-          <span>Teknik destek talepleriniz için güvenli takip merkezi</span>
+          <span>{branding?.name || t('publicLayout.appName')} &copy; {new Date().getFullYear()}</span>
+          <span>{t('publicLayout.footerTagline')}</span>
         </div>
       </footer>
     </div>

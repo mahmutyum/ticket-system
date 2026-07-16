@@ -246,6 +246,8 @@ model Staff {
   avatarUrl    String?   @map("avatar_url")
   mfaSecretEnc String?   @map("mfa_secret_enc")
   mfaEnabled   Boolean   @default(false) @map("mfa_enabled")
+  // Bildirim (e-posta/SMS) dili. Şablon seçimi bu değere göre yapılır; yoksa 'tr'.
+  locale       String    @default("tr")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
@@ -286,6 +288,9 @@ model Ticket {
   description          String
   priority             Priority     @default(medium)
   status               TicketStatus @default(open)
+  /// Talep sahibinin dili (talep oluştururken yakalanır). Bildirim e-posta/SMS
+  /// şablonu bu değere göre seçilir; yoksa 'tr'.
+  locale               String       @default("tr")
   accessToken          String       @unique @map("access_token")
   /// Public takip linkinin geçerlilik sonu.
   /// Ticket açıkken null (süresiz); resolved/closed olduğunda kapanış + saklama
@@ -453,7 +458,10 @@ model CannedResponse {
 
 model EmailTemplate {
   id        String   @id @default(cuid())
-  slug      String   @unique
+  slug      String
+  // Şablon dili. Aynı slug her dil için ayrı satırdır; worker alıcının diline
+  // göre seçer, yoksa 'tr'ye düşer.
+  locale    String   @default("tr")
   subject   String
   bodyHtml  String   @map("body_html")
   bodyText  String   @map("body_text")
@@ -461,16 +469,19 @@ model EmailTemplate {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  @@unique([slug, locale])
   @@map("email_templates")
 }
 
 model SmsTemplate {
   id        String   @id @default(cuid())
-  slug      String   @unique
+  slug      String
+  locale    String   @default("tr")
   body      String
   variables Json     @default("[]")
   createdAt DateTime @default(now()) @map("created_at")
 
+  @@unique([slug, locale])
   @@map("sms_templates")
 }
 

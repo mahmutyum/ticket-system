@@ -1,0 +1,118 @@
+{
+  "tr": {
+    "steps": {
+      "details": "Detay",
+      "confirm": "Onay"
+    },
+    "toast": {
+      "created": "Destek talebiniz oluşturuldu!"
+    },
+    "success": {
+      "title": "Talebiniz Oluşturuldu!",
+      "ticketNumberLabel": "Talep numaranız:",
+      "info": "Bu numara ile talebinizi takip edebilirsiniz. Ayrıca email adresinize bilgilendirme gönderilecektir.",
+      "view": "Talebi Görüntüle"
+    },
+    "header": {
+      "eyebrow": "Yeni destek talebi",
+      "title": "Sorununu birlikte çözelim",
+      "subtitle": "Gerekli bilgileri adım adım tamamla. Göndermeden önce tüm detayları kontrol edebilirsin."
+    },
+    "stepProgress": "Adım {{current}} / {{total}}",
+    "stepsAria": "Talep oluşturma adımları",
+    "step1": {
+      "eyebrow": "Adım 1",
+      "title": "İletişim bilgileriniz",
+      "supportPortal": "destek portalı",
+      "emailInfo": "Talep bağlantısı ve bilgilendirmeler bu e-posta adresine gönderilir.",
+      "emailLabel": "Email Adresiniz",
+      "domainRejected": "Bu email adresi ile destek talebi oluşturamazsınız. Lütfen kurumsal email adresinizi kullanın."
+    },
+    "step2": {
+      "title": "Şirket Seçimi",
+      "empty": "Kullanılabilir şirket bulunamadı."
+    },
+    "step3": {
+      "title": "Lokasyon Seçimi",
+      "subtitle": "{{company}} için lokasyon seçin",
+      "empty": "Bu şirkete tanımlı lokasyon bulunamadı."
+    },
+    "step4": {
+      "title": "Sorun Kategorisi"
+    },
+    "step5": {
+      "title": "Detaylar",
+      "subjectPlaceholder": "Sorunu kısaca tanımlayın",
+      "descriptionPlaceholder": "Sorunu detaylı olarak açıklayın...",
+      "attachFile": "Dosya Ekle",
+      "chooseFile": "Dosya Seç",
+      "removeFile": "{{name}} dosyasını kaldır",
+      "additionalInfo": "Ek Bilgiler",
+      "selectOption": "Seçin..."
+    },
+    "step6": {
+      "title": "Talep Özeti",
+      "filesLabel": "Dosyalar ({{count}}):"
+    },
+    "submitting": "Gönderiliyor...",
+    "submit": "Talebi Oluştur"
+  },
+  "en": {
+    "steps": {
+      "details": "Details",
+      "confirm": "Confirmation"
+    },
+    "toast": {
+      "created": "Your support request has been created!"
+    },
+    "success": {
+      "title": "Your Request Has Been Created!",
+      "ticketNumberLabel": "Your request number:",
+      "info": "You can track your request with this number. A notification will also be sent to your email address.",
+      "view": "View Request"
+    },
+    "header": {
+      "eyebrow": "New support request",
+      "title": "Let's solve your issue together",
+      "subtitle": "Complete the required information step by step. You can review all the details before submitting."
+    },
+    "stepProgress": "Step {{current}} / {{total}}",
+    "stepsAria": "Request creation steps",
+    "step1": {
+      "eyebrow": "Step 1",
+      "title": "Your contact information",
+      "supportPortal": "support portal",
+      "emailInfo": "The request link and notifications will be sent to this email address.",
+      "emailLabel": "Your Email Address",
+      "domainRejected": "You cannot create a support request with this email address. Please use your corporate email address."
+    },
+    "step2": {
+      "title": "Company Selection",
+      "empty": "No available companies found."
+    },
+    "step3": {
+      "title": "Location Selection",
+      "subtitle": "Select a location for {{company}}",
+      "empty": "No location defined for this company."
+    },
+    "step4": {
+      "title": "Issue Category"
+    },
+    "step5": {
+      "title": "Details",
+      "subjectPlaceholder": "Briefly describe the issue",
+      "descriptionPlaceholder": "Describe the issue in detail...",
+      "attachFile": "Attach File",
+      "chooseFile": "Choose File",
+      "removeFile": "Remove file {{name}}",
+      "additionalInfo": "Additional Information",
+      "selectOption": "Select..."
+    },
+    "step6": {
+      "title": "Request Summary",
+      "filesLabel": "Files ({{count}}):"
+    },
+    "submitting": "Submitting...",
+    "submit": "Create Request"
+  }
+}

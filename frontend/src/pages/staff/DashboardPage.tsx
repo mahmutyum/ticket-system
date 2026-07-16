@@ -1,17 +1,22 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { dateLocale } from '../../i18n/format';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   AlertCircle, Clock, TrendingUp, User, Filter, X,
 } from 'lucide-react';
 import api from '../../api/client';
-import { STATUS_LABELS, type DashboardStats } from '../../types';
+import { VALID_STATUSES, type DashboardStats } from '../../types';
+import { useEnumLabels } from '../../i18n/labels';
 import { useStaffSSE } from '../../hooks/useSSE';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { EmptyState, SkeletonRows } from '../../components/ui/AsyncState';
 import { PriorityBadge, StatusBadge } from '../../components/ui/Badge';
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
+  const labels = useEnumLabels();
   const queryClient = useQueryClient();
   const [companyId, setCompanyId] = useState('');
   const [status, setStatus] = useState('');
@@ -46,31 +51,31 @@ export default function DashboardPage() {
   }
 
   const summaryCards = [
-    { label: 'Açık Talepler', hint: 'Aktif iş yükü', value: stats.summary.totalOpen, icon: AlertCircle, color: 'text-blue-700 bg-blue-100 dark:bg-blue-500/15 dark:text-blue-300' },
-    { label: 'İşlemde', hint: 'Üzerinde çalışılıyor', value: stats.summary.totalInProgress, icon: Clock, color: 'text-amber-700 bg-amber-100 dark:bg-amber-500/15 dark:text-amber-300' },
-    { label: 'Bugün Açılan', hint: 'Son 24 saat', value: stats.summary.todayCreated, icon: TrendingUp, color: 'text-emerald-700 bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300' },
-    { label: 'SLA İhlali', hint: 'Öncelik bekliyor', value: stats.summary.slaViolations, icon: AlertCircle, color: 'text-red-700 bg-red-100 dark:bg-red-500/15 dark:text-red-300' },
-    { label: 'Bana Atanan', hint: 'Kişisel kuyruğun', value: stats.summary.myOpen, icon: User, color: 'text-violet-700 bg-violet-100 dark:bg-violet-500/15 dark:text-violet-300' },
+    { label: t('dashboard.cards.openLabel'), hint: t('dashboard.cards.openHint'), value: stats.summary.totalOpen, icon: AlertCircle, color: 'text-blue-700 bg-blue-100 dark:bg-blue-500/15 dark:text-blue-300' },
+    { label: t('dashboard.cards.inProgressLabel'), hint: t('dashboard.cards.inProgressHint'), value: stats.summary.totalInProgress, icon: Clock, color: 'text-amber-700 bg-amber-100 dark:bg-amber-500/15 dark:text-amber-300' },
+    { label: t('dashboard.cards.todayLabel'), hint: t('dashboard.cards.todayHint'), value: stats.summary.todayCreated, icon: TrendingUp, color: 'text-emerald-700 bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300' },
+    { label: t('dashboard.cards.slaLabel'), hint: t('dashboard.cards.slaHint'), value: stats.summary.slaViolations, icon: AlertCircle, color: 'text-red-700 bg-red-100 dark:bg-red-500/15 dark:text-red-300' },
+    { label: t('dashboard.cards.mineLabel'), hint: t('dashboard.cards.mineHint'), value: stats.summary.myOpen, icon: User, color: 'text-violet-700 bg-violet-100 dark:bg-violet-500/15 dark:text-violet-300' },
   ];
 
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Operasyon özeti"
-        title="Dashboard"
-        description="Destek kuyruğunu, SLA risklerini ve ekip iş yükünü tek bakışta izle."
+        eyebrow={t('dashboard.eyebrow')}
+        title={t('dashboard.title')}
+        description={t('dashboard.description')}
         actions={
           <>
           {hasFilters && (
             <button onClick={clearFilters} className="btn-secondary text-xs flex items-center gap-1">
-              <X className="w-3 h-3" /> Filtreleri Temizle
+              <X className="w-3 h-3" /> {t('common.clearFilters')}
             </button>
           )}
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`btn-secondary text-sm flex items-center gap-2 ${hasFilters ? 'ring-2 ring-primary-300' : ''}`}
           >
-            <Filter className="w-4 h-4" /> Filtrele
+            <Filter className="w-4 h-4" /> {t('common.filter')}
           </button>
           </>
         }
@@ -81,26 +86,26 @@ export default function DashboardPage() {
         <div className="card surface-2 shadow-none">
           <div className="flex flex-wrap gap-4 items-end">
             <div className="min-w-[180px]">
-              <label className="block text-xs font-medium text-gray-500 mb-1">Şirket</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">{t('common.company')}</label>
               <select className="input-field text-sm" value={companyId} onChange={e => setCompanyId(e.target.value)}>
-                <option value="">Tüm Şirketler</option>
+                <option value="">{t('dashboard.allCompanies')}</option>
                 {stats.accessibleCompanies.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
             </div>
             <div className="min-w-[180px]">
-              <label className="block text-xs font-medium text-gray-500 mb-1">Durum</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">{t('common.status')}</label>
               <select className="input-field text-sm" value={status} onChange={e => setStatus(e.target.value)}>
-                <option value="">Tüm Durumlar</option>
-                {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
+                <option value="">{t('dashboard.allStatuses')}</option>
+                {VALID_STATUSES.map(s => (
+                  <option key={s} value={s}>{labels.status(s)}</option>
                 ))}
               </select>
             </div>
             <label className="flex items-center gap-2 text-sm cursor-pointer pb-2">
               <input type="checkbox" checked={onlyMine} onChange={e => setOnlyMine(e.target.checked)} className="rounded text-primary-600" />
-              Sadece bana atananlar
+              {t('dashboard.onlyMine')}
             </label>
           </div>
         </div>
@@ -125,7 +130,7 @@ export default function DashboardPage() {
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Status distribution */}
         <div className="card">
-          <h3 className="font-semibold mb-4">Duruma Göre Dağılım</h3>
+          <h3 className="font-semibold mb-4">{t('dashboard.byStatus')}</h3>
           <div className="space-y-2">
             {stats.byStatus.map(item => {
               const total = stats.byStatus.reduce((s, i) => s + i.count, 0);
@@ -149,7 +154,7 @@ export default function DashboardPage() {
 
         {/* By company */}
         <div className="card">
-          <h3 className="font-semibold mb-4">Şirkete Göre Dağılım</h3>
+          <h3 className="font-semibold mb-4">{t('dashboard.byCompany')}</h3>
           <div className="space-y-3">
             {stats.byCompany.map(item => (
               <button
@@ -162,7 +167,7 @@ export default function DashboardPage() {
               </button>
             ))}
             {stats.byCompany.length === 0 && (
-              <p className="text-sm text-gray-400">Veri yok</p>
+              <p className="text-sm text-gray-400">{t('common.noData')}</p>
             )}
           </div>
         </div>
@@ -171,25 +176,25 @@ export default function DashboardPage() {
       {/* Recent tickets */}
       <div className="card">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold">Son Talepler</h3>
+          <h3 className="font-semibold">{t('dashboard.recentTickets')}</h3>
           <Link to="/staff/tickets" className="text-sm text-primary-600 hover:underline">
-            Tümünü Gör
+            {t('dashboard.viewAll')}
           </Link>
         </div>
         {stats.recentTickets.length === 0 ? (
-          <EmptyState title="Talep bulunamadı" description="Seçili filtrelerle eşleşen yakın tarihli talep yok." />
+          <EmptyState title={t('dashboard.emptyTitle')} description={t('dashboard.emptyDesc')} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-gray-500 border-b">
-                  <th className="pb-2 font-medium">No</th>
-                  <th className="pb-2 font-medium">Konu</th>
-                  <th className="pb-2 font-medium">Şirket</th>
-                  <th className="pb-2 font-medium">Durum</th>
-                  <th className="pb-2 font-medium">Öncelik</th>
-                  <th className="pb-2 font-medium">Atanan</th>
-                  <th className="pb-2 font-medium">Tarih</th>
+                  <th className="pb-2 font-medium">{t('dashboard.colNo')}</th>
+                  <th className="pb-2 font-medium">{t('common.subject')}</th>
+                  <th className="pb-2 font-medium">{t('common.company')}</th>
+                  <th className="pb-2 font-medium">{t('common.status')}</th>
+                  <th className="pb-2 font-medium">{t('common.priority')}</th>
+                  <th className="pb-2 font-medium">{t('common.assignedTo')}</th>
+                  <th className="pb-2 font-medium">{t('common.date')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -208,7 +213,7 @@ export default function DashboardPage() {
                     <td className="py-2"><PriorityBadge priority={ticket.priority} /></td>
                     <td className="py-2 text-gray-500">{ticket.assignedTo?.fullName || '-'}</td>
                     <td className="py-2 text-gray-400 text-xs">
-                      {new Date(ticket.createdAt).toLocaleDateString('tr-TR')}
+                      {new Date(ticket.createdAt).toLocaleDateString(dateLocale())}
                     </td>
                   </tr>
                 ))}

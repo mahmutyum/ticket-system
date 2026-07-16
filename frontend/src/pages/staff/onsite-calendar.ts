@@ -1,11 +1,10 @@
 import type { OnsiteSupport } from '../../types';
 
-export const TYPE_LABELS: Record<string, string> = {
-  come_to_it_room: 'IT Odasına Gelin', meeting_room: 'Toplantı Odası', visit_employee: 'Yerinde Müdahale',
-};
-export const STATUS_LABELS: Record<string, string> = {
-  scheduled: 'Planlandı', in_progress: 'Devam Ediyor', completed: 'Tamamlandı', cancelled: 'İptal',
-};
+// Kullanıcıya görünen tür/durum etiketleri çeviriye taşındı:
+// - Tür: `t('onsite.type.*')`
+// - Durum: `useEnumLabels().onsiteStatus(x)`
+// Gün adları locale'e göre `toLocaleDateString(locale, { weekday: 'short' })`
+// ile üretilir. Renk sözlükleri dile bağlı değildir, burada kalır.
 export const STATUS_COLORS: Record<string, string> = {
   scheduled: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200',
   in_progress: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-200',
@@ -15,7 +14,6 @@ export const STATUS_COLORS: Record<string, string> = {
 export const TYPE_BAR_COLORS: Record<string, string> = {
   come_to_it_room: 'bg-blue-500', meeting_room: 'bg-purple-500', visit_employee: 'bg-emerald-500',
 };
-export const DAY_NAMES = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 export const TIMELINE_START_HOUR = 0;
 export const TIMELINE_END_HOUR = 24;
 export const HOUR_HEIGHT = 56;

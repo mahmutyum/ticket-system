@@ -18,30 +18,33 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../stores/auth.store';
 import { useTheme } from '../theme-context';
+import { LanguageSwitcher } from '../LanguageSwitcher';
 import api from '../../api/client';
 import type { LucideIcon } from 'lucide-react';
 
-type NavItem = { path: string; label: string; icon: LucideIcon; roles?: string[] };
+type NavItem = { path: string; labelKey: string; icon: LucideIcon; roles?: string[] };
 
 const navItems: NavItem[] = [
-  { path: '/staff', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/staff/tickets', label: 'Talepler', icon: Ticket },
-  { path: '/staff/tasks', label: 'Görevler', icon: ClipboardList },
-  { path: '/staff/onsite', label: 'Yerinde Destek', icon: MapPinned },
-  { path: '/staff/companies', label: 'Şirketler', icon: Building2 },
-  { path: '/staff/staff-management', label: 'Personel', icon: Users },
-  { path: '/staff/reports', label: 'Raporlar', icon: BarChart3 },
-  { path: '/staff/templates', label: 'Şablonlar', icon: FileText },
-  { path: '/staff/passwords', label: 'Şifreler', icon: KeyRound, roles: ['admin', 'it_manager'] },
-  { path: '/staff/account', label: 'Hesap ve Güvenlik', icon: ShieldCheck },
+  { path: '/staff', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+  { path: '/staff/tickets', labelKey: 'nav.tickets', icon: Ticket },
+  { path: '/staff/tasks', labelKey: 'nav.tasks', icon: ClipboardList },
+  { path: '/staff/onsite', labelKey: 'nav.onsite', icon: MapPinned },
+  { path: '/staff/companies', labelKey: 'nav.companies', icon: Building2 },
+  { path: '/staff/staff-management', labelKey: 'nav.staff', icon: Users },
+  { path: '/staff/reports', labelKey: 'nav.reports', icon: BarChart3 },
+  { path: '/staff/templates', labelKey: 'nav.templates', icon: FileText },
+  { path: '/staff/passwords', labelKey: 'nav.passwords', icon: KeyRound, roles: ['admin', 'it_manager'] },
+  { path: '/staff/account', labelKey: 'nav.account', icon: ShieldCheck },
 ];
 
 export default function StaffLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { user, logout, mfaWarningEnabled } = useAuthStore();
   const { theme, toggle } = useTheme();
   // Ayrıcalıklı hesap (kasa erişimi) MFA kurmamışsa uyar — zorunluluk değil.
@@ -92,8 +95,8 @@ export default function StaffLayout() {
               <LayoutDashboard className="w-4 h-4" />
             </span>
             <div>
-              <h1 className="text-base font-semibold leading-tight">IT Destek</h1>
-              <p className="text-xs text-slate-400">Yönetim Paneli</p>
+              <h1 className="text-base font-semibold leading-tight">{t('layout.appName')}</h1>
+              <p className="text-xs text-slate-400">{t('layout.staffPanel')}</p>
             </div>
           </div>
         </div>
@@ -114,7 +117,7 @@ export default function StaffLayout() {
                 }`}
               >
                 <item.icon className="w-5 h-5" />
-                {item.label}
+                {t(item.labelKey)}
               </Link>
             );
           })}
@@ -135,7 +138,7 @@ export default function StaffLayout() {
             className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors w-full"
           >
             <LogOut className="w-4 h-4" />
-            Çıkış Yap
+            {t('layout.logout')}
           </button>
         </div>
       </aside>
@@ -155,23 +158,24 @@ export default function StaffLayout() {
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="icon-button border-0 lg:hidden"
-            aria-label={sidebarOpen ? 'Menüyü kapat' : 'Menüyü aç'}
+            aria-label={sidebarOpen ? t('layout.closeMenu') : t('layout.openMenu')}
           >
             {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">{currentItem?.label ?? 'Yönetim Paneli'}</p>
-            <p className="hidden text-xs text-muted sm:block">IT Destek / {currentItem?.label ?? 'Genel'}</p>
+            <p className="truncate text-sm font-semibold">{currentItem ? t(currentItem.labelKey) : t('layout.staffPanel')}</p>
+            <p className="hidden text-xs text-muted sm:block">{t('layout.appName')} / {currentItem ? t(currentItem.labelKey) : t('layout.general')}</p>
           </div>
+          <LanguageSwitcher />
           <button
             onClick={toggle}
-            aria-label="Tema değiştir"
+            aria-label={t('layout.toggleTheme')}
             className="icon-button"
           >
             {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
           <span className="text-sm text-muted hidden sm:inline">
-            {user?.role === 'admin' ? 'Yönetici' : user?.role === 'it_manager' ? 'IT Yöneticisi' : 'IT Personeli'}
+            {user?.role === 'admin' ? t('layout.roleAdmin') : user?.role === 'it_manager' ? t('layout.roleManager') : t('layout.roleStaff')}
           </span>
         </header>
 
@@ -182,16 +186,16 @@ export default function StaffLayout() {
               <div className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
                 <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" />
                 <div className="flex-1">
-                  <p className="font-semibold">İki adımlı doğrulama (MFA) kapalı</p>
+                  <p className="font-semibold">{t('layout.mfaWarningTitle')}</p>
                   <p className="text-amber-800/90 dark:text-amber-200/80">
-                    Yönetici ve şifre kasası yetkiniz var. Hesabınızı korumak için MFA kurmanız önerilir.
+                    {t('layout.mfaWarningBody')}
                   </p>
                 </div>
                 <Link
                   to="/staff/account"
                   className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700"
                 >
-                  Şimdi kur
+                  {t('layout.mfaSetupNow')}
                 </Link>
               </div>
             )}

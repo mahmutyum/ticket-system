@@ -2,16 +2,22 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import { MapPin, User, ChevronLeft, ChevronRight, CalendarDays, X, Clock, Hash } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
+import { dateLocale } from '../../i18n/format';
 import api from '../../api/client';
 import {
-  computeLayout, DAY_NAMES, eventDurationMin, HOUR_HEIGHT, mondayOf, sameDay,
-  startOfDay, STATUS_COLORS, STATUS_LABELS, TIMELINE_START_HOUR,
-  toInputDate, TOTAL_HOURS, TYPE_BAR_COLORS, TYPE_LABELS,
+  computeLayout, eventDurationMin, HOUR_HEIGHT, mondayOf, sameDay,
+  startOfDay, STATUS_COLORS, TIMELINE_START_HOUR,
+  toInputDate, TOTAL_HOURS, TYPE_BAR_COLORS,
   type CalendarEvent, type CalendarResponse,
 } from './onsite-calendar';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { useEnumLabels } from '../../i18n/labels';
 
 export default function OnsiteSupportPage() {
+  const { t, i18n } = useTranslation();
+  const labels = useEnumLabels();
+  const locale = i18n.language.startsWith('tr') ? dateLocale() : 'en-US';
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState<Date>(() => startOfDay(new Date()));
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -50,10 +56,10 @@ export default function OnsiteSupportPage() {
     try {
       await api.put(`/onsite-support/${id}`, { status });
       queryClient.invalidateQueries({ queryKey: ['onsite-calendar'] });
-      toast.success('Durum güncellendi');
+      toast.success(t('onsite.toast.statusUpdated'));
       setSelectedEvent(null);
     } catch {
-      toast.error('Güncelleme başarısız');
+      toast.error(t('onsite.toast.updateFailed'));
     }
   };
 
@@ -82,7 +88,7 @@ export default function OnsiteSupportPage() {
   };
 
   const isToday = sameDay(selectedDate, new Date());
-  const longDateLabel = selectedDate.toLocaleDateString('tr-TR', {
+  const longDateLabel = selectedDate.toLocaleDateString(locale, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -92,22 +98,22 @@ export default function OnsiteSupportPage() {
   return (
     <div className="space-y-4">
       {/* Üst başlık + tarih kontrolleri */}
-      <PageHeader eyebrow="Saha operasyonu" title="Yerinde destek" description={`${longDateLabel} · Planlanan randevuları ve saha müdahalelerini yönet.`} actions={
+      <PageHeader eyebrow={t('onsite.eyebrow')} title={t('onsite.title')} description={t('onsite.description', { date: longDateLabel })} actions={
         <div className="flex items-center gap-2 flex-wrap">
           <select
             className="input-field !w-auto !py-1.5 text-sm"
             value={companyFilter}
             onChange={(event) => setCompanyFilter(event.target.value)}
-            aria-label="Şirkete göre filtrele"
+            aria-label={t('onsite.filterByCompany')}
           >
-            <option value="">Tüm şirketler</option>
+            <option value="">{t('onsite.allCompanies')}</option>
             {(companies || []).map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
           </select>
           <div className="flex items-center gap-1">
             <button
               onClick={goPrevDay}
               className="btn-secondary text-sm !px-2"
-              title="Önceki gün"
+              title={t('onsite.prevDay')}
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -115,12 +121,12 @@ export default function OnsiteSupportPage() {
               onClick={goToday}
               className={`btn-secondary text-sm ${isToday ? 'ring-1 ring-primary-400' : ''}`}
             >
-              Bugün
+              {t('common.today')}
             </button>
             <button
               onClick={goNextDay}
               className="btn-secondary text-sm !px-2"
-              title="Sonraki gün"
+              title={t('onsite.nextDay')}
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -164,7 +170,7 @@ export default function OnsiteSupportPage() {
                 }`}
               >
                 <div className={`text-[10px] uppercase tracking-wide ${selected ? 'text-white/80' : 'text-muted'}`}>
-                  {DAY_NAMES[i]}
+                  {day.toLocaleDateString(locale, { weekday: 'short' })}
                 </div>
                 <div className="text-lg font-bold leading-tight">{day.getDate()}</div>
                 <div className="flex items-center justify-center gap-1 mt-1 min-h-[18px]">
@@ -194,16 +200,16 @@ export default function OnsiteSupportPage() {
       <div className="card p-0 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-slate-800">
           <h3 className="font-semibold">
-            {selectedDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })} —{' '}
+            {selectedDate.toLocaleDateString(locale, { day: 'numeric', month: 'long' })} —{' '}
             <span className="text-muted font-normal">
-              {selectedDayEvents.filter((e) => e.status !== 'cancelled').length} aktif randevu
+              {t('onsite.activeCount', { count: selectedDayEvents.filter((e) => e.status !== 'cancelled').length })}
             </span>
           </h3>
         </div>
 
         {selectedDayEvents.length === 0 ? (
           <div className="px-4 py-12 text-center text-muted text-sm">
-            Bu gün için randevu yok.
+            {t('onsite.noAppointments')}
           </div>
         ) : (
           <div className="relative flex">
@@ -272,7 +278,7 @@ export default function OnsiteSupportPage() {
                     key={event.id}
                     type="button"
                     onClick={() => setSelectedEvent(event)}
-                    title="Detayları gör"
+                    title={t('onsite.viewDetails')}
                     className={`absolute rounded-lg px-2 py-1 text-xs overflow-hidden border shadow-sm text-left transition-all hover:shadow-md hover:ring-1 hover:ring-primary-400 hover:z-20 focus:outline-none focus:ring-2 focus:ring-primary-500 ${
                       cancelled
                         ? 'bg-gray-50 dark:bg-slate-800/40 border-gray-200 dark:border-slate-700 opacity-60'
@@ -296,7 +302,7 @@ export default function OnsiteSupportPage() {
                         {compact ? (
                           <div className="flex items-baseline gap-1 truncate">
                             <span className="font-semibold text-[11px] flex-shrink-0">
-                              {start.toLocaleTimeString('tr-TR', {
+                              {start.toLocaleTimeString(locale, {
                                 hour: '2-digit',
                                 minute: '2-digit',
                               })}
@@ -306,7 +312,7 @@ export default function OnsiteSupportPage() {
                         ) : (
                           <div className="space-y-0.5">
                             <span className="font-semibold text-[11px]">
-                              {start.toLocaleTimeString('tr-TR', {
+                              {start.toLocaleTimeString(locale, {
                                 hour: '2-digit',
                                 minute: '2-digit',
                               })}
@@ -337,7 +343,7 @@ export default function OnsiteSupportPage() {
       {/* Seçilen günün liste özeti */}
       {selectedDayEvents.length > 0 && (
         <div className="card">
-          <h3 className="font-semibold mb-3">Liste Görünümü</h3>
+          <h3 className="font-semibold mb-3">{t('onsite.listView')}</h3>
           <div className="space-y-2">
             {selectedDayEvents.map((event) => (
               <button
@@ -357,7 +363,7 @@ export default function OnsiteSupportPage() {
                   </div>
                   <div className="text-muted text-xs">
                     {event.ticket?.createdBy?.fullName} • {event.location?.name} •{' '}
-                    {new Date(event.scheduledAt).toLocaleTimeString('tr-TR', {
+                    {new Date(event.scheduledAt).toLocaleTimeString(locale, {
                       hour: '2-digit',
                       minute: '2-digit',
                     })}
@@ -368,7 +374,7 @@ export default function OnsiteSupportPage() {
                     STATUS_COLORS[event.status]
                   }`}
                 >
-                  {STATUS_LABELS[event.status]}
+                  {labels.onsiteStatus(event.status)}
                 </span>
               </button>
             ))}
@@ -384,7 +390,7 @@ export default function OnsiteSupportPage() {
           const durationMin = eventDurationMin(ev);
           const end = new Date(start.getTime() + durationMin * 60000);
           const fmt = (d: Date) =>
-            d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+            d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
           return (
             <div
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
@@ -408,14 +414,14 @@ export default function OnsiteSupportPage() {
                           STATUS_COLORS[ev.status] || ''
                         }`}
                       >
-                        {STATUS_LABELS[ev.status] || ev.status}
+                        {labels.onsiteStatus(ev.status)}
                       </span>
                     </div>
                   </div>
                   <button
                     onClick={() => setSelectedEvent(null)}
                     className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex-shrink-0"
-                    title="Kapat"
+                    title={t('common.close')}
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -426,18 +432,18 @@ export default function OnsiteSupportPage() {
                     <Clock className="w-4 h-4 text-muted flex-shrink-0" />
                     <span>
                       {fmt(start)} – {fmt(end)}{' '}
-                      <span className="text-muted">({durationMin} dk)</span>
+                      <span className="text-muted">({t('onsite.durationMin', { count: durationMin })})</span>
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CalendarDays className="w-4 h-4 text-muted flex-shrink-0" />
                     <span className="capitalize">
-                      {start.toLocaleDateString('tr-TR', {
+                      {start.toLocaleDateString(locale, {
                         weekday: 'long',
                         day: 'numeric',
                         month: 'long',
                       })}{' '}
-                      · {TYPE_LABELS[ev.type] || ev.type}
+                      · {t(`onsite.type.${ev.type}`, { defaultValue: ev.type })}
                     </span>
                   </div>
                   {ev.ticket?.ticketNumber && (
@@ -468,13 +474,13 @@ export default function OnsiteSupportPage() {
                           onClick={() => handleStatusUpdate(ev.id, 'in_progress')}
                           className="flex-1 bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-200 py-2 rounded-lg text-sm font-medium hover:bg-yellow-200 dark:hover:bg-yellow-500/30"
                         >
-                          Başla
+                          {t('onsite.actions.start')}
                         </button>
                         <button
                           onClick={() => handleStatusUpdate(ev.id, 'cancelled')}
                           className="flex-1 bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-200 py-2 rounded-lg text-sm font-medium hover:bg-red-200 dark:hover:bg-red-500/30"
                         >
-                          İptal
+                          {t('common.cancel')}
                         </button>
                       </>
                     )}
@@ -483,7 +489,7 @@ export default function OnsiteSupportPage() {
                         onClick={() => handleStatusUpdate(ev.id, 'completed')}
                         className="flex-1 bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-200 py-2 rounded-lg text-sm font-medium hover:bg-green-200 dark:hover:bg-green-500/30"
                       >
-                        Tamamla
+                        {t('onsite.actions.complete')}
                       </button>
                     )}
                   </div>

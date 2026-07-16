@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Edit2, Plus, RotateCcw, Tags, X, XCircle } from 'lucide-react';
 import { FormEvent, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
 import { getApiError } from '../../utils/api-error';
@@ -43,6 +44,7 @@ export function CategoryManagementModal({ companyId, companyName, onClose }: {
   companyName: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -86,11 +88,11 @@ export function CategoryManagementModal({ companyId, companyName, onClose }: {
     try {
       if (editId) await api.put(`/categories/${editId}`, payload);
       else await api.post('/categories', payload);
-      toast.success(editId ? 'Kategori güncellendi' : 'Kategori eklendi');
+      toast.success(editId ? t('companyMgmt.category.toast.updated') : t('companyMgmt.category.toast.added'));
       reset();
       await refresh();
     } catch (error: unknown) {
-      toast.error(getApiError(error, 'Kategori kaydedilemedi'));
+      toast.error(getApiError(error, t('companyMgmt.category.toast.saveFailed')));
     } finally {
       setSaving(false);
     }
@@ -100,10 +102,10 @@ export function CategoryManagementModal({ companyId, companyName, onClose }: {
     try {
       if (category.isActive) await api.delete(`/categories/${category.id}`);
       else await api.put(`/categories/${category.id}`, { isActive: true });
-      toast.success(category.isActive ? 'Kategori pasifleştirildi' : 'Kategori yeniden etkinleştirildi');
+      toast.success(category.isActive ? t('companyMgmt.category.toast.deactivated') : t('companyMgmt.category.toast.reactivated'));
       await refresh();
     } catch (error: unknown) {
-      toast.error(getApiError(error, 'Kategori durumu değiştirilemedi'));
+      toast.error(getApiError(error, t('companyMgmt.category.toast.toggleFailed')));
     }
   };
 
@@ -111,7 +113,7 @@ export function CategoryManagementModal({ companyId, companyName, onClose }: {
     const existing = new Set(companyCategories.map((category) => category.name.toLocaleLowerCase('tr')));
     const missing = DEFAULT_CATEGORIES.filter((category) => !existing.has(category.name.toLocaleLowerCase('tr')));
     if (!missing.length) {
-      toast('Tüm varsayılan kategoriler zaten mevcut');
+      toast(t('companyMgmt.category.toast.allDefaultsExist'));
       return;
     }
     setSaving(true);
@@ -121,10 +123,10 @@ export function CategoryManagementModal({ companyId, companyName, onClose }: {
         ...category,
         sortOrder: companyCategories.length + index + 1,
       })));
-      toast.success(`${missing.length} varsayılan kategori eklendi`);
+      toast.success(t('companyMgmt.category.toast.defaultsAdded', { count: missing.length }));
       await refresh();
     } catch (error: unknown) {
-      toast.error(getApiError(error, 'Varsayılan kategoriler eklenemedi'));
+      toast.error(getApiError(error, t('companyMgmt.category.toast.defaultsFailed')));
     } finally {
       setSaving(false);
     }
@@ -143,29 +145,29 @@ export function CategoryManagementModal({ companyId, companyName, onClose }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label={`${companyName} kategorileri`} className="card max-h-[92vh] w-full max-w-4xl overflow-y-auto !p-0" onClick={(event) => event.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label={t('companyMgmt.category.dialogLabel', { name: companyName })} className="card max-h-[92vh] w-full max-w-4xl overflow-y-auto !p-0" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-start justify-between gap-4 border-b border-subtle px-6 py-5">
           <div>
-            <h2 className="flex items-center gap-2 text-lg font-semibold"><Tags className="h-5 w-5 text-primary-500" /> Destek kategorileri</h2>
-            <p className="mt-1 text-sm text-muted">{companyName} için talep türlerini ve SLA hedeflerini yönetin.</p>
+            <h2 className="flex items-center gap-2 text-lg font-semibold"><Tags className="h-5 w-5 text-primary-500" /> {t('companyMgmt.category.title')}</h2>
+            <p className="mt-1 text-sm text-muted">{t('companyMgmt.category.subtitle', { name: companyName })}</p>
           </div>
-          <button className="icon-button border-0" onClick={onClose} aria-label="Kapat"><X className="h-5 w-5" /></button>
+          <button className="icon-button border-0" onClick={onClose} aria-label={t('common.close')}><X className="h-5 w-5" /></button>
         </div>
 
         <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="font-semibold">Şirkete özel kategoriler</h3>
-                <p className="text-xs text-muted">Pasifleştirilen kategoriler eski taleplerde korunur, yeni talep formunda gösterilmez.</p>
+                <h3 className="font-semibold">{t('companyMgmt.category.companySpecific')}</h3>
+                <p className="text-xs text-muted">{t('companyMgmt.category.deactivateHint')}</p>
               </div>
               <button type="button" onClick={addDefaults} disabled={saving} className="btn-secondary flex items-center gap-2 text-sm">
-                <Plus className="h-4 w-4" /> Varsayılanları ekle
+                <Plus className="h-4 w-4" /> {t('companyMgmt.category.addDefaults')}
               </button>
             </div>
 
-            {isLoading ? <p className="text-sm text-muted">Kategoriler yükleniyor…</p> : companyCategories.length === 0 ? (
-              <div className="surface-2 rounded-xl px-4 py-8 text-center text-sm text-muted">Bu şirkete özel kategori yok. Tek tek ekleyebilir veya varsayılan seti kullanabilirsiniz.</div>
+            {isLoading ? <p className="text-sm text-muted">{t('companyMgmt.category.loading')}</p> : companyCategories.length === 0 ? (
+              <div className="surface-2 rounded-xl px-4 py-8 text-center text-sm text-muted">{t('companyMgmt.category.empty')}</div>
             ) : (
               <div className="divide-y divide-gray-200 overflow-hidden rounded-xl border border-subtle dark:divide-slate-800">
                 {companyCategories.map((category) => (
@@ -173,14 +175,14 @@ export function CategoryManagementModal({ companyId, companyName, onClose }: {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{category.name}</span>
-                        {!category.isActive && <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-700 dark:bg-slate-700 dark:text-slate-200">Pasif</span>}
+                        {!category.isActive && <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-700 dark:bg-slate-700 dark:text-slate-200">{t('common.inactive')}</span>}
                       </div>
                       <p className="mt-0.5 text-xs text-muted">
-                        Sıra {category.sortOrder} · Yanıt {category.slaResponseMinutes || '—'} dk · Çözüm {category.slaResolutionMinutes || '—'} dk
+                        {t('companyMgmt.category.metaLine', { order: category.sortOrder, response: category.slaResponseMinutes || '—', resolution: category.slaResolutionMinutes || '—' })}
                       </p>
                     </div>
-                    <button type="button" onClick={() => startEdit(category)} className="icon-button border-0" aria-label={`${category.name} kategorisini düzenle`}><Edit2 className="h-4 w-4" /></button>
-                    <button type="button" onClick={() => toggleActive(category)} className={`icon-button border-0 ${category.isActive ? 'text-red-500' : 'text-green-600'}`} aria-label={category.isActive ? `${category.name} kategorisini pasifleştir` : `${category.name} kategorisini etkinleştir`}>
+                    <button type="button" onClick={() => startEdit(category)} className="icon-button border-0" aria-label={t('companyMgmt.category.editAria', { name: category.name })}><Edit2 className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => toggleActive(category)} className={`icon-button border-0 ${category.isActive ? 'text-red-500' : 'text-green-600'}`} aria-label={category.isActive ? t('companyMgmt.category.deactivateAria', { name: category.name }) : t('companyMgmt.category.activateAria', { name: category.name })}>
                       {category.isActive ? <XCircle className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
                     </button>
                   </div>
@@ -189,8 +191,8 @@ export function CategoryManagementModal({ companyId, companyName, onClose }: {
             )}
 
             <div>
-              <h3 className="font-semibold">Global varsayılanlar</h3>
-              <p className="mb-2 text-xs text-muted">Bunlar tüm aktif şirketlerin talep formunda ayrıca kullanılabilir.</p>
+              <h3 className="font-semibold">{t('companyMgmt.category.globalDefaults')}</h3>
+              <p className="mb-2 text-xs text-muted">{t('companyMgmt.category.globalHint')}</p>
               <div className="flex flex-wrap gap-2">
                 {globalCategories.map((category) => <span key={category.id} className="surface-2 rounded-full px-3 py-1 text-xs">{category.name}</span>)}
               </div>
@@ -198,27 +200,27 @@ export function CategoryManagementModal({ companyId, companyName, onClose }: {
           </div>
 
           <form onSubmit={submit} className="surface-2 h-fit space-y-3 rounded-xl p-4">
-            <h3 className="font-semibold">{editId ? 'Kategoriyi düzenle' : 'Yeni kategori'}</h3>
-            <label className="block text-sm">Ad *
+            <h3 className="font-semibold">{editId ? t('companyMgmt.category.editForm') : t('companyMgmt.category.newForm')}</h3>
+            <label className="block text-sm">{t('companyMgmt.category.name')}
               <input className="input-field mt-1" maxLength={120} required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
             </label>
-            <label className="block text-sm">Açıklama
+            <label className="block text-sm">{t('common.description')}
               <textarea className="input-field mt-1 min-h-20" maxLength={500} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
             </label>
-            <label className="block text-sm">Sıra
+            <label className="block text-sm">{t('companyMgmt.category.sortOrder')}
               <input type="number" className="input-field mt-1" value={form.sortOrder} onChange={(event) => setForm({ ...form, sortOrder: Number(event.target.value) })} />
             </label>
             <div className="grid grid-cols-2 gap-2">
-              <label className="block text-sm">Yanıt SLA (dk)
+              <label className="block text-sm">{t('companyMgmt.category.responseSla')}
                 <input type="number" min={1} className="input-field mt-1" value={form.slaResponseMinutes} onChange={(event) => setForm({ ...form, slaResponseMinutes: event.target.value })} />
               </label>
-              <label className="block text-sm">Çözüm SLA (dk)
+              <label className="block text-sm">{t('companyMgmt.category.resolutionSla')}
                 <input type="number" min={1} className="input-field mt-1" value={form.slaResolutionMinutes} onChange={(event) => setForm({ ...form, slaResolutionMinutes: event.target.value })} />
               </label>
             </div>
             <div className="flex gap-2 pt-1">
-              <button className="btn-primary flex-1" disabled={saving}>{saving ? 'Kaydediliyor…' : 'Kaydet'}</button>
-              {editId && <button type="button" className="btn-secondary" onClick={reset}>İptal</button>}
+              <button className="btn-primary flex-1" disabled={saving}>{saving ? t('common.saving') : t('common.save')}</button>
+              {editId && <button type="button" className="btn-secondary" onClick={reset}>{t('common.cancel')}</button>}
             </div>
           </form>
         </div>

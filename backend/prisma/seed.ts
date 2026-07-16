@@ -325,14 +325,118 @@ async function main() {
     },
   ];
 
-  for (const tmpl of emailTemplates) {
+  // İngilizce karşılıklar. Aynı slug, locale: 'en'. Worker alıcının diline göre
+  // seçer; 'en' yoksa 'tr'ye düşer.
+  const emailTemplatesEn = [
+    {
+      slug: 'ticket_created',
+      subject: 'Your Support Request Was Created - {{ticketNumber}}',
+      bodyHtml: `<h2>Your Support Request Was Received</h2>
+<p>Dear {{userName}},</p>
+<p>Your support request has been created successfully.</p>
+<ul>
+  <li><strong>Request No:</strong> {{ticketNumber}}</li>
+  <li><strong>Subject:</strong> {{subject}}</li>
+  <li><strong>Priority:</strong> {{priority}}</li>
+</ul>
+<p>To track your request: <a href="{{trackingUrl}}">Click here</a></p>
+<p>IT Support Team</p>`,
+      bodyText: 'Your Support Request Was Received\n\nRequest No: {{ticketNumber}}\nSubject: {{subject}}\nTracking: {{trackingUrl}}',
+      variables: ['ticketNumber', 'userName', 'subject', 'priority', 'trackingUrl'],
+    },
+    {
+      slug: 'ticket_created_internal',
+      subject: 'New Request: {{ticketNumber}} — {{subject}}',
+      bodyHtml: `<h2>New Support Request</h2>
+<p>A new support request has been created.</p>
+<ul>
+  <li><strong>Request No:</strong> {{ticketNumber}}</li>
+  <li><strong>Company:</strong> {{companyName}}</li>
+  <li><strong>Requested By:</strong> {{userName}} &lt;{{userEmail}}&gt;</li>
+  <li><strong>Subject:</strong> {{subject}}</li>
+  <li><strong>Priority:</strong> {{priority}}</li>
+  <li><strong>Category:</strong> {{categoryName}}</li>
+</ul>
+<p>Manage the request in the panel: <a href="{{staffUrl}}">{{staffUrl}}</a></p>`,
+      bodyText: 'New Request: {{ticketNumber}}\nCompany: {{companyName}}\nRequested By: {{userName}} <{{userEmail}}>\nSubject: {{subject}}\nPriority: {{priority}}\nPanel: {{staffUrl}}',
+      variables: ['ticketNumber', 'companyName', 'userName', 'userEmail', 'subject', 'priority', 'categoryName', 'staffUrl'],
+    },
+    {
+      slug: 'status_changed',
+      subject: 'Request Status Updated - {{ticketNumber}}',
+      bodyHtml: `<h2>Request Status Updated</h2>
+<p>Dear {{userName}},</p>
+<p>The status of your request <strong>{{ticketNumber}}</strong> has been updated.</p>
+<ul>
+  <li><strong>Previous Status:</strong> {{oldStatus}}</li>
+  <li><strong>New Status:</strong> {{newStatus}}</li>
+</ul>
+<p>Details: <a href="{{trackingUrl}}">Click here</a></p>`,
+      bodyText: 'Request status updated.\nRequest No: {{ticketNumber}}\nNew Status: {{newStatus}}\nTracking: {{trackingUrl}}',
+      variables: ['ticketNumber', 'userName', 'oldStatus', 'newStatus', 'trackingUrl'],
+    },
+    {
+      slug: 'onsite_scheduled',
+      subject: 'Onsite Support Scheduled - {{ticketNumber}}',
+      bodyHtml: `<h2>Onsite Support Scheduled</h2>
+<p>Dear {{userName}},</p>
+<p>Onsite support has been scheduled for your request <strong>{{ticketNumber}}</strong>.</p>
+<ul>
+  <li><strong>Date/Time:</strong> {{scheduledAt}}</li>
+  <li><strong>Type:</strong> {{supportType}}</li>
+  <li><strong>Location:</strong> {{locationInfo}}</li>
+</ul>
+<p>{{extraNote}}</p>`,
+      bodyText: 'Onsite support scheduled.\nRequest: {{ticketNumber}}\nDate: {{scheduledAt}}\nType: {{supportType}}',
+      variables: ['ticketNumber', 'userName', 'scheduledAt', 'supportType', 'locationInfo', 'extraNote'],
+    },
+    {
+      slug: 'sla_warning',
+      subject: 'SLA Breach - {{ticketNumber}}',
+      bodyHtml: `<h2>SLA Time Exceeded</h2>
+<p>Dear {{staffName}},</p>
+<p>The <strong>{{slaType}}</strong> time for request <strong>{{ticketNumber}}</strong> has been exceeded.</p>
+<ul>
+  <li><strong>Company:</strong> {{companyName}}</li>
+  <li><strong>Subject:</strong> {{subject}}</li>
+</ul>
+<p>Please attend to it as soon as possible.</p>`,
+      bodyText: 'SLA Breach: {{ticketNumber}} - {{slaType}} time exceeded. Subject: {{subject}}',
+      variables: ['ticketNumber', 'staffName', 'slaType', 'companyName', 'subject'],
+    },
+    {
+      slug: 'note_added',
+      subject: 'A Reply Was Added to Your Request - {{ticketNumber}}',
+      bodyHtml: `<h2>A Reply Was Added to Your Request</h2>
+<p>Dear {{userName}},</p>
+<p>The IT team added a reply to your request <strong>{{ticketNumber}}</strong>.</p>
+<p>Details: <a href="{{trackingUrl}}">Click here</a></p>`,
+      bodyText: 'A reply was added to your request. Request: {{ticketNumber}}. Tracking: {{trackingUrl}}',
+      variables: ['ticketNumber', 'userName', 'trackingUrl'],
+    },
+    {
+      slug: 'user_reply',
+      subject: 'User Reply — {{ticketNumber}}',
+      bodyHtml: `<h2>The User Replied</h2>
+<p>Dear {{staffName}},</p>
+<p>The user (<strong>{{userEmail}}</strong>) replied to request <strong>{{ticketNumber}}</strong>:</p>
+<blockquote style="border-left:3px solid #ccc;padding-left:12px;color:#555;">{{replyContent}}</blockquote>`,
+      bodyText: 'User reply: {{ticketNumber}} — {{userEmail}}: {{replyContent}}',
+      variables: ['ticketNumber', 'staffName', 'userEmail', 'replyContent'],
+    },
+  ];
+
+  for (const tmpl of [
+    ...emailTemplates.map((t) => ({ ...t, locale: 'tr' })),
+    ...emailTemplatesEn.map((t) => ({ ...t, locale: 'en' })),
+  ]) {
     await prisma.emailTemplate.upsert({
-      where: { slug: tmpl.slug },
+      where: { slug_locale: { slug: tmpl.slug, locale: tmpl.locale } },
       update: {},
       create: tmpl,
     });
   }
-  console.log('Email templates created');
+  console.log('Email templates created (tr + en)');
 
   // Create SMS templates
   const smsTemplates = [
@@ -348,14 +452,30 @@ async function main() {
     },
   ];
 
-  for (const tmpl of smsTemplates) {
+  const smsTemplatesEn = [
+    {
+      slug: 'ticket_created',
+      body: 'IT Support: your request {{ticketNumber}} has been received. Track: {{trackingUrl}}',
+      variables: ['ticketNumber', 'trackingUrl'],
+    },
+    {
+      slug: 'onsite_scheduled',
+      body: 'IT Support: onsite support scheduled on {{scheduledAt}}. {{locationInfo}}',
+      variables: ['scheduledAt', 'locationInfo'],
+    },
+  ];
+
+  for (const tmpl of [
+    ...smsTemplates.map((t) => ({ ...t, locale: 'tr' })),
+    ...smsTemplatesEn.map((t) => ({ ...t, locale: 'en' })),
+  ]) {
     await prisma.smsTemplate.upsert({
-      where: { slug: tmpl.slug },
+      where: { slug_locale: { slug: tmpl.slug, locale: tmpl.locale } },
       update: {},
       create: tmpl,
     });
   }
-  console.log('SMS templates created');
+  console.log('SMS templates created (tr + en)');
 
   // Create canned responses
   const cannedResponses = [

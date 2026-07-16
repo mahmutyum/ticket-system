@@ -1,0 +1,56 @@
+{
+  "tr": {
+    "eyebrow": "Saha operasyonu",
+    "title": "Yerinde destek",
+    "description": "{{date}} · Planlanan randevuları ve saha müdahalelerini yönet.",
+    "filterByCompany": "Şirkete göre filtrele",
+    "allCompanies": "Tüm şirketler",
+    "prevDay": "Önceki gün",
+    "nextDay": "Sonraki gün",
+    "viewDetails": "Detayları gör",
+    "activeCount": "{{count}} aktif randevu",
+    "noAppointments": "Bu gün için randevu yok.",
+    "listView": "Liste Görünümü",
+    "durationMin": "{{count}} dk",
+    "type": {
+      "come_to_it_room": "IT Odasına Gelin",
+      "meeting_room": "Toplantı Odası",
+      "visit_employee": "Yerinde Müdahale"
+    },
+    "actions": {
+      "start": "Başla",
+      "complete": "Tamamla"
+    },
+    "toast": {
+      "statusUpdated": "Durum güncellendi",
+      "updateFailed": "Güncelleme başarısız"
+    }
+  },
+  "en": {
+    "eyebrow": "Field operations",
+    "title": "On-site support",
+    "description": "{{date}} · Manage scheduled appointments and on-site interventions.",
+    "filterByCompany": "Filter by company",
+    "allCompanies": "All companies",
+    "prevDay": "Previous day",
+    "nextDay": "Next day",
+    "viewDetails": "View details",
+    "activeCount": "{{count}} active appointments",
+    "noAppointments": "No appointments for this day.",
+    "listView": "List View",
+    "durationMin": "{{count}} min",
+    "type": {
+      "come_to_it_room": "Come to IT Room",
+      "meeting_room": "Meeting Room",
+      "visit_employee": "On-site Intervention"
+    },
+    "actions": {
+      "start": "Start",
+      "complete": "Complete"
+    },
+    "toast": {
+      "statusUpdated": "Status updated",
+      "updateFailed": "Update failed"
+    }
+  }
+}

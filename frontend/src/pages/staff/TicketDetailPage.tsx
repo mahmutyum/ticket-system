@@ -6,10 +6,10 @@ import {
   MessageSquare, Lock, Send, Paperclip, Upload, FileText,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
+import { dateLocale } from '../../i18n/format';
 import api from '../../api/client';
-import {
-  STATUS_LABELS, PRIORITY_LABELS,
-} from '../../types';
+import { useEnumLabels } from '../../i18n/labels';
 import type { CannedResponse, Staff, Ticket } from '../../types';
 import { downloadAttachment } from '../../utils/download';
 import TicketTimeline from './tickets/TicketTimeline';
@@ -18,6 +18,8 @@ import { SkeletonRows } from '../../components/ui/AsyncState';
 import { PriorityBadge, StatusBadge } from '../../components/ui/Badge';
 
 export default function TicketDetailPage() {
+  const { t } = useTranslation();
+  const labels = useEnumLabels();
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const [noteContent, setNoteContent] = useState('');
@@ -53,9 +55,9 @@ export default function TicketDetailPage() {
     try {
       await api.put(`/tickets/${id}`, { status });
       queryClient.invalidateQueries({ queryKey: ['ticket', id] });
-      toast.success('Durum güncellendi');
+      toast.success(t('ticketDetail.statusUpdated'));
     } catch {
-      toast.error('Güncelleme başarısız');
+      toast.error(t('ticketDetail.updateFailed'));
     }
   };
 
@@ -63,9 +65,9 @@ export default function TicketDetailPage() {
     try {
       await api.put(`/tickets/${id}`, { priority });
       queryClient.invalidateQueries({ queryKey: ['ticket', id] });
-      toast.success('Öncelik güncellendi');
+      toast.success(t('ticketDetail.priorityUpdated'));
     } catch {
-      toast.error('Güncelleme başarısız');
+      toast.error(t('ticketDetail.updateFailed'));
     }
   };
 
@@ -73,9 +75,9 @@ export default function TicketDetailPage() {
     try {
       await api.put(`/tickets/${id}`, { assignedToId });
       queryClient.invalidateQueries({ queryKey: ['ticket', id] });
-      toast.success('Atama güncellendi');
+      toast.success(t('ticketDetail.assignUpdated'));
     } catch {
-      toast.error('Atama başarısız');
+      toast.error(t('ticketDetail.assignFailed'));
     }
   };
 
@@ -87,9 +89,9 @@ export default function TicketDetailPage() {
       await api.post(`/tickets/${id}/notes`, { content: noteContent, isInternal });
       setNoteContent('');
       queryClient.invalidateQueries({ queryKey: ['ticket', id] });
-      toast.success(isInternal ? 'Dahili not eklendi' : 'Not eklendi');
+      toast.success(isInternal ? t('ticketDetail.internalNoteAdded') : t('ticketDetail.noteAdded'));
     } catch {
-      toast.error('Not eklenemedi');
+      toast.error(t('ticketDetail.noteFailed'));
     } finally {
       setSending(false);
     }
@@ -106,9 +108,9 @@ export default function TicketDetailPage() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       queryClient.invalidateQueries({ queryKey: ['ticket', id] });
-      toast.success('Dosya yüklendi');
+      toast.success(t('ticketDetail.fileUploaded'));
     } catch {
-      toast.error('Dosya yüklenemedi');
+      toast.error(t('ticketDetail.fileUploadFailed'));
     } finally {
       setUploading(false);
       e.target.value = '';
@@ -124,8 +126,8 @@ export default function TicketDetailPage() {
       <PageHeader
         eyebrow={ticket.ticketNumber}
         title={ticket.subject}
-        description={`${ticket.company?.name} · ${ticket.category?.name} · ${new Date(ticket.createdAt).toLocaleString('tr-TR')}`}
-        actions={<><StatusBadge status={ticket.status} /><PriorityBadge priority={ticket.priority} /><Link to="/staff/tickets" className="icon-button" aria-label="Talep listesine dön"><ArrowLeft className="w-5 h-5" /></Link></>}
+        description={`${ticket.company?.name} · ${ticket.category?.name} · ${new Date(ticket.createdAt).toLocaleString(dateLocale())}`}
+        actions={<><StatusBadge status={ticket.status} /><PriorityBadge priority={ticket.priority} /><Link to="/staff/tickets" className="icon-button" aria-label={t('ticketDetail.backToList')}><ArrowLeft className="w-5 h-5" /></Link></>}
       />
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -133,14 +135,14 @@ export default function TicketDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Description */}
           <div className="card">
-            <h2 className="mb-3 text-base font-semibold">Talep açıklaması</h2>
+            <h2 className="mb-3 text-base font-semibold">{t('ticketDetail.descriptionTitle')}</h2>
             <p className="text-gray-800 dark:text-slate-200 whitespace-pre-wrap">{ticket.description}</p>
           </div>
 
           {/* Custom fields */}
           {(ticket.customValues?.length ?? 0) > 0 && (
             <div className="card">
-              <h2 className="mb-3 text-base font-semibold">Ek bilgiler</h2>
+              <h2 className="mb-3 text-base font-semibold">{t('ticketDetail.additionalInfo')}</h2>
               <div className="grid gap-3 text-sm sm:grid-cols-2">
                 {ticket.customValues?.map(cv => (
                   <div key={cv.id} className="surface-2 rounded-xl p-3">
@@ -156,14 +158,14 @@ export default function TicketDetailPage() {
           <div className="card">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold flex items-center gap-2">
-                <Paperclip className="w-4 h-4" /> Dosyalar
+                <Paperclip className="w-4 h-4" /> {t('ticketDetail.files')}
                 {(ticket.attachments?.length ?? 0) > 0 && (
                   <span className="bg-gray-200 text-gray-600 dark:text-slate-400 text-xs px-1.5 rounded-full">{ticket.attachments?.length}</span>
                 )}
               </h2>
               <label className={`btn-secondary text-xs flex items-center gap-1 cursor-pointer ${uploading ? 'opacity-50' : ''}`}>
                 <Upload className="w-3 h-3" />
-                {uploading ? 'Yükleniyor...' : 'Dosya Ekle'}
+                {uploading ? t('ticketDetail.uploading') : t('ticketDetail.addFile')}
                 <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} />
               </label>
             </div>
@@ -177,7 +179,7 @@ export default function TicketDetailPage() {
                     // kontrollü bir uçtan geliyor, bu yüzden axios ile çekilir.
                     onClick={() => {
                       downloadAttachment(att.id, att.fileName).catch(() =>
-                        toast.error('Dosya indirilemedi'),
+                        toast.error(t('ticketDetail.downloadFailed')),
                       );
                     }}
                     className="w-full text-left flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800/50 text-sm"
@@ -189,13 +191,13 @@ export default function TicketDetailPage() {
                 ))}
               </div>
             ) : (
-              <p className="rounded-xl surface-2 px-4 py-6 text-center text-sm text-muted">Henüz dosya eklenmemiş</p>
+              <p className="rounded-xl surface-2 px-4 py-6 text-center text-sm text-muted">{t('ticketDetail.noFiles')}</p>
             )}
           </div>
 
           {/* Timeline */}
           <div className="card">
-            <h2 className="mb-4 text-base font-semibold">Aktivite ve notlar</h2>
+            <h2 className="mb-4 text-base font-semibold">{t('ticketDetail.activityAndNotes')}</h2>
             <TicketTimeline history={ticket.history} notes={ticket.notes} />
 
             {/* Add note form */}
@@ -207,7 +209,7 @@ export default function TicketDetailPage() {
                   onClick={() => setShowCanned(!showCanned)}
                   className="text-xs text-primary-600 hover:underline mb-2"
                 >
-                  Hazır Yanıtlar {showCanned ? '▲' : '▼'}
+                  {t('ticketDetail.cannedResponses')} {showCanned ? '▲' : '▼'}
                 </button>
                 {showCanned && cannedResponses && (
                   <div className="absolute z-10 w-full max-h-48 overflow-y-auto rounded-xl border border-subtle bg-white p-2 shadow-lg dark:bg-slate-900">
@@ -234,7 +236,7 @@ export default function TicketDetailPage() {
                     onChange={() => setIsInternal(false)}
                     className="text-primary-600"
                   />
-                  <MessageSquare className="w-4 h-4" /> Public Not
+                  <MessageSquare className="w-4 h-4" /> {t('ticketDetail.publicNote')}
                 </label>
                 <label className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm cursor-pointer ${isInternal ? 'bg-amber-100 text-amber-900 shadow-sm dark:bg-amber-500/20 dark:text-amber-200' : ''}`}>
                   <input
@@ -243,18 +245,18 @@ export default function TicketDetailPage() {
                     onChange={() => setIsInternal(true)}
                     className="text-yellow-600"
                   />
-                  <Lock className="w-4 h-4" /> Dahili Not
+                  <Lock className="w-4 h-4" /> {t('ticketDetail.internalNote')}
                 </label>
               </div>
               <textarea
                 className={`input-field min-h-[100px] ${isInternal ? 'border-amber-300 bg-amber-50 dark:border-amber-500/50 dark:bg-amber-500/10' : ''}`}
                 value={noteContent}
                 onChange={e => setNoteContent(e.target.value)}
-                placeholder={isInternal ? 'Sadece IT ekibinin göreceği not...' : 'Not ekle...'}
+                placeholder={isInternal ? t('ticketDetail.internalNotePlaceholder') : t('ticketDetail.notePlaceholder')}
               />
               <button type="submit" disabled={sending || !noteContent.trim()} className="btn-primary flex items-center gap-2">
                 <Send className="w-4 h-4" />
-                {sending ? 'Gönderiliyor...' : 'Not Ekle'}
+                {sending ? t('ticketDetail.sending') : t('ticketDetail.addNote')}
               </button>
             </form>
           </div>
@@ -264,7 +266,7 @@ export default function TicketDetailPage() {
         <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           {/* Ticket info */}
           <div className="card space-y-4">
-            <h2 className="font-semibold">Talep bilgileri</h2>
+            <h2 className="font-semibold">{t('ticketDetail.ticketInfo')}</h2>
 
             <div className="space-y-3 text-sm">
               <div className="flex items-center gap-2">
@@ -281,7 +283,7 @@ export default function TicketDetailPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-gray-400" />
-                <span>{new Date(ticket.createdAt).toLocaleString('tr-TR')}</span>
+                <span>{new Date(ticket.createdAt).toLocaleString(dateLocale())}</span>
               </div>
             </div>
 
@@ -289,7 +291,7 @@ export default function TicketDetailPage() {
 
             {/* Created by */}
             <div>
-              <span className="text-xs text-gray-500 block mb-1">Oluşturan</span>
+              <span className="text-xs text-gray-500 block mb-1">{t('ticketDetail.createdBy')}</span>
               <div className="flex items-center gap-2 text-sm">
                 <Mail className="w-4 h-4 text-gray-400" />
                 <span>{ticket.createdByEmail}</span>
@@ -311,42 +313,42 @@ export default function TicketDetailPage() {
 
           {/* Actions */}
           <div className="card space-y-4">
-            <div><h2 className="font-semibold">Hızlı işlemler</h2><p className="mt-1 text-xs text-muted">Değişiklikler anında kaydedilir.</p></div>
+            <div><h2 className="font-semibold">{t('ticketDetail.quickActions')}</h2><p className="mt-1 text-xs text-muted">{t('ticketDetail.autoSaveHint')}</p></div>
 
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Durum</label>
+              <label className="text-xs text-gray-500 block mb-1">{t('common.status')}</label>
               <select
                 className="input-field text-sm"
                 value={ticket.status}
                 onChange={e => handleStatusChange(e.target.value)}
               >
-                {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
+                {(['open', 'in_progress', 'waiting_user_response', 'waiting_other_department', 'topic_transferred', 'process_outside_it', 'on_hold', 'resolved', 'closed'] as const).map(k => (
+                  <option key={k} value={k}>{labels.status(k)}</option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Öncelik</label>
+              <label className="text-xs text-gray-500 block mb-1">{t('common.priority')}</label>
               <select
                 className="input-field text-sm"
                 value={ticket.priority}
                 onChange={e => handlePriorityChange(e.target.value)}
               >
-                {Object.entries(PRIORITY_LABELS).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
+                {(['low', 'medium', 'high', 'critical'] as const).map(k => (
+                  <option key={k} value={k}>{labels.priority(k)}</option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Atanan Kişi</label>
+              <label className="text-xs text-gray-500 block mb-1">{t('ticketDetail.assignedPerson')}</label>
               <select
                 className="input-field text-sm"
                 value={ticket.assignedToId || ''}
                 onChange={e => handleAssign(e.target.value || null)}
               >
-                <option value="">Atanmamış</option>
+                <option value="">{t('common.unassigned')}</option>
                 {staffList?.map(s => (
                   <option key={s.id} value={s.id}>{s.fullName}</option>
                 ))}
@@ -357,15 +359,15 @@ export default function TicketDetailPage() {
           {/* Onsite support */}
           <div className="card space-y-3">
             <h2 className="font-semibold flex items-center gap-2">
-              <MapPin className="w-4 h-4" /> Yerinde Destek
+              <MapPin className="w-4 h-4" /> {t('ticketDetail.onsiteSupport')}
             </h2>
 
             {(ticket.onsiteSupport?.length ?? 0) > 0 && (
               <div className="space-y-2 text-xs">
                 {ticket.onsiteSupport?.map(os => (
                   <div key={os.id} className="rounded-xl bg-orange-50 p-3 dark:bg-orange-500/10">
-                    <div className="font-medium">{os.type === 'come_to_it_room' ? 'IT Odasına Gelin' : os.type === 'meeting_room' ? 'Toplantı Odası' : 'Yerinde Müdahale'}</div>
-                    <div className="text-gray-500">{new Date(os.scheduledAt).toLocaleString('tr-TR')}</div>
+                    <div className="font-medium">{t(`ticketDetail.onsiteType.${os.type}`, { defaultValue: t('ticketDetail.onsiteType.visit_employee') })}</div>
+                    <div className="text-gray-500">{new Date(os.scheduledAt).toLocaleString(dateLocale())}</div>
                     <div className="text-gray-500">{os.location?.name}</div>
                   </div>
                 ))}
@@ -374,7 +376,7 @@ export default function TicketDetailPage() {
 
             {!showOnsiteForm ? (
               <button onClick={() => setShowOnsiteForm(true)} className="btn-secondary text-xs w-full">
-                Randevu Oluştur
+                {t('ticketDetail.createAppointment')}
               </button>
             ) : (
               <div className="space-y-2">
@@ -383,9 +385,9 @@ export default function TicketDetailPage() {
                   value={onsiteForm.type}
                   onChange={e => setOnsiteForm({ ...onsiteForm, type: e.target.value })}
                 >
-                  <option value="come_to_it_room">IT Odasına Gelin</option>
-                  <option value="meeting_room">Toplantı Odası</option>
-                  <option value="visit_employee">Yerinde Müdahale</option>
+                  <option value="come_to_it_room">{t('ticketDetail.onsiteType.come_to_it_room')}</option>
+                  <option value="meeting_room">{t('ticketDetail.onsiteType.meeting_room')}</option>
+                  <option value="visit_employee">{t('ticketDetail.onsiteType.visit_employee')}</option>
                 </select>
                 <input
                   type="datetime-local"
@@ -398,23 +400,23 @@ export default function TicketDetailPage() {
                   value={onsiteForm.durationMin}
                   onChange={e => setOnsiteForm({ ...onsiteForm, durationMin: Number(e.target.value) })}
                 >
-                  <option value={10}>10 dakika</option>
-                  <option value={15}>15 dakika</option>
-                  <option value={30}>30 dakika</option>
-                  <option value={60}>60 dakika</option>
+                  <option value={10}>{t('ticketDetail.minutes', { count: 10 })}</option>
+                  <option value={15}>{t('ticketDetail.minutes', { count: 15 })}</option>
+                  <option value={30}>{t('ticketDetail.minutes', { count: 30 })}</option>
+                  <option value={60}>{t('ticketDetail.minutes', { count: 60 })}</option>
                 </select>
                 {(onsiteForm.type === 'come_to_it_room' || onsiteForm.type === 'meeting_room') && (
                   <input
                     type="text"
                     className="input-field text-sm"
-                    placeholder={onsiteForm.type === 'meeting_room' ? 'Toplantı odası bilgisi' : 'Oda bilgisi'}
+                    placeholder={onsiteForm.type === 'meeting_room' ? t('ticketDetail.meetingRoomInfo') : t('ticketDetail.roomInfo')}
                     value={onsiteForm.roomInfo}
                     onChange={e => setOnsiteForm({ ...onsiteForm, roomInfo: e.target.value })}
                   />
                 )}
                 <textarea
                   className="input-field text-sm"
-                  placeholder="Not..."
+                  placeholder={t('ticketDetail.appointmentNotesPlaceholder')}
                   rows={2}
                   value={onsiteForm.notes}
                   onChange={e => setOnsiteForm({ ...onsiteForm, notes: e.target.value })}
@@ -438,17 +440,17 @@ export default function TicketDetailPage() {
                         queryClient.invalidateQueries({ queryKey: ['ticket', id] });
                         setShowOnsiteForm(false);
                         setOnsiteForm({ type: 'come_to_it_room', scheduledAt: '', durationMin: 15, roomInfo: '', notes: '' });
-                        toast.success('Randevu oluşturuldu');
+                        toast.success(t('ticketDetail.appointmentCreated'));
                       } catch {
-                        toast.error('Randevu oluşturulamadı');
+                        toast.error(t('ticketDetail.appointmentFailed'));
                       }
                     }}
                     disabled={!onsiteForm.scheduledAt}
                   >
-                    Oluştur
+                    {t('common.create')}
                   </button>
                   <button className="btn-secondary text-xs flex-1" onClick={() => setShowOnsiteForm(false)}>
-                    İptal
+                    {t('common.cancel')}
                   </button>
                 </div>
               </div>
@@ -458,20 +460,20 @@ export default function TicketDetailPage() {
           {/* SLA info */}
           {(ticket.slaResponseDue || ticket.slaResolveDue) && (
             <div className="card space-y-2 text-sm">
-              <h2 className="font-semibold">SLA hedefleri</h2>
+              <h2 className="font-semibold">{t('ticketDetail.slaTargets')}</h2>
               {ticket.slaResponseDue && (
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Yanıt Süresi:</span>
+                  <span className="text-gray-500">{t('ticketDetail.responseTime')}</span>
                   <span className={ticket.slaResponseMet === false ? 'text-red-600 font-medium' : ''}>
-                    {new Date(ticket.slaResponseDue).toLocaleString('tr-TR')}
+                    {new Date(ticket.slaResponseDue).toLocaleString(dateLocale())}
                   </span>
                 </div>
               )}
               {ticket.slaResolveDue && (
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Çözüm Süresi:</span>
+                  <span className="text-gray-500">{t('ticketDetail.resolveTime')}</span>
                   <span className={ticket.slaResolveMet === false ? 'text-red-600 font-medium' : ''}>
-                    {new Date(ticket.slaResolveDue).toLocaleString('tr-TR')}
+                    {new Date(ticket.slaResolveDue).toLocaleString(dateLocale())}
                   </span>
                 </div>
               )}

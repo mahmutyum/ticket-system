@@ -1,19 +1,23 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit2, MapPin, Building2, Mail, Trash2, CheckCircle2, XCircle, Tags } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
 import { getApiError } from '../../utils/api-error';
+import { useEnumLabels } from '../../i18n/labels';
 import type { Company, Location } from '../../types';
 import {
   companyPayload, companyToForm, emptyCompanyForm, emptyLocationForm,
-  emptySmtpForm, GROUP_TYPES,
+  emptySmtpForm,
 } from './company-management';
 import { CompanyFormModal, LocationFormModal, SmtpConfigModal } from './CompanyManagementModals';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { CategoryManagementModal } from './CategoryManagementModal';
 
 export default function CompanyManagementPage() {
+  const { t } = useTranslation();
+  const labels = useEnumLabels();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -45,27 +49,27 @@ export default function CompanyManagementPage() {
       const payload = companyPayload(form);
       if (editId) {
         await api.put(`/companies/${editId}`, payload);
-        toast.success('Şirket güncellendi');
+        toast.success(t('companyMgmt.toast.companyUpdated'));
       } else {
         await api.post('/companies', payload);
-        toast.success('Şirket eklendi');
+        toast.success(t('companyMgmt.toast.companyAdded'));
       }
       queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
       setShowForm(false);
       setEditId(null);
       setForm(emptyCompanyForm);
     } catch (err: unknown) {
-      toast.error(getApiError(err, 'Hata'));
+      toast.error(getApiError(err, t('common.error')));
     }
   };
 
   const handleLogoUpload = async (file: File) => {
     if (!editId) {
-      toast.error('Logoyu yüklemek için önce şirketi kaydedin');
+      toast.error(t('companyMgmt.toast.saveCompanyFirst'));
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      toast.error('Dosya 2MB üzerinde olamaz');
+      toast.error(t('companyMgmt.toast.fileTooLarge'));
       return;
     }
     setLogoUploading(true);
@@ -78,11 +82,11 @@ export default function CompanyManagementPage() {
       const url = res.data?.data?.logo as string;
       if (url) {
         setForm(prev => ({ ...prev, logo: url }));
-        toast.success('Logo yüklendi');
+        toast.success(t('companyMgmt.toast.logoUploaded'));
         queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
       }
     } catch (err: unknown) {
-      toast.error(getApiError(err, 'Logo yüklenemedi'));
+      toast.error(getApiError(err, t('companyMgmt.toast.logoUploadFailed')));
     } finally {
       setLogoUploading(false);
     }
@@ -93,17 +97,17 @@ export default function CompanyManagementPage() {
     try {
       if (locEditId) {
         await api.put(`/locations/${locEditId}`, locForm);
-        toast.success('Lokasyon güncellendi');
+        toast.success(t('companyMgmt.toast.locationUpdated'));
       } else {
         await api.post('/locations', { companyId: locCompanyId, ...locForm });
-        toast.success('Lokasyon eklendi');
+        toast.success(t('companyMgmt.toast.locationAdded'));
       }
       queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
       setShowLocForm(false);
       setLocEditId(null);
       setLocForm(emptyLocationForm);
     } catch (err: unknown) {
-      toast.error(getApiError(err, 'Hata'));
+      toast.error(getApiError(err, t('common.error')));
     }
   };
 
@@ -121,13 +125,13 @@ export default function CompanyManagementPage() {
   };
 
   const handleDeleteLocation = async (loc: Location) => {
-    if (!confirm(`"${loc.name}" lokasyonunu silmek istediğinize emin misiniz?`)) return;
+    if (!confirm(t('companyMgmt.confirm.deleteLocation', { name: loc.name }))) return;
     try {
       await api.delete(`/locations/${loc.id}`);
-      toast.success('Lokasyon silindi');
+      toast.success(t('companyMgmt.toast.locationDeleted'));
       queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
     } catch (err: unknown) {
-      toast.error(getApiError(err, 'Silinemedi'));
+      toast.error(getApiError(err, t('companyMgmt.toast.deleteFailed')));
     }
   };
 
@@ -151,15 +155,15 @@ export default function CompanyManagementPage() {
 
   const handleTestSmtp = async () => {
     if (!smtpForm.host || !smtpForm.user || !smtpForm.pass) {
-      toast.error('Tüm SMTP alanları doldurulmalı');
+      toast.error(t('companyMgmt.toast.smtpAllFields'));
       return;
     }
     setSmtpTesting(true);
     try {
       await api.post(`/companies/${smtpCompanyId}/smtp/test`, smtpForm);
-      toast.success('SMTP bağlantısı başarılı!');
+      toast.success(t('companyMgmt.toast.smtpTestSuccess'));
     } catch (err: unknown) {
-      toast.error(getApiError(err, 'Bağlantı başarısız'));
+      toast.error(getApiError(err, t('companyMgmt.toast.smtpTestFailed')));
     } finally {
       setSmtpTesting(false);
     }
@@ -167,56 +171,56 @@ export default function CompanyManagementPage() {
 
   const handleSaveSmtp = async () => {
     if (!smtpForm.host || !smtpForm.user || !smtpForm.fromEmail) {
-      toast.error('Zorunlu alanları doldurun');
+      toast.error(t('companyMgmt.toast.fillRequired'));
       return;
     }
     try {
       await api.put(`/companies/${smtpCompanyId}/smtp`, smtpForm);
-      toast.success('SMTP ayarları kaydedildi');
+      toast.success(t('companyMgmt.toast.smtpSaved'));
       queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
       setShowSmtpForm(false);
     } catch (err: unknown) {
-      toast.error(getApiError(err, 'Kayıt başarısız'));
+      toast.error(getApiError(err, t('companyMgmt.toast.saveFailed')));
     }
   };
 
   const handleToggleCompanyActive = async (company: Company) => {
     const willDeactivate = company.isActive !== false;
     const msg = willDeactivate
-      ? `"${company.name}" şirketini pasifleştirmek istediğinize emin misiniz? Mevcut biletler korunur ancak yeni bilet açılamaz.`
-      : `"${company.name}" şirketini tekrar aktif etmek istediğinize emin misiniz?`;
+      ? t('companyMgmt.confirm.deactivateCompany', { name: company.name })
+      : t('companyMgmt.confirm.reactivateCompany', { name: company.name });
     if (!confirm(msg)) return;
     try {
       if (willDeactivate) {
         await api.delete(`/companies/${company.id}`);
-        toast.success('Şirket pasifleştirildi');
+        toast.success(t('companyMgmt.toast.companyDeactivated'));
       } else {
         await api.post(`/companies/${company.id}/restore`);
-        toast.success('Şirket tekrar aktif edildi');
+        toast.success(t('companyMgmt.toast.companyReactivated'));
       }
       queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
     } catch (err: unknown) {
-      toast.error(getApiError(err, 'İşlem başarısız'));
+      toast.error(getApiError(err, t('common.operationFailed')));
     }
   };
 
   const handleDeleteSmtp = async () => {
-    if (!confirm('SMTP ayarlarını kaldırmak istediğinize emin misiniz? Global SMTP kullanılacak.')) return;
+    if (!confirm(t('companyMgmt.confirm.deleteSmtp'))) return;
     try {
       await api.delete(`/companies/${smtpCompanyId}/smtp`);
-      toast.success('SMTP ayarları kaldırıldı');
+      toast.success(t('companyMgmt.toast.smtpDeleted'));
       queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
       setShowSmtpForm(false);
     } catch {
-      toast.error('Silme başarısız');
+      toast.error(t('companyMgmt.toast.deleteFailedGeneric'));
     }
   };
 
   return (
     <div className="space-y-4">
-      <PageHeader eyebrow="Organizasyon" title="Şirketler ve lokasyonlar" description="Şirket kapsamlarını, lokasyonları, marka ve SMTP yapılandırmalarını yönet." actions={
+      <PageHeader eyebrow={t('companyMgmt.header.eyebrow')} title={t('companyMgmt.header.title')} description={t('companyMgmt.header.description')} actions={
         <button onClick={() => { setShowForm(true); setEditId(null); setForm(emptyCompanyForm); }} className="btn-primary flex items-center gap-2">
-          <Plus className="w-4 h-4" /> Yeni Şirket
+          <Plus className="w-4 h-4" /> {t('companyMgmt.newCompany')}
         </button>
       } />
 
@@ -276,9 +280,9 @@ export default function CompanyManagementPage() {
                 <div>
                   <h3 className="font-semibold">{company.name}</h3>
                   <span className="text-xs text-gray-400">
-                    {GROUP_TYPES.find(gt => gt.value === company.groupType)?.label} •
-                    {company._count?.locations} lokasyon •
-                    {company._count?.tickets} ticket
+                    {labels.groupType(company.groupType)} •
+                    {' '}{t('companyMgmt.list.locationsCount', { count: company._count?.locations ?? 0 })} •
+                    {' '}{t('companyMgmt.list.ticketsCount', { count: company._count?.tickets ?? 0 })}
                   </span>
                 </div>
               </div>
@@ -287,12 +291,12 @@ export default function CompanyManagementPage() {
                   onClick={() => setCategoryCompany({ id: company.id, name: company.name })}
                   className="btn-secondary flex items-center gap-1 text-xs"
                 >
-                  <Tags className="h-3 w-3" /> Kategoriler
+                  <Tags className="h-3 w-3" /> {t('companyMgmt.categories')}
                 </button>
                 <button
                   onClick={() => openSmtpForm(company.id, company.name)}
                   className={`btn-secondary text-xs flex items-center gap-1 ${company.smtpConfig ? 'ring-1 ring-green-300' : ''}`}
-                  title={company.smtpConfig ? 'SMTP yapılandırılmış' : 'SMTP ayarla'}
+                  title={company.smtpConfig ? t('companyMgmt.smtp.configured') : t('companyMgmt.smtp.configure')}
                 >
                   <Mail className="w-3 h-3" />
                   {company.smtpConfig ? (
@@ -305,19 +309,19 @@ export default function CompanyManagementPage() {
                   onClick={() => { setLocCompanyId(company.id); setLocEditId(null); setShowLocForm(true); setLocForm(emptyLocationForm); }}
                   className="btn-secondary text-xs flex items-center gap-1"
                 >
-                  <MapPin className="w-3 h-3" /> Lokasyon Ekle
+                  <MapPin className="w-3 h-3" /> {t('companyMgmt.addLocation')}
                 </button>
                 <button
                   onClick={() => { setEditId(company.id); setForm(companyToForm(company)); setShowForm(true); }}
                   className="p-1.5 hover:bg-gray-100 rounded"
-                  title="Düzenle"
+                  title={t('common.edit')}
                 >
                   <Edit2 className="w-4 h-4 text-gray-500" />
                 </button>
                 <button
                   onClick={() => handleToggleCompanyActive(company)}
                   className="p-1.5 hover:bg-red-50 rounded"
-                  title={company.isActive === false ? 'Tekrar aktif et' : 'Pasifleştir'}
+                  title={company.isActive === false ? t('companyMgmt.reactivate') : t('companyMgmt.deactivate')}
                 >
                   {company.isActive === false
                     ? <CheckCircle2 className="w-4 h-4 text-green-600" />
@@ -327,25 +331,25 @@ export default function CompanyManagementPage() {
             </div>
             {company.isActive === false && (
               <div className="mb-2 text-xs bg-red-50 text-red-700 px-3 py-1.5 rounded-lg inline-block">
-                Pasif — Bu şirket için yeni bilet açılamaz
+                {t('companyMgmt.list.inactiveBanner')}
               </div>
             )}
 
             {/* Domain restriction badges */}
             {company.allowedDomains && (company.allowedDomains as string[]).length > 0 && (
               <div className="mb-2 text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg">
-                Email kısıtı: {(company.allowedDomains as string[]).join(', ')}
+                {t('companyMgmt.list.emailRestriction', { domains: (company.allowedDomains as string[]).join(', ') })}
               </div>
             )}
             {company.portalDomains && (company.portalDomains as string[]).length > 0 && (
               <div className="mb-2 text-xs bg-purple-50 text-purple-700 px-3 py-1.5 rounded-lg">
-                Portal kilidi: {(company.portalDomains as string[]).join(', ')}
+                {t('companyMgmt.list.portalLock', { domains: (company.portalDomains as string[]).join(', ') })}
               </div>
             )}
 
             {company.notificationEmail && (
               <div className="mb-2 text-xs bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg">
-                IT Grup Email: {company.notificationEmail}
+                {t('companyMgmt.list.itGroupEmail', { email: company.notificationEmail })}
               </div>
             )}
 
@@ -353,8 +357,8 @@ export default function CompanyManagementPage() {
             {company.smtpConfig && (
               <div className="mb-2 flex items-center gap-2 text-xs bg-green-50 text-green-700 px-3 py-1.5 rounded-lg">
                 <Mail className="w-3 h-3" />
-                <span>Özel SMTP: {company.smtpConfig.fromName} &lt;{company.smtpConfig.fromEmail}&gt; — {company.smtpConfig.host}:{company.smtpConfig.port}</span>
-                {!company.smtpConfig.isActive && <span className="text-orange-600">(Pasif)</span>}
+                <span>{t('companyMgmt.list.customSmtp', { fromName: company.smtpConfig.fromName, fromEmail: company.smtpConfig.fromEmail, host: company.smtpConfig.host, port: company.smtpConfig.port })}</span>
+                {!company.smtpConfig.isActive && <span className="text-orange-600">{t('companyMgmt.list.inactiveParen')}</span>}
               </div>
             )}
 
@@ -365,20 +369,20 @@ export default function CompanyManagementPage() {
                     <MapPin className="w-3 h-3 text-gray-400" />
                     <span>{loc.name}</span>
                     {loc.address && <span className="text-gray-400">— {loc.address}</span>}
-                    {loc.floor && <span className="text-gray-400">• Kat {loc.floor}</span>}
+                    {loc.floor && <span className="text-gray-400">• {t('companyMgmt.list.floor', { floor: loc.floor })}</span>}
                     {loc.itRoom && <span className="text-gray-400">• {loc.itRoom}</span>}
                     <div className="ml-auto flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => openEditLocation(loc)}
                         className="p-1 hover:bg-gray-100 rounded"
-                        title="Düzenle"
+                        title={t('common.edit')}
                       >
                         <Edit2 className="w-3 h-3 text-gray-500" />
                       </button>
                       <button
                         onClick={() => handleDeleteLocation(loc)}
                         className="p-1 hover:bg-red-50 rounded"
-                        title="Sil"
+                        title={t('common.delete')}
                       >
                         <Trash2 className="w-3 h-3 text-red-500" />
                       </button>

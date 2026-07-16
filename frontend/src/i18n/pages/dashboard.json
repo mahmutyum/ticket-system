@@ -1,0 +1,56 @@
+{
+  "tr": {
+    "eyebrow": "Operasyon özeti",
+    "title": "Dashboard",
+    "description": "Destek kuyruğunu, SLA risklerini ve ekip iş yükünü tek bakışta izle.",
+    "cards": {
+      "openLabel": "Açık Talepler",
+      "openHint": "Aktif iş yükü",
+      "inProgressLabel": "İşlemde",
+      "inProgressHint": "Üzerinde çalışılıyor",
+      "todayLabel": "Bugün Açılan",
+      "todayHint": "Son 24 saat",
+      "slaLabel": "SLA İhlali",
+      "slaHint": "Öncelik bekliyor",
+      "mineLabel": "Bana Atanan",
+      "mineHint": "Kişisel kuyruğun"
+    },
+    "allCompanies": "Tüm Şirketler",
+    "allStatuses": "Tüm Durumlar",
+    "onlyMine": "Sadece bana atananlar",
+    "byStatus": "Duruma Göre Dağılım",
+    "byCompany": "Şirkete Göre Dağılım",
+    "recentTickets": "Son Talepler",
+    "viewAll": "Tümünü Gör",
+    "emptyTitle": "Talep bulunamadı",
+    "emptyDesc": "Seçili filtrelerle eşleşen yakın tarihli talep yok.",
+    "colNo": "No"
+  },
+  "en": {
+    "eyebrow": "Operations overview",
+    "title": "Dashboard",
+    "description": "Monitor the support queue, SLA risks and team workload at a glance.",
+    "cards": {
+      "openLabel": "Open Tickets",
+      "openHint": "Active workload",
+      "inProgressLabel": "In Progress",
+      "inProgressHint": "Being worked on",
+      "todayLabel": "Opened Today",
+      "todayHint": "Last 24 hours",
+      "slaLabel": "SLA Breach",
+      "slaHint": "Awaiting priority",
+      "mineLabel": "Assigned to Me",
+      "mineHint": "Your personal queue"
+    },
+    "allCompanies": "All Companies",
+    "allStatuses": "All Statuses",
+    "onlyMine": "Only assigned to me",
+    "byStatus": "Distribution by Status",
+    "byCompany": "Distribution by Company",
+    "recentTickets": "Recent Tickets",
+    "viewAll": "View All",
+    "emptyTitle": "No tickets found",
+    "emptyDesc": "No recent tickets match the selected filters.",
+    "colNo": "No"
+  }
+}

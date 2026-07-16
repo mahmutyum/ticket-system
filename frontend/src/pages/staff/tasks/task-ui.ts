@@ -27,12 +27,11 @@ export const EMPTY_TASK_FORM: TaskFormState = {
   assigneeIds: [], companyId: '', locationId: '',
 };
 
-export const TASK_STATUS_LABELS: Record<string, string> = {
-  open: 'Açık',
-  in_progress: 'Devam Ediyor',
-  done: 'Tamamlandı',
-  cancelled: 'İptal',
-};
+// Durum/sıralama görünen etiketleri artık çeviri katmanından gelir (bu dosya bir
+// React component değil, hook kullanamaz). Burada yalnızca dile bağlı OLMAYAN veri
+// tutulur: anahtar sırası ve renk sınıfları. Etiket için component tarafında
+// `labels.taskStatus(key)` (enum) veya `t('tasks.sort.<key>')` kullanılır.
+export const TASK_STATUS_KEYS = ['open', 'in_progress', 'done', 'cancelled'] as const;
 
 export const TASK_STATUS_COLORS: Record<string, string> = {
   open: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300',
@@ -41,12 +40,7 @@ export const TASK_STATUS_COLORS: Record<string, string> = {
   cancelled: 'bg-gray-200 text-gray-600 dark:bg-slate-700/60 dark:text-slate-400',
 };
 
-export const TASK_SORT_LABELS: Record<TaskSortKey, string> = {
-  dueDate: 'Bitiş tarihi (yakın önce)',
-  priority: 'Öncelik (acil önce)',
-  createdAt: 'Oluşturma (yeni önce)',
-  title: 'Başlık (A-Z)',
-};
+export const TASK_SORT_KEYS: TaskSortKey[] = ['dueDate', 'priority', 'createdAt', 'title'];
 
 export const isTaskOverdue = (task: Task) =>
   !!task.dueDate && task.status !== 'done' && task.status !== 'cancelled' && new Date(task.dueDate) < new Date();

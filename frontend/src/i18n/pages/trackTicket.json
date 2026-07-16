@@ -1,0 +1,32 @@
+{
+  "tr": {
+    "heroTitle": "Talebine geri dön",
+    "heroDesc": "Talep numaran ve talebi oluştururken kullandığın e-posta adresi birlikte doğrulanır.",
+    "heroNote": "Bilgilerin yalnızca ilgili talebe erişim bağlantısı üretmek için kullanılır.",
+    "eyebrow": "Talep takip",
+    "title": "Durumu görüntüle",
+    "subtitle": "Talep numaranızı ve email adresinizi girerek talebinizin durumunu görüntüleyebilirsiniz.",
+    "ticketNumberLabel": "Talep Numarası",
+    "ticketNumberPlaceholder": "Örn: TKT-2026-0001",
+    "emailLabel": "Email Adresi",
+    "emailPlaceholder": "Email adresinizi girin",
+    "searching": "Aranıyor...",
+    "submit": "Talebi Görüntüle",
+    "notFound": "Talep bulunamadı"
+  },
+  "en": {
+    "heroTitle": "Return to your ticket",
+    "heroDesc": "Your ticket number and the email address you used when creating the ticket are verified together.",
+    "heroNote": "Your information is used only to generate an access link to the relevant ticket.",
+    "eyebrow": "Ticket tracking",
+    "title": "View status",
+    "subtitle": "Enter your ticket number and email address to view the status of your ticket.",
+    "ticketNumberLabel": "Ticket Number",
+    "ticketNumberPlaceholder": "e.g. TKT-2026-0001",
+    "emailLabel": "Email Address",
+    "emailPlaceholder": "Enter your email address",
+    "searching": "Searching...",
+    "submit": "View Ticket",
+    "notFound": "Ticket not found"
+  }
+}

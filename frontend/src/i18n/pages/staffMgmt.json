@@ -1,0 +1,72 @@
+{
+  "tr": {
+    "eyebrow": "Yetki yönetimi",
+    "title": "Personel",
+    "description": "Ekip üyelerini, rollerini ve erişebilecekleri şirket kapsamlarını yönet.",
+    "newStaff": "Yeni Personel",
+    "editStaff": "Personel Düzenle",
+    "passwordLabel": "Şifre",
+    "passwordEditLabel": "Yeni Şifre (boş = değişmez)",
+    "companies": "Şirketler",
+    "ticketCount": "Ticket",
+    "allCompanies": "Tümü",
+    "noAccess": "Erişim yok",
+    "companyAssignment": "Şirket ataması",
+    "deactivate": "Deaktif et",
+    "activate": "Aktif et",
+    "companyModal": {
+      "title": "Şirket Ataması",
+      "question": "hangi şirketlerin taleplerini görebilir?",
+      "hint": "Admin dışındaki roller yalnızca seçilen şirketlere erişir. Hiçbiri seçilmezse erişim verilmez."
+    },
+    "toast": {
+      "updated": "Personel güncellendi",
+      "added": "Personel eklendi",
+      "deactivated": "Personel deaktif edildi",
+      "activated": "Personel aktif edildi",
+      "companiesUpdated": "Şirket atamaları güncellendi",
+      "updateFailed": "Güncelleme başarısız"
+    },
+    "aria": {
+      "companyAssignment": "{{name}} şirket ataması",
+      "edit": "{{name}} düzenle",
+      "deactivate": "{{name}} deaktif et",
+      "activate": "{{name}} aktif et"
+    }
+  },
+  "en": {
+    "eyebrow": "Access management",
+    "title": "Staff",
+    "description": "Manage team members, their roles and the company scopes they can access.",
+    "newStaff": "New Staff",
+    "editStaff": "Edit Staff",
+    "passwordLabel": "Password",
+    "passwordEditLabel": "New Password (empty = unchanged)",
+    "companies": "Companies",
+    "ticketCount": "Tickets",
+    "allCompanies": "All",
+    "noAccess": "No access",
+    "companyAssignment": "Company assignment",
+    "deactivate": "Deactivate",
+    "activate": "Activate",
+    "companyModal": {
+      "title": "Company Assignment",
+      "question": "which companies' requests can they view?",
+      "hint": "Roles other than admin only access the selected companies. If none are selected, no access is granted."
+    },
+    "toast": {
+      "updated": "Staff updated",
+      "added": "Staff added",
+      "deactivated": "Staff deactivated",
+      "activated": "Staff activated",
+      "companiesUpdated": "Company assignments updated",
+      "updateFailed": "Update failed"
+    },
+    "aria": {
+      "companyAssignment": "{{name}} company assignment",
+      "edit": "{{name}} edit",
+      "deactivate": "{{name}} deactivate",
+      "activate": "{{name}} activate"
+    }
+  }
+}
