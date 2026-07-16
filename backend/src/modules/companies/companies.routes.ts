@@ -7,6 +7,7 @@ import { saveLogo, isAllowedLogoMimeType } from '../../services/storage.service.
 import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
 import { encrypt } from '../../utils/crypto.js';
 import { assertPublicHost, BlockedHostError } from '../../utils/net-guard.js';
+import { commonErrorResponses } from '../../utils/api-schema.js';
 
 const smtpConfigSchema = z.object({
   host: z.string().min(1),
@@ -35,10 +36,48 @@ const companyUpdateSchema = companyCreateSchema.partial().extend({
 });
 const idParamsSchema = z.object({ id: z.string().min(1).max(128) });
 const brandingQuerySchema = z.object({ host: z.string().min(1).max(253) });
+const publicCompanySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  groupType: z.nativeEnum(CompanyGroupType),
+  logo: z.string().nullable(),
+  primaryColor: z.string().nullable(),
+  allowedDomains: z.unknown(),
+  portalDomains: z.unknown(),
+});
+const brandingSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  logo: z.string().nullable(),
+  primaryColor: z.string().nullable(),
+});
+const companySchema = publicCompanySchema.extend({
+  notificationEmail: z.string().nullable(),
+  isActive: z.boolean(),
+  settings: z.unknown(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+const smtpSchema = z.object({
+  id: z.string(),
+  host: z.string(),
+  port: z.number().int(),
+  secure: z.boolean(),
+  user: z.string(),
+  fromName: z.string(),
+  fromEmail: z.string().email(),
+  isActive: z.boolean(),
+});
+const responseOf = <T extends z.ZodTypeAny>(data: T) => z.object({ success: z.literal(true), data });
+const messageResponseSchema = z.object({ success: z.literal(true), message: z.string() });
 
 export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
   // List active companies (public)
-  app.get('/', { schema: { tags: ['Companies'], summary: 'Aktif şirketleri listele' } }, async (request, reply) => {
+  app.get('/', { schema: {
+    tags: ['Companies'],
+    summary: 'Aktif şirketleri listele',
+    response: { 200: responseOf(z.array(publicCompanySchema)), ...commonErrorResponses },
+  } }, async (request, reply) => {
     const companies = await app.prisma.company.findMany({
       where: { isActive: true },
       orderBy: { name: 'asc' },
@@ -56,7 +95,12 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
   });
 
   // Public: Get branding by host (portal domain match)
-  app.get('/branding/by-host', { schema: { querystring: brandingQuerySchema, tags: ['Companies'], summary: 'Domain branding bilgisini getir' } }, async (request, reply) => {
+  app.get('/branding/by-host', { schema: {
+    querystring: brandingQuerySchema,
+    tags: ['Companies'],
+    summary: 'Domain branding bilgisini getir',
+    response: { 200: responseOf(brandingSchema.nullable()), ...commonErrorResponses },
+  } }, async (request, reply) => {
     const q = request.query;
     const host = q.host.toLowerCase().split(':')[0];
     const companies = await app.prisma.company.findMany({
@@ -165,7 +209,12 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
   // Admin: Create company
   app.post('/', {
     preValidation: [app.requireRole('admin')],
-    schema: { body: companyCreateSchema, tags: ['Companies'], summary: 'Şirket oluştur' },
+    schema: {
+      body: companyCreateSchema,
+      tags: ['Companies'],
+      summary: 'Şirket oluştur',
+      response: { 201: responseOf(companySchema), ...commonErrorResponses },
+    },
   }, async (request, reply) => {
     const body = request.body;
     const { settings, allowedDomains, portalDomains, ...rest } = body;
@@ -184,7 +233,13 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
   // Admin: Update company
   app.put('/:id', {
     preValidation: [app.requireRole('admin')],
-    schema: { params: idParamsSchema, body: companyUpdateSchema, tags: ['Companies'], summary: 'Şirket güncelle' },
+    schema: {
+      params: idParamsSchema,
+      body: companyUpdateSchema,
+      tags: ['Companies'],
+      summary: 'Şirket güncelle',
+      response: { 200: responseOf(companySchema), ...commonErrorResponses },
+    },
   }, async (request, reply) => {
     const { id } = request.params;
     const body = request.body;
@@ -205,7 +260,12 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
   // Admin: Soft-delete company (deactivate)
   app.delete('/:id', {
     preValidation: [app.requireRole('admin')],
-    schema: { params: idParamsSchema, tags: ['Companies'], summary: 'Şirketi pasifleştir' },
+    schema: {
+      params: idParamsSchema,
+      tags: ['Companies'],
+      summary: 'Şirketi pasifleştir',
+      response: { 200: responseOf(companySchema), ...commonErrorResponses },
+    },
   }, async (request, reply) => {
     const { id } = request.params;
     const existing = await app.prisma.company.findUnique({ where: { id } });
@@ -223,7 +283,12 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
   // Admin: Restore soft-deleted company
   app.post('/:id/restore', {
     preValidation: [app.requireRole('admin')],
-    schema: { params: idParamsSchema, tags: ['Companies'], summary: 'Şirketi yeniden etkinleştir' },
+    schema: {
+      params: idParamsSchema,
+      tags: ['Companies'],
+      summary: 'Şirketi yeniden etkinleştir',
+      response: { 200: responseOf(companySchema), ...commonErrorResponses },
+    },
   }, async (request, reply) => {
     const { id } = request.params;
     const existing = await app.prisma.company.findUnique({ where: { id } });
@@ -243,7 +308,15 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
   // Get company SMTP config
   app.get('/:id/smtp', {
     preValidation: [app.requireRole('admin')],
-    schema: { params: idParamsSchema, tags: ['Companies'], summary: 'Şirket SMTP ayarını getir' },
+    schema: {
+      params: idParamsSchema,
+      tags: ['Companies'],
+      summary: 'Şirket SMTP ayarını getir',
+      response: {
+        200: responseOf(smtpSchema.extend({ updatedAt: z.date() }).nullable()),
+        ...commonErrorResponses,
+      },
+    },
   }, async (request, reply) => {
     const { id } = request.params;
 
@@ -269,7 +342,13 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
   // Create or update company SMTP config
   app.put('/:id/smtp', {
     preValidation: [app.requireRole('admin')],
-    schema: { params: idParamsSchema, body: smtpConfigSchema, tags: ['Companies'], summary: 'Şirket SMTP ayarını güncelle' },
+    schema: {
+      params: idParamsSchema,
+      body: smtpConfigSchema,
+      tags: ['Companies'],
+      summary: 'Şirket SMTP ayarını güncelle',
+      response: { 200: responseOf(smtpSchema), ...commonErrorResponses },
+    },
   }, async (request, reply) => {
     const { id } = request.params;
     const body = request.body;
@@ -322,7 +401,12 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
   // Delete company SMTP config (revert to global)
   app.delete('/:id/smtp', {
     preValidation: [app.requireRole('admin')],
-    schema: { params: idParamsSchema, tags: ['Companies'], summary: 'Şirket SMTP ayarını sil' },
+    schema: {
+      params: idParamsSchema,
+      tags: ['Companies'],
+      summary: 'Şirket SMTP ayarını sil',
+      response: { 200: messageResponseSchema, ...commonErrorResponses },
+    },
   }, async (request, reply) => {
     const { id } = request.params;
 
@@ -335,7 +419,13 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
   // Test company SMTP connection
   app.post('/:id/smtp/test', {
     preValidation: [app.requireRole('admin')],
-    schema: { params: idParamsSchema, body: smtpConfigSchema, tags: ['Companies'], summary: 'Şirket SMTP bağlantısını test et' },
+    schema: {
+      params: idParamsSchema,
+      body: smtpConfigSchema,
+      tags: ['Companies'],
+      summary: 'Şirket SMTP bağlantısını test et',
+      response: { 200: messageResponseSchema, ...commonErrorResponses },
+    },
   }, async (request, reply) => {
     const body = request.body;
 
@@ -382,7 +472,15 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
   // Admin: Upload company logo
   app.post('/:id/logo', {
     preValidation: [app.requireRole('admin', 'it_manager')],
-    schema: { params: idParamsSchema, tags: ['Companies'], summary: 'Şirket logosu yükle' },
+    schema: {
+      params: idParamsSchema,
+      tags: ['Companies'],
+      summary: 'Şirket logosu yükle',
+      response: {
+        200: responseOf(z.object({ id: z.string(), logo: z.string().nullable() })),
+        ...commonErrorResponses,
+      },
+    },
   }, async (request, reply) => {
     const { id } = request.params;
     const exists = await app.prisma.company.findUnique({ where: { id }, select: { id: true } });
