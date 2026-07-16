@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Plus, Edit2, Trash2, Users, Clock, AlertCircle, Search, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, Users, Clock, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
 import { useAuthStore } from '../../stores/auth.store';
@@ -9,74 +9,15 @@ import { useAuthStore } from '../../stores/auth.store';
 import { PRIORITY_LABELS as PRIORITY_LABEL, PRIORITY_COLORS as PRIORITY_COLOR, PRIORITY_WEIGHT } from '../../types';
 import type { Company, Location, Staff, Task } from '../../types';
 import { getApiError } from '../../utils/api-error';
-
-// Durum sözlüğü göreve özgüdür (ticket'ın 9 durumundan farklı).
-const STATUS_LABEL: Record<string, string> = {
-  open: 'Açık',
-  in_progress: 'Devam Ediyor',
-  done: 'Tamamlandı',
-  cancelled: 'İptal',
-};
-
-// Karanlık modda okunabilirlik için her rozetin dark: karşılığı olmalı — aksi
-// halde açık zemin + koyu metin karanlık temada düşük kontrastta kalır.
-const STATUS_COLOR: Record<string, string> = {
-  open: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300',
-  in_progress: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-300',
-  done: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300',
-  cancelled: 'bg-gray-200 text-gray-600 dark:bg-slate-700/60 dark:text-slate-400',
-};
-
-type SortKey = 'dueDate' | 'priority' | 'createdAt' | 'title';
-type TaskScope = 'all' | 'assigned' | 'created';
-
-interface TaskPayload {
-  title: string;
-  description: string;
-  priority: string;
-  assigneeIds: string[];
-  locationId?: string;
-  dueDate: string | null;
-}
-
-const SORT_LABEL: Record<SortKey, string> = {
-  dueDate: 'Bitiş tarihi (yakın önce)',
-  priority: 'Öncelik (acil önce)',
-  createdAt: 'Oluşturma (yeni önce)',
-  title: 'Başlık (A-Z)',
-};
-
-const isOverdue = (t: Task) =>
-  !!t.dueDate && t.status !== 'done' && t.status !== 'cancelled' && new Date(t.dueDate) < new Date();
+import TaskFilters from './tasks/TaskFilters';
+import {
+  EMPTY_TASK_FORM, TASK_STATUS_COLORS, TASK_STATUS_LABELS, isTaskOverdue, taskDaysOpen,
+  type TaskFormState, type TaskPayload, type TaskScope, type TaskSortKey,
+} from './tasks/task-ui';
 
 /** Türkçe'ye duyarlı arama — 'İ/ı' İngilizce toLowerCase ile bozulur. */
 const tr = (s: string) => s.toLocaleLowerCase('tr');
 
-interface FormState {
-  title: string;
-  description: string;
-  priority: string;
-  dueDate: string;
-  assigneeIds: string[];
-  companyId: string;
-  locationId: string;
-}
-
-const emptyForm: FormState = {
-  title: '',
-  description: '',
-  priority: 'medium',
-  dueDate: '',
-  assigneeIds: [],
-  companyId: '',
-  locationId: '',
-};
-
-function daysOpen(createdAt: string, completedAt?: string | null): number {
-  const start = new Date(createdAt).getTime();
-  const end = completedAt ? new Date(completedAt).getTime() : Date.now();
-  return Math.max(0, Math.floor((end - start) / (1000 * 60 * 60 * 24)));
-}
 
 export default function TasksPage() {
   const queryClient = useQueryClient();
@@ -91,11 +32,11 @@ export default function TasksPage() {
   const [priorityFilter, setPriorityFilter] = useState<string>('');
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [search, setSearch] = useState('');
-  const [sortKey, setSortKey] = useState<SortKey>('dueDate');
+  const [sortKey, setSortKey] = useState<TaskSortKey>('dueDate');
 
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState<FormState>(emptyForm);
+  const [form, setForm] = useState<TaskFormState>(EMPTY_TASK_FORM);
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
     queryKey: ['tasks', scope, statusFilter],
@@ -126,7 +67,7 @@ export default function TasksPage() {
     enabled: isManager && !!form.companyId,
   });
 
-  const update = (fields: Partial<FormState>) => setForm(prev => ({ ...prev, ...fields }));
+  const update = (fields: Partial<TaskFormState>) => setForm(prev => ({ ...prev, ...fields }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,7 +99,7 @@ export default function TasksPage() {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       setShowForm(false);
       setEditId(null);
-      setForm(emptyForm);
+      setForm(EMPTY_TASK_FORM);
     } catch (err: unknown) {
       toast.error(getApiError(err, 'İşlem başarısız'));
     }
@@ -217,7 +158,7 @@ export default function TasksPage() {
       open: list.filter(t => t.status === 'open').length,
       inProgress: list.filter(t => t.status === 'in_progress').length,
       done: list.filter(t => t.status === 'done').length,
-      overdue: list.filter(isOverdue).length,
+      overdue: list.filter(isTaskOverdue).length,
     };
   }, [tasks]);
 
@@ -226,7 +167,7 @@ export default function TasksPage() {
     const rows = (tasks || []).filter(t => {
       if (assigneeFilter && !t.assignees?.some(a => a.staff.id === assigneeFilter)) return false;
       if (priorityFilter && t.priority !== priorityFilter) return false;
-      if (overdueOnly && !isOverdue(t)) return false;
+      if (overdueOnly && !isTaskOverdue(t)) return false;
       if (!q) return true;
       return [t.title, t.description, t.location?.name, t.location?.company?.name]
         .some(f => typeof f === 'string' && tr(f).includes(q));
@@ -262,7 +203,7 @@ export default function TasksPage() {
         <h1 className="text-2xl font-bold">Görevler</h1>
         {isManager && (
           <button
-            onClick={() => { setShowForm(true); setEditId(null); setForm(emptyForm); }}
+            onClick={() => { setShowForm(true); setEditId(null); setForm(EMPTY_TASK_FORM); }}
             className="btn-primary flex items-center gap-2"
           >
             <Plus className="w-4 h-4" /> Yeni Görev
@@ -302,71 +243,25 @@ export default function TasksPage() {
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="card p-3 flex flex-wrap gap-2 items-center">
-        <label className="relative flex-1 min-w-[200px] max-w-xs">
-          <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            className="input-field !pl-8 w-full"
-            placeholder="Başlık, açıklama veya lokasyon ara..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </label>
-
-        {isManager && (
-          <select
-            className="input-field w-auto"
-            value={scope}
-              onChange={e => setScope(e.target.value as TaskScope)}
-          >
-            <option value="all">Tüm Görevler</option>
-            <option value="assigned">Bana Atananlar</option>
-            <option value="created">Oluşturduklarım</option>
-          </select>
-        )}
-
-        {/* Yöneticinin en çok ihtiyaç duyduğu filtre: "Ali'nin görevleri". */}
-        {isManager && scope === 'all' && (
-          <select
-            className="input-field w-auto"
-            value={assigneeFilter}
-            onChange={e => setAssigneeFilter(e.target.value)}
-          >
-            <option value="">Tüm personel</option>
-                {(staffList || []).filter(s => s.isActive).map(s => (
-              <option key={s.id} value={s.id}>{s.fullName}</option>
-            ))}
-          </select>
-        )}
-
-        <select className="input-field w-auto" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-          <option value="">Tüm Durumlar</option>
-          {Object.entries(STATUS_LABEL).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
-          ))}
-        </select>
-
-        <select className="input-field w-auto" value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)}>
-          <option value="">Tüm Öncelikler</option>
-          {Object.entries(PRIORITY_LABEL).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
-          ))}
-        </select>
-
-        <select className="input-field w-auto" value={sortKey} onChange={e => setSortKey(e.target.value as SortKey)}>
-          {Object.entries(SORT_LABEL).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
-          ))}
-        </select>
-
-        {filtersActive && (
-          <button onClick={clearFilters} className="text-sm text-muted hover:text-primary-600 inline-flex items-center gap-1">
-            <X className="w-3.5 h-3.5" /> Temizle
-          </button>
-        )}
-        <span className="text-sm text-muted ml-auto">{visible.length} görev</span>
-      </div>
+      <TaskFilters
+        isManager={isManager}
+        scope={scope}
+        onScopeChange={setScope}
+        search={search}
+        onSearchChange={setSearch}
+        assigneeId={assigneeFilter}
+        onAssigneeChange={setAssigneeFilter}
+        status={statusFilter}
+        onStatusChange={setStatusFilter}
+        priority={priorityFilter}
+        onPriorityChange={setPriorityFilter}
+        sort={sortKey}
+        onSortChange={setSortKey}
+        staff={staffList}
+        active={filtersActive}
+        onClear={clearFilters}
+        resultCount={visible.length}
+      />
 
       {/* Form Modal */}
       {showForm && (
@@ -471,8 +366,8 @@ export default function TasksPage() {
       ) : (
         <div className="space-y-2">
           {visible.map(t => {
-            const days = daysOpen(t.createdAt, t.completedAt);
-            const overdue = isOverdue(t);
+            const days = taskDaysOpen(t.createdAt, t.completedAt);
+            const overdue = isTaskOverdue(t);
             return (
               <div key={t.id} className={`card p-4 hover:shadow-md transition-shadow ${overdue ? 'border-l-4 border-l-red-500' : ''}`}>
                 <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -519,9 +414,9 @@ export default function TasksPage() {
                       onChange={(e) => handleStatus(t.id, e.target.value)}
                       onClick={(e) => e.stopPropagation()}
                       aria-label={`${t.title} durumu`}
-                      className={`text-xs rounded-full border-0 px-2 py-1 cursor-pointer focus:ring-2 focus:ring-primary-500 ${STATUS_COLOR[t.status]}`}
+                      className={`text-xs rounded-full border-0 px-2 py-1 cursor-pointer focus:ring-2 focus:ring-primary-500 ${TASK_STATUS_COLORS[t.status]}`}
                     >
-                      {Object.entries(STATUS_LABEL).map(([k, v]) => (
+                      {Object.entries(TASK_STATUS_LABELS).map(([k, v]) => (
                         <option key={k} value={k}>{v}</option>
                       ))}
                     </select>
