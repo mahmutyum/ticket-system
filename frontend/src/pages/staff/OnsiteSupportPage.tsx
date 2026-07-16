@@ -15,13 +15,25 @@ export default function OnsiteSupportPage() {
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState<Date>(() => startOfDay(new Date()));
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [companyFilter, setCompanyFilter] = useState('');
 
   const weekStart = useMemo(() => mondayOf(selectedDate), [selectedDate]);
 
   const { data } = useQuery<CalendarResponse>({
-    queryKey: ['onsite-calendar', weekStart.toISOString()],
-    queryFn: async () =>
-      (await api.get(`/onsite-support/calendar?week=${weekStart.toISOString()}`)).data.data,
+    queryKey: ['onsite-calendar', weekStart.toISOString(), companyFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams({ week: weekStart.toISOString() });
+      if (companyFilter) params.set('companyId', companyFilter);
+      return (await api.get(`/onsite-support/calendar?${params}`)).data.data;
+    },
+  });
+
+  const { data: companies } = useQuery<Array<{ id: string; name: string }>>({
+    queryKey: ['companies-scoped'],
+    queryFn: async () => {
+      const rows = (await api.get('/companies/admin/all')).data.data as Array<{ id: string; name: string }>;
+      return rows.map(({ id, name }) => ({ id, name }));
+    },
   });
 
   const weekDays = useMemo(
@@ -82,6 +94,15 @@ export default function OnsiteSupportPage() {
       {/* Üst başlık + tarih kontrolleri */}
       <PageHeader eyebrow="Saha operasyonu" title="Yerinde destek" description={`${longDateLabel} · Planlanan randevuları ve saha müdahalelerini yönet.`} actions={
         <div className="flex items-center gap-2 flex-wrap">
+          <select
+            className="input-field !w-auto !py-1.5 text-sm"
+            value={companyFilter}
+            onChange={(event) => setCompanyFilter(event.target.value)}
+            aria-label="Şirkete göre filtrele"
+          >
+            <option value="">Tüm şirketler</option>
+            {(companies || []).map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+          </select>
           <div className="flex items-center gap-1">
             <button
               onClick={goPrevDay}
@@ -169,7 +190,7 @@ export default function OnsiteSupportPage() {
         </div>
       </div>
 
-      {/* Günlük timeline */}
+      {/* Günlük timeline — gece vardiyaları dahil tam 24 saat */}
       <div className="card p-0 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-slate-800">
           <h3 className="font-semibold">

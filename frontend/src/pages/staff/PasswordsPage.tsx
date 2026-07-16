@@ -430,7 +430,21 @@ export default function PasswordsPage() {
               onSubmit={(e) => { e.preventDefault(); if (canSave) saveMutation.mutate(); }}
             >
               <input className="input-field text-sm" placeholder="Başlık (hizmet/servis adı) *" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} autoFocus />
-              <input className="input-field text-sm" placeholder="Kategori" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+              <label className="block text-sm">
+                Kategori
+                <input
+                  className="input-field mt-1 text-sm"
+                  placeholder="Kategori seçin veya yeni kategori oluşturun"
+                  list="credential-categories"
+                  maxLength={100}
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                />
+                <datalist id="credential-categories">
+                  {categories.map((category) => <option key={category} value={category} />)}
+                </datalist>
+                <span className="mt-1 block text-xs text-muted">Mevcut bir kategoriyi seçebilir veya yeni kategori adını yazabilirsiniz.</span>
+              </label>
 
               <div>
                 <select className="input-field text-sm" value={form.companyId} onChange={(e) => setForm({ ...form, companyId: e.target.value })}>

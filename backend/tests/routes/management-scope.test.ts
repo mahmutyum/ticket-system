@@ -10,6 +10,7 @@ vi.mock('../../src/services/sse.service.js', () => ({ broadcastToStaff: vi.fn() 
 
 const MANAGER_ID = 'manager-1';
 const COMPANY_ID = 'company-1';
+const OUT_OF_SCOPE_COMPANY_ID = 'clx000000000000000000000';
 
 function scopedPrisma() {
   const taskFindMany = vi.fn(async () => []);
@@ -91,6 +92,23 @@ describe('görev ve onsite şirket kapsamı', () => {
     expect(onsiteFindMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { ticket: { companyId: { in: [COMPANY_ID] } } },
     }));
+  });
+
+  it('it_manager onsite takviminde kapsam dışı şirket filtresi kullanamaz', async () => {
+    const { prisma, onsiteFindMany } = scopedPrisma();
+    const app = buildTestApp(prisma);
+    const { onsiteRoutes } = await import('../../src/modules/onsite-support/onsite.routes.js');
+    app.register(onsiteRoutes, { prefix: '/onsite-support' });
+    await app.ready();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/onsite-support/calendar?companyId=${OUT_OF_SCOPE_COMPANY_ID}`,
+      headers: authHeader(StaffRole.it_manager, MANAGER_ID),
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(onsiteFindMany).not.toHaveBeenCalled();
   });
 
   it('it_manager kapsam dışı şirket filtresiyle rapor verisi okuyamaz', async () => {

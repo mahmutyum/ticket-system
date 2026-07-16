@@ -34,23 +34,23 @@ export default function TicketTimeline({ history = [], notes = [] }: Props) {
       {timeline.map(item => {
         if (item.type === 'note') {
           return (
-            <div key={`note-${item.id}`} className={`rounded-lg p-4 ${item.isInternal ? 'bg-yellow-50 border border-yellow-200' : 'bg-primary-50 border border-primary-200'}`}>
+            <div key={`note-${item.id}`} className={`rounded-lg border p-4 ${item.isInternal ? 'border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10' : 'border-primary-200 bg-primary-50 dark:border-primary-500/30 dark:bg-primary-500/10'}`}>
               <div className="flex items-center gap-2 mb-2">
-                {item.isInternal ? <Lock className="w-4 h-4 text-yellow-600" /> : <MessageSquare className="w-4 h-4 text-primary-600" />}
+                {item.isInternal ? <Lock className="w-4 h-4 text-amber-600 dark:text-amber-300" /> : <MessageSquare className="w-4 h-4 text-primary-600 dark:text-primary-300" />}
                 <span className="font-medium text-sm">{item.createdBy?.fullName}</span>
-                {item.isInternal && <span className="text-xs bg-yellow-200 text-yellow-700 px-1.5 py-0.5 rounded">Dahili Not</span>}
-                <span className="text-xs text-gray-400 ml-auto">{new Date(item.createdAt).toLocaleString('tr-TR')}</span>
+                {item.isInternal && <span className="rounded bg-amber-200 px-1.5 py-0.5 text-xs text-amber-800 dark:bg-amber-500/20 dark:text-amber-200">Dahili Not</span>}
+                <span className="ml-auto text-xs text-muted">{new Date(item.createdAt).toLocaleString('tr-TR')}</span>
               </div>
-              <p className="text-sm text-gray-700 dark:text-slate-300">{item.content}</p>
+              <p className="text-sm text-gray-700 dark:text-slate-100">{item.content}</p>
             </div>
           );
         }
 
         return (
-          <div key={`hist-${item.id}`} className="flex gap-3 text-sm text-gray-500">
-            <div className="w-2 h-2 rounded-full bg-gray-300 mt-1.5 flex-shrink-0" />
+          <div key={`hist-${item.id}`} className="flex gap-3 text-sm text-muted">
+            <div className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-gray-300 dark:bg-slate-500" />
             <div className="flex-1">
-              <span className="text-xs text-gray-400">{new Date(item.createdAt).toLocaleString('tr-TR')}</span>
+              <span className="text-xs text-muted">{new Date(item.createdAt).toLocaleString('tr-TR')}</span>
               {item.createdBy && <span className="text-xs ml-2">({item.createdBy.fullName})</span>}
               <span className="ml-2">{historyText(item)}</span>
             </div>

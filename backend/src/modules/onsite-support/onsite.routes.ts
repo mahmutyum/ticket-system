@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Prisma, OnsiteType, OnsiteStatus } from '@prisma/client';
 import { queueEmail } from '../../jobs/queue.js';
 import { ONSITE_TYPE_LABELS } from '../../config/constants.js';
-import { getStaffCompanyScope } from '../../utils/staff-scope.js';
+import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
 import { createAuditLog } from '../../middleware/audit.js';
 import { formatTrDateTime } from '../../utils/format.js';
 import { commonErrorResponses } from '../../utils/api-schema.js';
@@ -32,7 +32,10 @@ const onsiteListQuerySchema = z.object({
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
 });
-const calendarQuerySchema = z.object({ week: z.string().datetime().optional() });
+const calendarQuerySchema = z.object({
+  week: z.string().datetime().optional(),
+  companyId: z.string().cuid().optional(),
+});
 const onsiteEntitySchema = z.object({
   id: z.string(), ticketId: z.string(), locationId: z.string(),
   type: z.nativeEnum(OnsiteType), scheduledAt: z.date(), scheduledEnd: z.date().nullable(),
@@ -316,10 +319,13 @@ export const onsiteRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
   }, async (request, reply) => {
-    const { week } = request.query;
+    const { week, companyId } = request.query;
     const staffUser = request.staffUser!;
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
+    if (companyId && !isCompanyInScope(scopeCompanyIds, companyId)) {
+      return reply.code(403).send({ success: false, error: 'Bu şirket için yetkiniz yok' });
+    }
 
     // Frontend, kullanıcının yerel saatine göre Pazartesi 00:00'ı hesaplayıp ISO olarak gönderir.
     // Burada o anı olduğu gibi başlangıç kabul edip 7 gün ekliyoruz; sunucu zaman diliminden
@@ -336,9 +342,11 @@ export const onsiteRoutes: FastifyPluginAsyncZod = async (app) => {
 
     const endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-    const scopeFilter = scopeCompanyIds
-      ? { ticket: { companyId: { in: scopeCompanyIds } } }
-      : {};
+    const scopeFilter = companyId
+      ? { ticket: { companyId } }
+      : scopeCompanyIds
+        ? { ticket: { companyId: { in: scopeCompanyIds } } }
+        : {};
 
     const events = await app.prisma.onsiteSupport.findMany({
       where: {

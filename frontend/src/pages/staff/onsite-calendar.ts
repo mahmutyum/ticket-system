@@ -16,9 +16,9 @@ export const TYPE_BAR_COLORS: Record<string, string> = {
   come_to_it_room: 'bg-blue-500', meeting_room: 'bg-purple-500', visit_employee: 'bg-emerald-500',
 };
 export const DAY_NAMES = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-export const TIMELINE_START_HOUR = 8;
-export const TIMELINE_END_HOUR = 19;
-export const HOUR_HEIGHT = 80;
+export const TIMELINE_START_HOUR = 0;
+export const TIMELINE_END_HOUR = 24;
+export const HOUR_HEIGHT = 56;
 export const TOTAL_HOURS = TIMELINE_END_HOUR - TIMELINE_START_HOUR;
 const DEFAULT_DURATION_MIN = 15;
 

@@ -5,6 +5,9 @@ import {
   eventDurationMin,
   mondayOf,
   sameDay,
+  TIMELINE_END_HOUR,
+  TIMELINE_START_HOUR,
+  TOTAL_HOURS,
   toInputDate,
 } from '../src/pages/staff/onsite-calendar';
 
@@ -26,6 +29,12 @@ function appointment(
 }
 
 describe('saha destek takvim yerleşimi', () => {
+  it('gece vardiyalarını göstermek için tam 24 saati kapsar', () => {
+    expect(TIMELINE_START_HOUR).toBe(0);
+    expect(TIMELINE_END_HOUR).toBe(24);
+    expect(TOTAL_HOURS).toBe(24);
+  });
+
   it('örtüşen randevuları ayrı kolonlara yerleştirir', () => {
     const first = appointment('first', '2026-07-16T09:00:00Z', '2026-07-16T10:00:00Z');
     const second = appointment('second', '2026-07-16T09:30:00Z', '2026-07-16T10:30:00Z');
