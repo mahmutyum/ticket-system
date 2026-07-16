@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { Prisma, CompanyGroupType } from '@prisma/client';
 import { testSmtpConnection, invalidateCompanyTransporter } from '../../services/email.service.js';
@@ -36,7 +36,7 @@ const companyUpdateSchema = companyCreateSchema.partial().extend({
 const idParamsSchema = z.object({ id: z.string().min(1).max(128) });
 const brandingQuerySchema = z.object({ host: z.string().min(1).max(253) });
 
-export const companyRoutes: FastifyPluginAsync = async (app) => {
+export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
   // List active companies (public)
   app.get('/', { schema: { tags: ['Companies'], summary: 'Aktif şirketleri listele' } }, async (request, reply) => {
     const companies = await app.prisma.company.findMany({
@@ -57,7 +57,7 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
 
   // Public: Get branding by host (portal domain match)
   app.get('/branding/by-host', { schema: { querystring: brandingQuerySchema, tags: ['Companies'], summary: 'Domain branding bilgisini getir' } }, async (request, reply) => {
-    const q = brandingQuerySchema.parse(request.query ?? {});
+    const q = request.query;
     const host = q.host.toLowerCase().split(':')[0];
     const companies = await app.prisma.company.findMany({
       where: { isActive: true },
@@ -110,7 +110,7 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
 
   // Get company detail with locations and categories
   app.get('/:id', { schema: { params: idParamsSchema, tags: ['Companies'], summary: 'Şirket detayını getir' } }, async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
     const company = await app.prisma.company.findUnique({
       where: { id },
       include: {
@@ -128,7 +128,7 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
 
   // Get company locations (public)
   app.get('/:id/locations', { schema: { params: idParamsSchema, tags: ['Companies'], summary: 'Şirket lokasyonlarını getir' } }, async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
     const locations = await app.prisma.location.findMany({
       where: { companyId: id, isActive: true },
       orderBy: { name: 'asc' },
@@ -138,7 +138,7 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
 
   // Get company categories (public)
   app.get('/:id/categories', { schema: { params: idParamsSchema, tags: ['Companies'], summary: 'Şirket kategorilerini getir' } }, async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
     const categories = await app.prisma.category.findMany({
       where: {
         OR: [{ companyId: id }, { companyId: null }],
@@ -151,7 +151,7 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
 
   // Get company custom fields (public)
   app.get('/:id/custom-fields', { schema: { params: idParamsSchema, tags: ['Companies'], summary: 'Şirket özel alanlarını getir' } }, async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
     const fields = await app.prisma.customField.findMany({
       where: {
         OR: [{ companyId: id }, { companyId: null }],
@@ -167,7 +167,7 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.requireRole('admin')],
     schema: { body: companyCreateSchema, tags: ['Companies'], summary: 'Şirket oluştur' },
   }, async (request, reply) => {
-    const body = companyCreateSchema.parse(request.body);
+    const body = request.body;
     const { settings, allowedDomains, portalDomains, ...rest } = body;
     const company = await app.prisma.company.create({
       data: {
@@ -186,8 +186,8 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.requireRole('admin')],
     schema: { params: idParamsSchema, body: companyUpdateSchema, tags: ['Companies'], summary: 'Şirket güncelle' },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const body = companyUpdateSchema.parse(request.body);
+    const { id } = request.params;
+    const body = request.body;
     const { settings, allowedDomains, portalDomains, ...rest } = body;
     const company = await app.prisma.company.update({
       where: { id },
@@ -207,7 +207,7 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.requireRole('admin')],
     schema: { params: idParamsSchema, tags: ['Companies'], summary: 'Şirketi pasifleştir' },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
     const existing = await app.prisma.company.findUnique({ where: { id } });
     if (!existing) {
       return reply.status(404).send({ success: false, error: 'Şirket bulunamadı' });
@@ -225,7 +225,7 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.requireRole('admin')],
     schema: { params: idParamsSchema, tags: ['Companies'], summary: 'Şirketi yeniden etkinleştir' },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
     const existing = await app.prisma.company.findUnique({ where: { id } });
     if (!existing) {
       return reply.status(404).send({ success: false, error: 'Şirket bulunamadı' });
@@ -245,7 +245,7 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.requireRole('admin')],
     schema: { params: idParamsSchema, tags: ['Companies'], summary: 'Şirket SMTP ayarını getir' },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
 
     const smtp = await app.prisma.companySmtp.findUnique({
       where: { companyId: id },
@@ -271,8 +271,8 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.requireRole('admin')],
     schema: { params: idParamsSchema, body: smtpConfigSchema, tags: ['Companies'], summary: 'Şirket SMTP ayarını güncelle' },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const body = smtpConfigSchema.parse(request.body);
+    const { id } = request.params;
+    const body = request.body;
 
     const company = await app.prisma.company.findUnique({ where: { id } });
     if (!company) {
@@ -324,7 +324,7 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.requireRole('admin')],
     schema: { params: idParamsSchema, tags: ['Companies'], summary: 'Şirket SMTP ayarını sil' },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
 
     await app.prisma.companySmtp.deleteMany({ where: { companyId: id } });
     invalidateCompanyTransporter(id);
@@ -337,7 +337,7 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.requireRole('admin')],
     schema: { params: idParamsSchema, body: smtpConfigSchema, tags: ['Companies'], summary: 'Şirket SMTP bağlantısını test et' },
   }, async (request, reply) => {
-    const body = smtpConfigSchema.parse(request.body);
+    const body = request.body;
 
     // SSRF: bu uç gerçek bir TCP bağlantısı açar. Dahili ağa yönlendirilirse
     // bir port tarayıcısına dönüşür.
@@ -384,7 +384,7 @@ export const companyRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.requireRole('admin', 'it_manager')],
     schema: { params: idParamsSchema, tags: ['Companies'], summary: 'Şirket logosu yükle' },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
     const exists = await app.prisma.company.findUnique({ where: { id }, select: { id: true } });
     if (!exists) return reply.status(404).send({ success: false, error: 'Şirket bulunamadı' });
 
