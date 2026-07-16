@@ -35,6 +35,32 @@ function scopedPrisma() {
 }
 
 describe('görev ve onsite şirket kapsamı', () => {
+  it('kategori yönetim listesi yalnızca admin tarafından şirket bazında okunur', async () => {
+    const categoryFindMany = vi.fn(async () => []);
+    const prisma = { category: { findMany: categoryFindMany } };
+    const app = buildTestApp(prisma);
+    const { categoryRoutes } = await import('../../src/modules/categories/categories.routes.js');
+    app.register(categoryRoutes, { prefix: '/categories' });
+    await app.ready();
+
+    const managerResponse = await app.inject({
+      method: 'GET',
+      url: `/categories/admin?companyId=${OUT_OF_SCOPE_COMPANY_ID}`,
+      headers: authHeader(StaffRole.it_manager, MANAGER_ID),
+    });
+    const adminResponse = await app.inject({
+      method: 'GET',
+      url: `/categories/admin?companyId=${OUT_OF_SCOPE_COMPANY_ID}`,
+      headers: authHeader(StaffRole.admin),
+    });
+
+    expect(managerResponse.statusCode).toBe(403);
+    expect(adminResponse.statusCode).toBe(200);
+    expect(categoryFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { OR: [{ companyId: OUT_OF_SCOPE_COMPANY_ID }, { companyId: null }] },
+    }));
+  });
+
   it('it_manager görevlerin tümü görünümünde yalnızca kendi şirket kapsamını sorgular', async () => {
     const { prisma, taskFindMany } = scopedPrisma();
     const app = buildTestApp(prisma);

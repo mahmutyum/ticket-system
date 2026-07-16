@@ -6,8 +6,8 @@ import { commonErrorResponses, successResponseSchema } from '../../utils/api-sch
 
 const categoryCreateSchema = z.object({
   companyId: z.string().cuid().nullable().optional(),
-  name: z.string().min(1),
-  description: z.string().optional(),
+  name: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(500).optional(),
   parentId: z.string().cuid().nullable().optional(),
   sortOrder: z.number().int().default(0),
   slaResponseMinutes: z.number().int().positive().optional(),
@@ -20,6 +20,7 @@ const categoryUpdateSchema = categoryCreateSchema.partial().extend({
 });
 const idParamsSchema = z.object({ id: z.string().min(1).max(128) });
 const reorderSchema = z.array(z.object({ id: z.string().cuid(), sortOrder: z.number().int() }));
+const categoryAdminQuerySchema = z.object({ companyId: z.string().cuid() });
 const categorySummarySchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -54,6 +55,27 @@ export const categoryRoutes: FastifyPluginAsyncZod = async (app) => {
       where: { isActive: true },
       select: { id: true, name: true, companyId: true },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    });
+    reply.send({ success: true, data: categories });
+  });
+
+  // Admin: şirket özel kategorileri ve tüm şirketlere uygulanan global varsayılanları getir.
+  // Pasifler de döner; yönetim ekranı yeniden etkinleştirme sunar.
+  app.get('/admin', {
+    preValidation: [app.requireRole('admin')],
+    schema: {
+      querystring: categoryAdminQuerySchema,
+      tags: ['Categories'],
+      summary: 'Şirket kategorilerini yönetim için listeler',
+      response: {
+        200: z.object({ success: z.literal(true), data: z.array(categorySchema) }),
+        ...commonErrorResponses,
+      },
+    },
+  }, async (request, reply) => {
+    const categories = await app.prisma.category.findMany({
+      where: { OR: [{ companyId: request.query.companyId }, { companyId: null }] },
+      orderBy: [{ companyId: 'desc' }, { sortOrder: 'asc' }, { name: 'asc' }],
     });
     reply.send({ success: true, data: categories });
   });

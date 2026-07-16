@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit2, MapPin, Building2, Mail, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { Plus, Edit2, MapPin, Building2, Mail, Trash2, CheckCircle2, XCircle, Tags } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
 import { getApiError } from '../../utils/api-error';
@@ -11,6 +11,7 @@ import {
 } from './company-management';
 import { CompanyFormModal, LocationFormModal, SmtpConfigModal } from './CompanyManagementModals';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { CategoryManagementModal } from './CategoryManagementModal';
 
 export default function CompanyManagementPage() {
   const queryClient = useQueryClient();
@@ -18,6 +19,7 @@ export default function CompanyManagementPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyCompanyForm);
   const [logoUploading, setLogoUploading] = useState(false);
+  const [categoryCompany, setCategoryCompany] = useState<{ id: string; name: string } | null>(null);
 
   // Location form
   const [showLocForm, setShowLocForm] = useState(false);
@@ -256,6 +258,14 @@ export default function CompanyManagementPage() {
         />
       )}
 
+      {categoryCompany && (
+        <CategoryManagementModal
+          companyId={categoryCompany.id}
+          companyName={categoryCompany.name}
+          onClose={() => setCategoryCompany(null)}
+        />
+      )}
+
       {/* Companies list */}
       <div className="space-y-4">
         {companies?.map(company => (
@@ -273,6 +283,12 @@ export default function CompanyManagementPage() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setCategoryCompany({ id: company.id, name: company.name })}
+                  className="btn-secondary flex items-center gap-1 text-xs"
+                >
+                  <Tags className="h-3 w-3" /> Kategoriler
+                </button>
                 <button
                   onClick={() => openSmtpForm(company.id, company.name)}
                   className={`btn-secondary text-xs flex items-center gap-1 ${company.smtpConfig ? 'ring-1 ring-green-300' : ''}`}
