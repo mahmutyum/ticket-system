@@ -5,23 +5,8 @@ import {
   AlertCircle, Clock, TrendingUp, User, Filter, X,
 } from 'lucide-react';
 import api from '../../api/client';
-import { STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS } from '../../types';
+import { STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, type DashboardStats } from '../../types';
 import { useStaffSSE } from '../../hooks/useSSE';
-
-interface DashboardStats {
-  summary: {
-    totalOpen: number;
-    totalInProgress: number;
-    todayCreated: number;
-    slaViolations: number;
-    myOpen: number;
-  };
-  byStatus: { status: string; count: number }[];
-  byPriority: { priority: string; count: number }[];
-  byCompany: { companyId: string; companyName: string; count: number }[];
-  recentTickets: any[];
-  accessibleCompanies: { id: string; name: string }[];
-}
 
 export default function DashboardPage() {
   const queryClient = useQueryClient();
@@ -203,7 +188,7 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {stats.recentTickets.map((ticket: any) => (
+                {stats.recentTickets.map(ticket => (
                   <tr key={ticket.id} className="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                     <td className="py-2">
                       <Link to={`/staff/tickets/${ticket.id}`} className="text-primary-600 hover:underline font-mono text-xs">

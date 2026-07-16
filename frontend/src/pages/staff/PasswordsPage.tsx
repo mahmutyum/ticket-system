@@ -17,6 +17,16 @@ type Entry = {
 
 type CompanyOption = { id: string; name: string };
 
+type CredentialPayload = {
+  title: string;
+  category?: string;
+  url?: string;
+  username?: string;
+  password?: string;
+  notes?: string;
+  companyId?: string;
+};
+
 type SortKey = 'title' | 'category' | 'username' | 'company';
 
 const empty = { title: '', category: '', url: '', username: '', password: '', notes: '', companyId: '' };
@@ -61,7 +71,7 @@ export default function PasswordsPage() {
     queryKey: ['companies-scoped'],
     queryFn: async () => {
       const rows = (await api.get('/companies/admin/all')).data.data;
-      return rows.map((c: any) => ({ id: c.id, name: c.name }));
+      return (rows as CompanyOption[]).map(({ id, name }) => ({ id, name }));
     },
   });
 
@@ -158,7 +168,7 @@ export default function PasswordsPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload: any = {
+      const payload: CredentialPayload = {
         title: form.title.trim(),
         category: form.category.trim() || undefined,
         url: form.url.trim() || undefined,
@@ -175,7 +185,7 @@ export default function PasswordsPage() {
       setShowForm(false);
       toast.success('Kaydedildi');
     },
-    onError: (err: any) => toast.error(err.response?.data?.error || 'Kaydedilemedi'),
+    onError: (err: unknown) => toast.error(getApiError(err, 'Kaydedilemedi')),
   });
 
   const removeMutation = useMutation({
@@ -184,7 +194,7 @@ export default function PasswordsPage() {
       queryClient.invalidateQueries({ queryKey: ['credentials'] });
       toast.success('Silindi');
     },
-    onError: (err: any) => toast.error(err.response?.data?.error || 'Silinemedi'),
+    onError: (err: unknown) => toast.error(getApiError(err, 'Silinemedi')),
   });
 
   // Escape ile kapat

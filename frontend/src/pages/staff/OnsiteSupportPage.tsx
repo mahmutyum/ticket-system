@@ -39,6 +39,7 @@ const TOTAL_HOURS = TIMELINE_END_HOUR - TIMELINE_START_HOUR;
 const DEFAULT_DURATION_MIN = 15;
 
 type CalendarEvent = OnsiteSupport & { ticket?: { ticketNumber: string; subject: string; createdBy?: { fullName: string; phone?: string }; createdByEmail?: string } };
+type CalendarResponse = { startDate: string; endDate: string; events: CalendarEvent[] };
 type LayoutItem = { event: CalendarEvent; col: number; cols: number };
 
 // Bir event'in dakika cinsinden süresi: scheduledEnd varsa ondan, yoksa varsayılan.
@@ -131,11 +132,11 @@ function toInputDate(d: Date) {
 export default function OnsiteSupportPage() {
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState<Date>(() => startOfDay(new Date()));
-  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
   const weekStart = useMemo(() => mondayOf(selectedDate), [selectedDate]);
 
-  const { data } = useQuery({
+  const { data } = useQuery<CalendarResponse>({
     queryKey: ['onsite-calendar', weekStart.toISOString()],
     queryFn: async () =>
       (await api.get(`/onsite-support/calendar?week=${weekStart.toISOString()}`)).data.data,
@@ -164,7 +165,7 @@ export default function OnsiteSupportPage() {
 
   const eventsForDay = useCallback((day: Date) => {
     if (!data?.events) return [];
-    return (data.events as CalendarEvent[])
+    return data.events
       .filter((e) => sameDay(new Date(e.scheduledAt), day))
       .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
   }, [data?.events]);
