@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { requiredText, LIMITS } from '../../utils/validation.js';
 import { queueEmail } from '../../jobs/queue.js';
@@ -12,7 +12,7 @@ const noteCreateSchema = z.object({
 });
 const ticketNotesParamsSchema = z.object({ ticketId: z.string().min(1).max(128) });
 
-export const noteRoutes: FastifyPluginAsync = async (app) => {
+export const noteRoutes: FastifyPluginAsyncZod = async (app) => {
   // STAFF: Add note to ticket
   app.post('/:ticketId/notes', {
     preValidation: [app.authenticate],
@@ -23,8 +23,8 @@ export const noteRoutes: FastifyPluginAsync = async (app) => {
       body: noteCreateSchema,
     },
   }, async (request, reply) => {
-    const { ticketId } = request.params as { ticketId: string };
-    const body = noteCreateSchema.parse(request.body);
+    const { ticketId } = request.params;
+    const body = request.body;
     const staffUser = request.staffUser!;
 
     const ticket = await app.prisma.ticket.findUnique({
@@ -110,7 +110,7 @@ export const noteRoutes: FastifyPluginAsync = async (app) => {
       params: ticketNotesParamsSchema,
     },
   }, async (request, reply) => {
-    const { ticketId } = request.params as { ticketId: string };
+    const { ticketId } = request.params;
     const staffUser = request.staffUser!;
 
     const ticket = await app.prisma.ticket.findUnique({

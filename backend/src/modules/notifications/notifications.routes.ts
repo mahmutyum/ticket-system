@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { Prisma, NotificationType, NotificationStatus } from '@prisma/client';
 import { queueEmail, queueSms } from '../../jobs/queue.js';
@@ -12,13 +12,13 @@ const notificationFilterSchema = z.object({
 });
 const idParamsSchema = z.object({ id: z.string().min(1).max(128) });
 
-export const notificationRoutes: FastifyPluginAsync = async (app) => {
+export const notificationRoutes: FastifyPluginAsyncZod = async (app) => {
   // List notifications with proper filtering and pagination
   app.get('/', {
     preValidation: [app.requireRole('admin', 'it_manager')],
     schema: { querystring: notificationFilterSchema, tags: ['Notifications'], summary: 'Bildirimleri filtreleyerek listele' },
   }, async (request, reply) => {
-    const query = notificationFilterSchema.parse(request.query);
+    const query = request.query;
 
     const where: Prisma.NotificationWhereInput = {};
     if (query.status) where.status = query.status;
@@ -55,7 +55,7 @@ export const notificationRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.requireRole('admin')],
     schema: { params: idParamsSchema, tags: ['Notifications'], summary: 'Başarısız bildirimi yeniden kuyruğa al' },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
 
     const notification = await app.prisma.notification.findUnique({
       where: { id },

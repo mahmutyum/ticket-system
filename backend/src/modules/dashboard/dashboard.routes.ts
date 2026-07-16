@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { Prisma, Priority, TicketStatus } from '@prisma/client';
 import { getStaffCompanyScope, companyWhereClause , resolveCompanyFilter } from '../../utils/staff-scope.js';
@@ -13,14 +13,14 @@ const dashboardFilterSchema = z.object({
   onlyMine: z.enum(['true', 'false']).optional(),
 });
 
-export const dashboardRoutes: FastifyPluginAsync = async (app) => {
+export const dashboardRoutes: FastifyPluginAsyncZod = async (app) => {
   // Dashboard stats — with filters and company scoping
   app.get('/stats', {
     preValidation: [app.authenticate],
     schema: { querystring: dashboardFilterSchema, tags: ['Dashboard'], summary: 'Dashboard istatistiklerini getir' },
   }, async (request, reply) => {
     const staffUser = request.staffUser!;
-    const query = dashboardFilterSchema.parse(request.query);
+    const query = request.query;
 
     // Resolve company scope for this staff — companyId filtresi kapsamla
     // kesiştirilir, üzerine yazılmaz.

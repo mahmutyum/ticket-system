@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { Prisma, Priority, TicketStatus } from '@prisma/client';
 import { paginationSchema, paginate, paginatedResponse } from '../../utils/pagination.js';
@@ -79,13 +79,13 @@ export function csvEscape(value: string | null | undefined): string {
   return str;
 }
 
-export const reportRoutes: FastifyPluginAsync = async (app) => {
+export const reportRoutes: FastifyPluginAsyncZod = async (app) => {
   // Ticket report with date filtering and aggregation
   app.get('/tickets', {
     preValidation: [app.requireRole('admin', 'it_manager')],
     schema: { querystring: reportFilterSchema, tags: ['Reports'], summary: 'Ticket raporunu getir' },
   }, async (request, reply) => {
-    const query = reportFilterSchema.parse(request.query);
+    const query = request.query;
     const { skip, take } = paginate(query);
     const staffUser = request.staffUser!;
 
@@ -126,7 +126,7 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.requireRole('admin', 'it_manager')],
     schema: { querystring: commonReportFilterSchema, tags: ['Reports'], summary: 'Personel performans raporunu getir' },
   }, async (request, reply) => {
-    const query = commonReportFilterSchema.parse(request.query);
+    const query = request.query;
     const staffUser = request.staffUser!;
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
@@ -191,7 +191,7 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.requireRole('admin', 'it_manager')],
     schema: { querystring: commonReportFilterSchema, tags: ['Reports'], summary: 'Kategori dağılım raporunu getir' },
   }, async (request, reply) => {
-    const query = commonReportFilterSchema.parse(request.query);
+    const query = request.query;
     const staffUser = request.staffUser!;
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
@@ -226,7 +226,7 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.requireRole('admin', 'it_manager')],
     schema: { querystring: commonReportFilterSchema, tags: ['Reports'], summary: 'Ticket raporunu CSV dışa aktar' },
   }, async (request, reply) => {
-    const query = commonReportFilterSchema.parse(request.query);
+    const query = request.query;
     const staffUser = request.staffUser!;
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
@@ -273,7 +273,7 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.requireRole('admin', 'it_manager')],
     schema: { querystring: overviewFilterSchema, tags: ['Reports'], summary: 'Rapor zaman serisini getir' },
   }, async (request, reply) => {
-    const query = overviewFilterSchema.parse(request.query);
+    const query = request.query;
     const period = query.period === 'weekly' ? 'week' : query.period === 'monthly' ? 'month' : 'day';
     const staffUser = request.staffUser!;
 
@@ -337,7 +337,7 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     preValidation: [app.requireRole('admin', 'it_manager')],
     schema: { querystring: slaTrendFilterSchema, tags: ['Reports'], summary: 'SLA trend raporunu getir' },
   }, async (request, reply) => {
-    const query = slaTrendFilterSchema.parse(request.query);
+    const query = request.query;
     const period = query.period === 'monthly' ? 'month' : 'week';
     const staffUser = request.staffUser!;
 

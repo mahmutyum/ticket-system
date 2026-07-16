@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { encrypt, decrypt } from '../../utils/crypto.js';
@@ -57,7 +57,7 @@ const credentialListQuerySchema = z.object({ companyId: z.string().min(1).max(12
  * requireRole tek başına yetmez: preHandler yalnızca rolü kontrol eder, şirket
  * kapsamı her handler'ın içinde ayrıca doğrulanmalıdır.
  */
-export const credentialRoutes: FastifyPluginAsync = async (app) => {
+export const credentialRoutes: FastifyPluginAsyncZod = async (app) => {
   // Liste — şifre/not DÖNMEZ
   app.get('/', {
     preValidation: [app.requireRole('admin', 'it_manager')],
@@ -67,7 +67,7 @@ export const credentialRoutes: FastifyPluginAsync = async (app) => {
       querystring: credentialListQuerySchema,
     },
   }, async (request, reply) => {
-    const { companyId } = credentialListQuerySchema.parse(request.query);
+    const { companyId } = request.query;
     const staffUser = request.staffUser!;
     const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
 
@@ -93,7 +93,7 @@ export const credentialRoutes: FastifyPluginAsync = async (app) => {
       params: credentialIdParamsSchema,
     },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
     const staffUser = request.staffUser!;
     const entry = await app.prisma.credentialEntry.findUnique({ where: { id } });
     if (!entry) return reply.status(404).send({ success: false, error: 'Kayıt bulunamadı' });
@@ -129,7 +129,7 @@ export const credentialRoutes: FastifyPluginAsync = async (app) => {
       body: createSchema,
     },
   }, async (request, reply) => {
-    const body = createSchema.parse(request.body);
+    const body = request.body;
     const staffUser = request.staffUser!;
     const scope = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
 
@@ -173,8 +173,8 @@ export const credentialRoutes: FastifyPluginAsync = async (app) => {
       body: updateSchema,
     },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const body = updateSchema.parse(request.body);
+    const { id } = request.params;
+    const body = request.body;
     const staffUser = request.staffUser!;
 
     const existing = await app.prisma.credentialEntry.findUnique({
@@ -228,7 +228,7 @@ export const credentialRoutes: FastifyPluginAsync = async (app) => {
       params: credentialIdParamsSchema,
     },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
     const staffUser = request.staffUser!;
     const existing = await app.prisma.credentialEntry.findUnique({
       where: { id },

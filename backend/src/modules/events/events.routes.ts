@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { nanoid } from 'nanoid';
 import { addClient, getClientCount } from '../../services/sse.service.js';
 import { getStaffCompanyScope } from '../../utils/staff-scope.js';
@@ -21,7 +21,7 @@ const sseTicketKey = (ticket: string) => `sse:ticket:${ticket}`;
 const staffTicketQuerySchema = z.object({ ticket: z.string().min(16).max(128).optional() });
 const accessTokenParamsSchema = z.object({ accessToken: z.string().min(16).max(128) });
 
-export const eventRoutes: FastifyPluginAsync = async (app) => {
+export const eventRoutes: FastifyPluginAsyncZod = async (app) => {
   /**
    * Bilet üret — Authorization header'ı ile (normal auth).
    *
@@ -37,7 +37,7 @@ export const eventRoutes: FastifyPluginAsync = async (app) => {
 
   // SSE: Staff live updates
   app.get('/staff', { schema: { querystring: staffTicketQuerySchema, tags: ['Events'], summary: 'Personel canlı olay akışına bağlan' } }, async (request, reply) => {
-    const { ticket } = staffTicketQuerySchema.parse(request.query);
+    const { ticket } = request.query;
     if (!ticket) return reply.status(401).send({ success: false, error: 'Bilet gerekli' });
 
     // TEK KULLANIMLIK: oku ve hemen sil. Log'a düşen bilet tekrar kullanılamaz.
@@ -78,7 +78,7 @@ export const eventRoutes: FastifyPluginAsync = async (app) => {
 
   // SSE: Public ticket live updates
   app.get('/ticket/:accessToken', { schema: { params: accessTokenParamsSchema, tags: ['Events'], summary: 'Public ticket canlı olay akışına bağlan' } }, async (request, reply) => {
-    const { accessToken } = request.params as { accessToken: string };
+    const { accessToken } = request.params;
 
     const ticket = await app.prisma.ticket.findUnique({
       where: { accessToken },
