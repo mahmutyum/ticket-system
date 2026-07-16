@@ -95,6 +95,34 @@ describe('GET /credentials — erişim', () => {
     await app.inject({ method: 'GET', url: '/credentials', headers: authHeader(StaffRole.admin) });
     expect(findMany.mock.calls[0][0].where).toEqual({});
   });
+
+  it('veri katmanı döndürse bile liste şifreli parola ve not alanlarını yayınlamaz', async () => {
+    const { app, findMany } = makeApp([]);
+    findMany.mockResolvedValueOnce([{
+      id: 'c1',
+      title: 'Sunucu',
+      category: null,
+      url: null,
+      username: null,
+      companyId: null,
+      passwordEnc: 'encrypted-password',
+      notesEnc: 'encrypted-note',
+      createdAt: new Date('2026-07-16T10:00:00Z'),
+      updatedAt: new Date('2026-07-16T10:00:00Z'),
+      company: null,
+    }]);
+    await withRoutes(app);
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/credentials',
+      headers: authHeader(StaffRole.admin),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data[0]).not.toHaveProperty('passwordEnc');
+    expect(res.json().data[0]).not.toHaveProperty('notesEnc');
+  });
 });
 
 describe('GET /credentials/:id/reveal — şifre çözme', () => {

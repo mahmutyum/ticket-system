@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { encrypt, decrypt } from '../../utils/crypto.js';
 import { createAuditLog } from '../../middleware/audit.js';
 import { getStaffCompanyScope, isCompanyInScope, resolveCompanyFilter } from '../../utils/staff-scope.js';
+import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
 
 /**
  * Kasa kaydının URL'i — yalnızca http/https.
@@ -43,6 +44,19 @@ const createSchema = z.object({
 const updateSchema = createSchema.partial();
 const credentialIdParamsSchema = z.object({ id: z.string().min(1).max(128) });
 const credentialListQuerySchema = z.object({ companyId: z.string().min(1).max(128).optional() });
+const credentialSummarySchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  category: z.string().nullable(),
+  url: z.string().nullable(),
+  username: z.string().nullable(),
+  companyId: z.string().nullable(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  company: z.object({ name: z.string() }).nullable(),
+});
+const credentialMutationSchema = z.object({ id: z.string(), title: z.string() });
+const responseOf = <T extends z.ZodTypeAny>(data: T) => z.object({ success: z.literal(true), data });
 
 /**
  * Şifre kasası — `admin` ve `it_manager`.
@@ -65,6 +79,10 @@ export const credentialRoutes: FastifyPluginAsyncZod = async (app) => {
       tags: ['Credentials'],
       summary: 'Şifre kasası kayıtlarını listeler',
       querystring: credentialListQuerySchema,
+      response: {
+        200: responseOf(z.array(credentialSummarySchema)),
+        ...commonErrorResponses,
+      },
     },
   }, async (request, reply) => {
     const { companyId } = request.query;
@@ -91,6 +109,10 @@ export const credentialRoutes: FastifyPluginAsyncZod = async (app) => {
       tags: ['Credentials'],
       summary: 'Şifre kasası kaydını çözer ve denetim kaydı oluşturur',
       params: credentialIdParamsSchema,
+      response: {
+        200: responseOf(z.object({ password: z.string(), notes: z.string().nullable() })),
+        ...commonErrorResponses,
+      },
     },
   }, async (request, reply) => {
     const { id } = request.params;
@@ -127,6 +149,7 @@ export const credentialRoutes: FastifyPluginAsyncZod = async (app) => {
       tags: ['Credentials'],
       summary: 'Şifre kasası kaydı oluşturur',
       body: createSchema,
+      response: { 201: responseOf(credentialMutationSchema), ...commonErrorResponses },
     },
   }, async (request, reply) => {
     const body = request.body;
@@ -171,6 +194,7 @@ export const credentialRoutes: FastifyPluginAsyncZod = async (app) => {
       summary: 'Şifre kasası kaydını günceller',
       params: credentialIdParamsSchema,
       body: updateSchema,
+      response: { 200: responseOf(credentialMutationSchema), ...commonErrorResponses },
     },
   }, async (request, reply) => {
     const { id } = request.params;
@@ -226,6 +250,7 @@ export const credentialRoutes: FastifyPluginAsyncZod = async (app) => {
       tags: ['Credentials'],
       summary: 'Şifre kasası kaydını siler',
       params: credentialIdParamsSchema,
+      response: { 200: successResponseSchema, ...commonErrorResponses },
     },
   }, async (request, reply) => {
     const { id } = request.params;
