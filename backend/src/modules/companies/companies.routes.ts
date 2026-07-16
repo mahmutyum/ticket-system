@@ -68,6 +68,22 @@ const smtpSchema = z.object({
   fromEmail: z.string().email(),
   isActive: z.boolean(),
 });
+const locationSchema = z.object({
+  id: z.string(), companyId: z.string(), name: z.string(), address: z.string().nullable(),
+  phone: z.string().nullable(), floor: z.string().nullable(), itRoom: z.string().nullable(),
+  isActive: z.boolean(), createdAt: z.date(),
+});
+const categorySchema = z.object({
+  id: z.string(), companyId: z.string().nullable(), name: z.string(), description: z.string().nullable(),
+  parentId: z.string().nullable(), sortOrder: z.number().int(), isActive: z.boolean(),
+  slaResponseMinutes: z.number().int().nullable(), slaResolutionMinutes: z.number().int().nullable(),
+  autoAssignTo: z.string().nullable(), createdAt: z.date(),
+});
+const customFieldSchema = z.object({
+  id: z.string(), companyId: z.string().nullable(), fieldName: z.string(), fieldLabel: z.string(),
+  fieldType: z.string(), options: z.unknown(), required: z.boolean(), sortOrder: z.number().int(),
+  isActive: z.boolean(), placeholder: z.string().nullable(), createdAt: z.date(),
+});
 const responseOf = <T extends z.ZodTypeAny>(data: T) => z.object({ success: z.literal(true), data });
 const messageResponseSchema = z.object({ success: z.literal(true), message: z.string() });
 
@@ -119,7 +135,17 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
   // Admin: List all companies (including inactive) — MUST be before /:id
   app.get('/admin/all', {
     preValidation: [app.requireRole('admin', 'it_manager')],
-    schema: { tags: ['Companies'], summary: 'Yönetim için tüm şirketleri listele' },
+    schema: {
+      tags: ['Companies'],
+      summary: 'Yönetim için tüm şirketleri listele',
+      response: {
+        200: responseOf(z.array(companySchema.extend({
+          _count: z.object({ locations: z.number().int(), tickets: z.number().int() }),
+          locations: z.array(locationSchema), smtpConfig: smtpSchema.nullable(),
+        }))),
+        ...commonErrorResponses,
+      },
+    },
   }, async (request, reply) => {
     // it_manager yalnızca atandığı şirketleri görür. Bu uç nokta SMTP host/user
     // bilgisi de döndürdüğü için kapsamsız bırakılırsa çapraz şirket sızıntısı olur.
@@ -153,7 +179,18 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
   });
 
   // Get company detail with locations and categories
-  app.get('/:id', { schema: { params: idParamsSchema, tags: ['Companies'], summary: 'Şirket detayını getir' } }, async (request, reply) => {
+  app.get('/:id', { schema: {
+    params: idParamsSchema,
+    tags: ['Companies'],
+    summary: 'Şirket detayını getir',
+    response: {
+      200: responseOf(companySchema.extend({
+        locations: z.array(locationSchema), categories: z.array(categorySchema),
+        customFields: z.array(customFieldSchema),
+      })),
+      ...commonErrorResponses,
+    },
+  } }, async (request, reply) => {
     const { id } = request.params;
     const company = await app.prisma.company.findUnique({
       where: { id },
@@ -171,7 +208,10 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
   });
 
   // Get company locations (public)
-  app.get('/:id/locations', { schema: { params: idParamsSchema, tags: ['Companies'], summary: 'Şirket lokasyonlarını getir' } }, async (request, reply) => {
+  app.get('/:id/locations', { schema: {
+    params: idParamsSchema, tags: ['Companies'], summary: 'Şirket lokasyonlarını getir',
+    response: { 200: responseOf(z.array(locationSchema)), ...commonErrorResponses },
+  } }, async (request, reply) => {
     const { id } = request.params;
     const locations = await app.prisma.location.findMany({
       where: { companyId: id, isActive: true },
@@ -181,7 +221,10 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
   });
 
   // Get company categories (public)
-  app.get('/:id/categories', { schema: { params: idParamsSchema, tags: ['Companies'], summary: 'Şirket kategorilerini getir' } }, async (request, reply) => {
+  app.get('/:id/categories', { schema: {
+    params: idParamsSchema, tags: ['Companies'], summary: 'Şirket kategorilerini getir',
+    response: { 200: responseOf(z.array(categorySchema)), ...commonErrorResponses },
+  } }, async (request, reply) => {
     const { id } = request.params;
     const categories = await app.prisma.category.findMany({
       where: {
@@ -194,7 +237,10 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
   });
 
   // Get company custom fields (public)
-  app.get('/:id/custom-fields', { schema: { params: idParamsSchema, tags: ['Companies'], summary: 'Şirket özel alanlarını getir' } }, async (request, reply) => {
+  app.get('/:id/custom-fields', { schema: {
+    params: idParamsSchema, tags: ['Companies'], summary: 'Şirket özel alanlarını getir',
+    response: { 200: responseOf(z.array(customFieldSchema)), ...commonErrorResponses },
+  } }, async (request, reply) => {
     const { id } = request.params;
     const fields = await app.prisma.customField.findMany({
       where: {
