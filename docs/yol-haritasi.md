@@ -3,17 +3,18 @@
 Bu belge projenin güncel durumunu ve bilinçli olarak açık bırakılan sınırları
 özetler. Tarihsel uygulama planı değildir.
 
-Durum: 2026-07-16.
+Durum: 2026-07-17.
 
 ## Olgunluk özeti
 
 | Alan | Durum |
 |---|---|
 | Özellik kapsamı | 🟢 Ticket yaşam döngüsü, SLA, raporlar, görevler, kasa, MFA |
+| Çok dillilik | 🟢 TR/EN çift dil (arayüz + API mesajları + e-posta/SMS şablonları) |
 | Kurulum / deploy | 🟢 Docker Compose, Coolify ve Nginx belgeli |
 | Migration | 🟢 Versiyonlu; gerçek PostgreSQL üzerinde doğrulanabilir |
-| Backend testleri | 🟢 230 birim/route/worker testi |
-| Frontend testleri | 🟢 25 birim testi + 6 Playwright smoke/axe/güvenlik senaryosu |
+| Backend testleri | 🟢 235 birim/route/worker testi |
+| Frontend testleri | 🟢 26 birim testi + 6 Playwright smoke/axe/güvenlik senaryosu |
 | Entegrasyon | 🟢 Gerçek PostgreSQL + Redis testi mevcut |
 | CI | 🟡 Güvenlik tercihiyle yalnızca GitHub Actions'tan elle çalıştırılıyor |
 | API dokümantasyonu | 🟢 Kritik yönetim route'larında request, parametre ve response sözleşmeleri bağlı |
@@ -32,6 +33,62 @@ Durum: 2026-07-16.
 
 Kod kalitesi, OpenAPI ve güvenlik akışları mevcut paket içinde tamamlandı; yeni route
 ve ekranlarda aynı tipli sözleşme, kapsam/RBAC ve regresyon testi standardını koru.
+
+## Planlanan özellik: Talep sahibi için "Taleplerim" görünümü (e-posta doğrulamalı)
+
+**Sorun.** Bugün public portal parolasızdır ve her ticket'a erişim yalnızca o
+ticket'a özel `accessToken` linki (ya da ticket numarası + e-posta ile `/public/track`)
+üzerindendir. Birden fazla talep açan bir kullanıcının **tüm taleplerini tek yerde**
+görüp takip etmesinin bir yolu yoktur; her talebin linkini ayrı saklaması gerekir.
+
+**Neden bugün "e-posta gir, taleplerini gör" yok?** Bir e-postaya ait tüm ticket'ları
+kimlik doğrulamasız listelemek bir **PII oracle**'dır: herkes rastgele bir e-posta
+girip o kişinin taleplerini (konu, sayı, tarih) görebilir. Bu, [Bilinçli ürün
+tercihleri](#bilinçli-ürün-tercihleri) altında bilerek reddedilmiştir. Bu yüzden çözüm,
+listeyi göstermeden önce **e-posta sahipliğini kanıtlatmalıdır**.
+
+**Önerilen çözüm — magic link (parolasız e-posta doğrulaması).** Mevcut altyapıyı
+(nanoid token, Redis, BullMQ e-posta kuyruğu, rate limit) yeniden kullanır; yeni tablo
+gerektirmez.
+
+1. **Talep et.** Kullanıcı `/my-tickets` sayfasında e-postasını girer →
+   `POST /public/my-tickets/request`.
+   - Rate limit'li (ör. 3/15dk, e-posta + IP başına).
+   - Sunucu, e-postaya ait ticket olup olmadığından **bağımsız olarak** her zaman aynı
+     "bağlantı gönderildi" yanıtını döner (istek adımında oracle yok).
+   - Ticket varsa: `nanoid(32)` bir doğrulama token'ı Redis'e yazılır
+     (`mytickets:verify:<token>` → e-posta, TTL ~15dk, tek kullanımlık) ve e-posta ile
+     bir bağlantı gönderilir (`{CANONICAL_URL}/my-tickets?token=...`). Yeni çift dilli
+     şablon: `my_tickets_link`.
+2. **Doğrula.** Bağlantıya tıklama → `GET /public/my-tickets/verify?token=...`.
+   - Token okunup **hemen silinir**; e-posta çözülür.
+   - Kısa ömürlü bir **oturum token'ı** üretilir (`mytickets:session:<sid>` → e-posta,
+     TTL ~30dk) ve istemciye döner (bellekte tutulur, localStorage'a yazılmaz — staff
+     access token deseninin aynısı).
+3. **Listele.** `GET /public/my-tickets?session=...` (Authorization benzeri) → o
+   e-postaya ait ticket'ları döner: numara, konu, durum, öncelik, şirket, oluşturma
+   tarihi + her satır için mevcut `accessToken` (veya ihtiyaç anında üretilen tek
+   kullanımlık geçiş). Her satır zaten var olan ticket takip ekranına götürür.
+
+**Güvenlik notları.**
+- Liste yalnızca e-posta gelen kutusuna erişimi kanıtlayan oturumla görülür → oracle yok.
+- Doğrulama token'ı ve oturum token'ı kısa ömürlü, tek kullanımlık/iptal edilebilir.
+- `createdByEmail` büyük/küçük harf duyarsız eşleştirilir (mevcut `/track` ile tutarlı).
+- Çok şirketli: liste, e-postanın oluşturduğu tüm şirketlerdeki ticket'ları kapsar
+  (talep sahibi kendi taleplerini görür; şirket kapsamı personel içindir).
+- Doğrulama denemeleri ve oturum açılışları audit log'lanır.
+
+**Dokunulacak yerler (uygulama sırasında).**
+- Backend: `modules/tickets/public.routes.ts` (3 uç), Redis anahtar yardımcıları,
+  `my_tickets_link` e-posta şablonu (seed, tr+en).
+- Frontend: yeni public sayfa `MyTicketsPage` + `PublicLayout`'a "Taleplerim / My
+  Tickets" bağlantısı; oturum token'ı için hafif bir store.
+- Test: request adımının oracle sızdırmadığı, token tek kullanımlık olduğu, süre dolan
+  oturumun reddedildiği, listenin yalnızca doğru e-postanın ticket'larını döndürdüğü.
+
+**Kapsam dışı (şimdilik).** Kalıcı kullanıcı hesabı/parola yok — bu bilinçli ürün
+tercihidir. Bu özellik yalnızca "sahip olduğun e-postaya taleplerinin listesini
+gönderelim" akışıdır; oturum kısa ömürlüdür ve kalıcı kimlik oluşturmaz.
 
 ## Bilinen ve kabul edilmiş güvenlik sınırları
 

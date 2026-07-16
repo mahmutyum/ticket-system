@@ -1,12 +1,16 @@
 # IT Ticket System
 
 Şirket içi IT destek süreçleri için dockerize edilmiş, çok şirketli (multi-tenant) ticket sistemi.
-Türkçe arayüz. Talep edenler için şifresiz public portal, IT ekibi için rollü yönetim paneli.
+**Türkçe/İngilizce çift dil** arayüz (tarayıcı diline göre otomatik + anında geçiş). Talep edenler
+için şifresiz public portal, IT ekibi için rollü yönetim paneli.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Stack](https://img.shields.io/badge/stack-Fastify%20%2B%20React%20%2B%20Postgres-blue)
+![i18n](https://img.shields.io/badge/i18n-TR%20%2F%20EN-green)
 
 > **English:** see [English summary](#english) below. Detailed docs are in Turkish.
+>
+> 📸 **[Ekran görüntüleri / Screenshots](#ekran-görüntüleri)** — tüm ekranlar TR & EN.
 
 ---
 
@@ -34,6 +38,12 @@ Türkçe arayüz. Talep edenler için şifresiz public portal, IT ekibi için ro
 - SSE (Server-Sent Events) ile panelde canlı güncelleme.
 - Şirket bazlı branding: domain'e göre logo ve tema rengi.
 
+**Çift dil (TR/EN):**
+- Arayüz tarayıcı diline göre açılır; header'daki düğmeyle anında geçilir (tercih kalıcı).
+- API hata/yanıt mesajları `Accept-Language`'e göre TR/EN döner.
+- E-posta/SMS bildirimleri alıcının diline göre gönderilir (talep sahibi: portal dili,
+  personel: panel dili). Şablonlar her iki dilde tohumlanır.
+
 ---
 
 ## Teknoloji
@@ -45,7 +55,25 @@ Türkçe arayüz. Talep edenler için şifresiz public portal, IT ekibi için ro
 | Veritabanı | PostgreSQL 16 |
 | Kuyruk / Cache | Redis 7 + BullMQ |
 | Realtime | SSE |
+| Çok dillilik | react-i18next (TR/EN), `Accept-Language` bazlı API mesajları |
 | Deploy | Docker Compose (Coolify + Nginx Proxy Manager uyumlu) |
+
+---
+
+## Ekran görüntüleri
+
+Tüm ekranlar hem Türkçe hem İngilizce olarak yakalanmıştır. Aşağıda birkaç örnek;
+**[tam galeri için docs/screenshots →](docs/screenshots/)** (14 sayfa × TR/EN).
+
+| Public portal (TR) | Yönetim paneli (EN) |
+|---|---|
+| [![Ana sayfa](docs/screenshots/public-home-tr.png)](docs/screenshots/public-home-tr.png) | [![Dashboard](docs/screenshots/staff-dashboard-en.png)](docs/screenshots/staff-dashboard-en.png) |
+| Talep oluşturma sihirbazı | Talep listesi (durum/öncelik rozetleri çift dilli) |
+| [![Talep oluştur](docs/screenshots/public-create-ticket-tr.png)](docs/screenshots/public-create-ticket-tr.png) | [![Talepler](docs/screenshots/staff-tickets-en.png)](docs/screenshots/staff-tickets-en.png) |
+
+> Görselleri otomatik üretmek için (docker dev + seed ayaktayken):
+> `cd frontend && node scripts/screenshots.mjs` — Playwright/chromium ile
+> `docs/screenshots/` altına TR + EN yazar.
 
 ---
 
@@ -180,14 +208,19 @@ olarak kurmadan önce şunları bil:
 
 ## English
 
-**IT Ticket System** — a dockerized, multi-tenant internal IT helpdesk. Turkish UI.
-Requesters file and track tickets through a passwordless public portal (unguessable
-access-token links); the IT team works them through a role-based staff panel.
+**IT Ticket System** — a dockerized, multi-tenant internal IT helpdesk. **Bilingual
+Turkish/English UI** (auto-detected from the browser, switchable instantly). Requesters
+file and track tickets through a passwordless public portal (unguessable access-token
+links); the IT team works them through a role-based staff panel.
 
 **Features:** ticket lifecycle with per-category SLA, dynamic per-company custom fields,
 file attachments, internal vs. public notes, on-site support calendar, task management,
 reporting with CSV export, an admin-only AES-256-GCM credential vault with audit logging,
-async email/SMS via BullMQ, live updates over SSE, and per-domain company branding.
+async email/SMS via BullMQ, live updates over SSE, per-domain company branding, and
+**full TR/EN localization** (UI, API messages via `Accept-Language`, and email/SMS
+templates in the recipient's language).
+
+**Screenshots:** every screen in both TR & EN — see [docs/screenshots](docs/screenshots/).
 
 **Stack:** Fastify 5 + Prisma 6 + PostgreSQL 16 + Redis 7 (backend), React 18 + Vite 6 +
 TailwindCSS (frontend), Docker Compose (deploy).
