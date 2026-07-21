@@ -221,7 +221,7 @@ export default function TasksPage() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <button
           onClick={clearFilters}
-          className={`card p-3 text-left transition-shadow hover:shadow-md ${!filtersActive ? 'ring-2 ring-primary-500' : ''}`}
+          className={`card p-3 text-left transition-shadow hover:shadow-raised ${!filtersActive ? 'ring-2 ring-primary-500' : ''}`}
         >
           <div className="text-xs text-gray-500">{t('common.total')}</div>
           <div className="text-2xl font-bold">{stats.total}</div>
@@ -234,7 +234,7 @@ export default function TasksPage() {
           <button
             key={key}
             onClick={() => { setOverdueOnly(false); setStatusFilter(statusFilter === key ? '' : key); }}
-            className={`card p-3 text-left transition-shadow hover:shadow-md ${statusFilter === key ? 'ring-2 ring-primary-500' : ''}`}
+            className={`card p-3 text-left transition-shadow hover:shadow-raised ${statusFilter === key ? 'ring-2 ring-primary-500' : ''}`}
           >
             <div className="text-xs text-gray-500">{label}</div>
             <div className={`text-2xl font-bold ${color}`}>{value}</div>
@@ -242,7 +242,7 @@ export default function TasksPage() {
         ))}
         <button
           onClick={() => { setStatusFilter(''); setOverdueOnly(v => !v); }}
-          className={`card p-3 text-left transition-shadow hover:shadow-md ${overdueOnly ? 'ring-2 ring-red-500' : ''}`}
+          className={`card p-3 text-left transition-shadow hover:shadow-raised ${overdueOnly ? 'ring-2 ring-red-500' : ''}`}
         >
           <div className="text-xs text-gray-500">{t('tasks.overdue')}</div>
           <div className="text-2xl font-bold text-red-600">{stats.overdue}</div>
@@ -274,7 +274,7 @@ export default function TasksPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           {/* .card zaten dark: karşılığını içerir — ham bg-white karanlık modda beyaz kalıyordu. */}
           <div className="card w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-bold mb-4">{editId ? t('tasks.editTask') : t('tasks.newTask')}</h2>
+            <h2 className="dialog-title mb-4">{editId ? t('tasks.editTask') : t('tasks.newTask')}</h2>
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
                 <label className="block text-sm font-medium mb-1">{t('tasks.fieldTitle')} *</label>
@@ -329,7 +329,7 @@ export default function TasksPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">{t('tasks.assigneesLabel', { count: form.assigneeIds.length })}</label>
-                <div className="border rounded-lg max-h-60 overflow-y-auto p-2 space-y-1">
+                <div className="border rounded-inset max-h-60 overflow-y-auto p-2 space-y-1">
                   {staffList?.filter(s => s.isActive).map(s => (
                     <label key={s.id} className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-colors ${form.assigneeIds.includes(s.id) ? 'bg-primary-50 border border-primary-300' : 'hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>
                       <input
@@ -372,7 +372,7 @@ export default function TasksPage() {
             const days = taskDaysOpen(task.createdAt, task.completedAt);
             const overdue = isTaskOverdue(task);
             return (
-              <div key={task.id} className={`card p-4 hover:shadow-md transition-shadow ${overdue ? 'border-l-4 border-l-red-500' : ''}`}>
+              <div key={task.id} className={`card p-4 hover:shadow-raised transition-shadow ${overdue ? 'border-l-4 border-l-red-500' : ''}`}>
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -417,7 +417,7 @@ export default function TasksPage() {
                       onChange={(e) => handleStatus(task.id, e.target.value)}
                       onClick={(e) => e.stopPropagation()}
                       aria-label={t('tasks.statusAria', { title: task.title })}
-                      className={`text-xs rounded-full border-0 px-2 py-1 cursor-pointer focus:ring-2 focus:ring-primary-500 ${TASK_STATUS_COLORS[task.status]}`}
+                      className={`text-xs rounded-full border-0 px-2 py-1 cursor-pointer ${TASK_STATUS_COLORS[task.status]}`}
                     >
                       {TASK_STATUS_KEYS.map(k => (
                         <option key={k} value={k}>{labels.taskStatus(k)}</option>

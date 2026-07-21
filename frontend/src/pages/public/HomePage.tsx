@@ -27,7 +27,7 @@ export default function HomePage() {
           <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary-200/40 blur-3xl" />
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-600 dark:text-primary-300">{t('home.howItWorks')}</p>
           <ol className="relative mt-6 space-y-6">
-            {steps.map(([number, title, text]) => <li key={number} className="flex gap-4"><span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-sm font-bold text-white shadow-glow">{number}</span><div><h3 className="font-semibold">{title}</h3><p className="mt-1 text-sm leading-6 text-muted">{text}</p></div></li>)}
+            {steps.map(([number, title, text]) => <li key={number} className="flex gap-4"><span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-inset bg-primary-600 text-sm font-bold text-white shadow-glow">{number}</span><div><h3 className="font-semibold">{title}</h3><p className="mt-1 text-sm leading-6 text-muted">{text}</p></div></li>)}
           </ol>
         </div>
       </section>
@@ -36,10 +36,10 @@ export default function HomePage() {
       <section className="grid gap-5 md:grid-cols-2">
         <Link
           to="/create"
-          className="card group cursor-pointer transition-all hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-lg dark:hover:border-primary-500/30"
+          className="card group cursor-pointer transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-raised dark:hover:border-primary-500/30"
         >
           <div className="flex items-start gap-4">
-            <div className="p-3 bg-primary-100 rounded-xl group-hover:bg-primary-200 transition-colors">
+            <div className="p-3 bg-primary-100 rounded-inset group-hover:bg-primary-200 transition-colors">
               <PlusCircle className="w-8 h-8 text-primary-600" />
             </div>
             <div>
@@ -53,10 +53,10 @@ export default function HomePage() {
 
         <Link
           to="/track"
-          className="card group cursor-pointer transition-all hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-lg dark:hover:border-emerald-500/30"
+          className="card group cursor-pointer transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-raised dark:hover:border-emerald-500/30"
         >
           <div className="flex items-start gap-4">
-            <div className="p-3 bg-green-100 rounded-xl group-hover:bg-green-200 transition-colors">
+            <div className="p-3 bg-green-100 rounded-inset group-hover:bg-green-200 transition-colors">
               <Search className="w-8 h-8 text-green-600" />
             </div>
             <div>
@@ -70,7 +70,7 @@ export default function HomePage() {
       </section>
 
       {/* Features */}
-      <section className="grid gap-6 rounded-3xl border border-white/50 bg-white/40 p-6 backdrop-blur-sm dark:border-slate-700/40 dark:bg-slate-900/30 md:grid-cols-3 sm:p-8">
+      <section className="grid gap-6 rounded-overlay border border-white/50 bg-white/40 p-6 backdrop-blur-sm dark:border-slate-700/40 dark:bg-slate-900/30 md:grid-cols-3 sm:p-8">
         <div className="p-2">
           <Clock3 className="w-7 h-7 text-primary-500 mb-3" />
           <h4 className="font-semibold mb-1">{t('home.feature1Title')}</h4>

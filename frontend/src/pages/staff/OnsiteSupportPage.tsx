@@ -161,9 +161,9 @@ export default function OnsiteSupportPage() {
               <button
                 key={i}
                 onClick={() => setSelectedDate(startOfDay(day))}
-                className={`relative rounded-lg p-2 text-center transition-all border ${
+                className={`relative rounded-control p-2 text-center transition-[color,background-color,border-color,box-shadow] border ${
                   selected
-                    ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
+                    ? 'bg-primary-600 text-white border-primary-600 shadow-surface'
                     : today
                     ? 'border-primary-400 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-700'
                     : 'border-gray-200 hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800/50'
@@ -279,7 +279,7 @@ export default function OnsiteSupportPage() {
                     type="button"
                     onClick={() => setSelectedEvent(event)}
                     title={t('onsite.viewDetails')}
-                    className={`absolute rounded-lg px-2 py-1 text-xs overflow-hidden border shadow-sm text-left transition-all hover:shadow-md hover:ring-1 hover:ring-primary-400 hover:z-20 focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                    className={`absolute rounded-control px-2 py-1 text-xs overflow-hidden border shadow-surface text-left transition-[color,background-color,border-color,box-shadow] hover:shadow-raised hover:ring-1 hover:ring-primary-400 hover:z-20 ${
                       cancelled
                         ? 'bg-gray-50 dark:bg-slate-800/40 border-gray-200 dark:border-slate-700 opacity-60'
                         : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700'
@@ -350,7 +350,7 @@ export default function OnsiteSupportPage() {
                 key={event.id}
                 type="button"
                 onClick={() => setSelectedEvent(event)}
-                className="w-full text-left flex items-center gap-4 p-3 bg-gray-50 dark:bg-slate-800/50 rounded-lg text-sm transition-colors hover:bg-gray-100 dark:hover:bg-slate-800"
+                className="w-full text-left flex items-center gap-4 p-3 bg-gray-50 dark:bg-slate-800/50 rounded-inset text-sm transition-colors hover:bg-gray-100 dark:hover:bg-slate-800"
               >
                 <div
                   className={`w-1 h-10 rounded-full ${
@@ -397,7 +397,7 @@ export default function OnsiteSupportPage() {
               onClick={() => setSelectedEvent(null)}
             >
               <div
-                className="card w-full max-w-md !p-0 overflow-hidden shadow-xl"
+                className="card w-full max-w-md !p-0 overflow-hidden shadow-overlay"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-gray-200 dark:border-slate-800">
@@ -472,13 +472,13 @@ export default function OnsiteSupportPage() {
                       <>
                         <button
                           onClick={() => handleStatusUpdate(ev.id, 'in_progress')}
-                          className="flex-1 bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-200 py-2 rounded-lg text-sm font-medium hover:bg-yellow-200 dark:hover:bg-yellow-500/30"
+                          className="flex-1 bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-200 py-2 rounded-control text-sm font-medium hover:bg-yellow-200 dark:hover:bg-yellow-500/30"
                         >
                           {t('onsite.actions.start')}
                         </button>
                         <button
                           onClick={() => handleStatusUpdate(ev.id, 'cancelled')}
-                          className="flex-1 bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-200 py-2 rounded-lg text-sm font-medium hover:bg-red-200 dark:hover:bg-red-500/30"
+                          className="flex-1 bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-200 py-2 rounded-control text-sm font-medium hover:bg-red-200 dark:hover:bg-red-500/30"
                         >
                           {t('common.cancel')}
                         </button>
@@ -487,7 +487,7 @@ export default function OnsiteSupportPage() {
                     {ev.status === 'in_progress' && (
                       <button
                         onClick={() => handleStatusUpdate(ev.id, 'completed')}
-                        className="flex-1 bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-200 py-2 rounded-lg text-sm font-medium hover:bg-green-200 dark:hover:bg-green-500/30"
+                        className="flex-1 bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-200 py-2 rounded-control text-sm font-medium hover:bg-green-200 dark:hover:bg-green-500/30"
                       >
                         {t('onsite.actions.complete')}
                       </button>

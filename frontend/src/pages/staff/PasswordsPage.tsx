@@ -2,7 +2,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Plus, Eye, EyeOff, Copy, Trash2, Pencil, Search, X,
-  ArrowUpDown, ExternalLink, StickyNote, KeyRound, ShieldAlert, ChevronLeft, ChevronRight,
+  ArrowUpDown, ExternalLink, StickyNote, KeyRound, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +10,7 @@ import api from '../../api/client';
 import { useAuthStore } from '../../stores/auth.store';
 import { getApiError } from '../../utils/api-error';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { ErrorState } from '../../components/ui/AsyncState';
 
 type Entry = {
   id: string; title: string; category?: string | null; url?: string | null;
@@ -283,7 +284,7 @@ export default function PasswordsPage() {
 
       <div className="card overflow-hidden p-0">
         <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[720px]">
+        <table className="data-table min-w-[720px]">
           <thead className="text-left text-muted border-b border-gray-200 dark:border-slate-800">
             <tr>
               <SortHeader k="title" label={t('passwords.colTitle')} />
@@ -308,10 +309,8 @@ export default function PasswordsPage() {
 
             {isError && !isLoading && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center">
-                  <ShieldAlert className="w-6 h-6 mx-auto mb-2 text-red-500" />
-                  <p className="text-muted mb-2">{t('passwords.loadError')}</p>
-                  <button onClick={() => refetch()} className="btn-secondary text-sm">{t('common.retry')}</button>
+                <td colSpan={6}>
+                  <ErrorState title={t('passwords.loadError')} retryLabel={t('common.retry')} onRetry={() => refetch()} />
                 </td>
               </tr>
             )}

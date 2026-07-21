@@ -40,11 +40,11 @@ export default function TrackTicketPage() {
 
   return (
     <div className="mx-auto grid max-w-4xl items-stretch gap-6 py-4 md:grid-cols-[.8fr_1.2fr] md:py-12">
-      <div className="rounded-3xl bg-primary-700 p-7 text-white shadow-glow sm:p-8">
-        <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15"><KeyRound className="h-6 w-6" /></span>
+      <div className="rounded-overlay bg-primary-700 p-7 text-white shadow-glow sm:p-8">
+        <span className="inline-flex h-12 w-12 items-center justify-center rounded-inset bg-white/15"><KeyRound className="h-6 w-6" /></span>
         <h2 className="mt-6 text-2xl font-bold">{t('trackTicket.heroTitle')}</h2>
         <p className="mt-3 text-sm leading-6 text-primary-100">{t('trackTicket.heroDesc')}</p>
-        <div className="mt-8 flex gap-3 rounded-2xl bg-black/10 p-4 text-sm text-primary-50"><LockKeyhole className="mt-0.5 h-5 w-5 shrink-0" /><p>{t('trackTicket.heroNote')}</p></div>
+        <div className="mt-8 flex gap-3 rounded-inset bg-black/10 p-4 text-sm text-primary-50"><LockKeyhole className="mt-0.5 h-5 w-5 shrink-0" /><p>{t('trackTicket.heroNote')}</p></div>
       </div>
       <div className="card p-6 sm:p-8">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-600 dark:text-primary-300">{t('trackTicket.eyebrow')}</p>

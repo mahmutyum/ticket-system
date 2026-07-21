@@ -167,9 +167,9 @@ export function CategoryManagementModal({ companyId, companyName, onClose }: {
             </div>
 
             {isLoading ? <p className="text-sm text-muted">{t('companyMgmt.category.loading')}</p> : companyCategories.length === 0 ? (
-              <div className="surface-2 rounded-xl px-4 py-8 text-center text-sm text-muted">{t('companyMgmt.category.empty')}</div>
+              <div className="sub-surface px-4 py-8 text-center text-sm text-muted">{t('companyMgmt.category.empty')}</div>
             ) : (
-              <div className="divide-y divide-gray-200 overflow-hidden rounded-xl border border-subtle dark:divide-slate-800">
+              <div className="divide-y divide-gray-200 overflow-hidden rounded-inset border border-subtle dark:divide-slate-800">
                 {companyCategories.map((category) => (
                   <div key={category.id} className={`flex items-center gap-3 px-4 py-3 ${category.isActive ? '' : 'opacity-55'}`}>
                     <div className="min-w-0 flex-1">
@@ -199,7 +199,7 @@ export function CategoryManagementModal({ companyId, companyName, onClose }: {
             </div>
           </div>
 
-          <form onSubmit={submit} className="surface-2 h-fit space-y-3 rounded-xl p-4">
+          <form onSubmit={submit} className="sub-surface h-fit space-y-3 p-4">
             <h3 className="font-semibold">{editId ? t('companyMgmt.category.editForm') : t('companyMgmt.category.newForm')}</h3>
             <label className="block text-sm">{t('companyMgmt.category.name')}
               <input className="input-field mt-1" maxLength={120} required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />

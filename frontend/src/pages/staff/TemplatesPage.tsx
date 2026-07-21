@@ -146,7 +146,7 @@ export default function TemplatesPage() {
       } />
 
       {/* Tabs */}
-      <div className="surface-2 flex gap-1 overflow-x-auto rounded-xl p-1">
+      <div className="surface-2 flex gap-1 overflow-x-auto rounded-inset p-1">
         {tabs.map(t => (
           <button
             key={t.key}
@@ -164,7 +164,7 @@ export default function TemplatesPage() {
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="card w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-bold mb-4">
+            <h2 className="dialog-title mb-4">
               {editId ? t('common.edit') : t('common.new')} — {tabs.find(x => x.key === tab)?.label}
             </h2>
 

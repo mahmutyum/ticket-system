@@ -49,7 +49,7 @@ export default function TicketTimeline({ history = [], notes = [] }: Props) {
       {timeline.map(item => {
         if (item.type === 'note') {
           return (
-            <div key={`note-${item.id}`} className={`rounded-lg border p-4 ${item.isInternal ? 'border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10' : 'border-primary-200 bg-primary-50 dark:border-primary-500/30 dark:bg-primary-500/10'}`}>
+            <div key={`note-${item.id}`} className={`rounded-inset border p-4 ${item.isInternal ? 'border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10' : 'border-primary-200 bg-primary-50 dark:border-primary-500/30 dark:bg-primary-500/10'}`}>
               <div className="flex items-center gap-2 mb-2">
                 {item.isInternal ? <Lock className="w-4 h-4 text-amber-600 dark:text-amber-300" /> : <MessageSquare className="w-4 h-4 text-primary-600 dark:text-primary-300" />}
                 <span className="font-medium text-sm">{item.createdBy?.fullName}</span>

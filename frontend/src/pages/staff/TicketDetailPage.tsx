@@ -145,7 +145,7 @@ export default function TicketDetailPage() {
               <h2 className="mb-3 text-base font-semibold">{t('ticketDetail.additionalInfo')}</h2>
               <div className="grid gap-3 text-sm sm:grid-cols-2">
                 {ticket.customValues?.map(cv => (
-                  <div key={cv.id} className="surface-2 rounded-xl p-3">
+                  <div key={cv.id} className="sub-surface p-3">
                     <span className="text-gray-500 text-xs">{cv.customField?.fieldLabel}</span>
                     <p className="font-medium mt-0.5">{cv.value}</p>
                   </div>
@@ -182,7 +182,7 @@ export default function TicketDetailPage() {
                         toast.error(t('ticketDetail.downloadFailed')),
                       );
                     }}
-                    className="w-full text-left flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800/50 text-sm"
+                    className="w-full text-left flex items-center gap-3 p-2 rounded-control hover:bg-gray-50 dark:hover:bg-slate-800/50 text-sm"
                   >
                     <FileText className="w-4 h-4 text-gray-400" />
                     <span className="flex-1 truncate">{att.fileName}</span>
@@ -191,7 +191,7 @@ export default function TicketDetailPage() {
                 ))}
               </div>
             ) : (
-              <p className="rounded-xl surface-2 px-4 py-6 text-center text-sm text-muted">{t('ticketDetail.noFiles')}</p>
+              <p className="sub-surface px-4 py-6 text-center text-sm text-muted">{t('ticketDetail.noFiles')}</p>
             )}
           </div>
 
@@ -212,7 +212,7 @@ export default function TicketDetailPage() {
                   {t('ticketDetail.cannedResponses')} {showCanned ? '▲' : '▼'}
                 </button>
                 {showCanned && cannedResponses && (
-                  <div className="absolute z-10 w-full max-h-48 overflow-y-auto rounded-xl border border-subtle bg-white p-2 shadow-lg dark:bg-slate-900">
+                  <div className="absolute z-10 w-full max-h-48 overflow-y-auto rounded-inset border border-subtle bg-white p-2 shadow-overlay dark:bg-slate-900">
                     {cannedResponses.map(cr => (
                       <button
                         key={cr.id}
@@ -228,8 +228,8 @@ export default function TicketDetailPage() {
                   </div>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-2 mb-2 rounded-xl surface-2 p-1">
-                <label className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm cursor-pointer ${!isInternal ? 'bg-white shadow-sm dark:bg-slate-700' : ''}`}>
+              <div className="grid grid-cols-2 gap-2 mb-2 rounded-inset surface-2 p-1">
+                <label className={`flex items-center justify-center gap-2 rounded-control px-3 py-2 text-sm cursor-pointer ${!isInternal ? 'bg-white shadow-surface dark:bg-slate-700' : ''}`}>
                   <input
                     type="radio"
                     checked={!isInternal}
@@ -238,7 +238,7 @@ export default function TicketDetailPage() {
                   />
                   <MessageSquare className="w-4 h-4" /> {t('ticketDetail.publicNote')}
                 </label>
-                <label className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm cursor-pointer ${isInternal ? 'bg-amber-100 text-amber-900 shadow-sm dark:bg-amber-500/20 dark:text-amber-200' : ''}`}>
+                <label className={`flex items-center justify-center gap-2 rounded-control px-3 py-2 text-sm cursor-pointer ${isInternal ? 'bg-amber-100 text-amber-900 shadow-surface dark:bg-amber-500/20 dark:text-amber-200' : ''}`}>
                   <input
                     type="radio"
                     checked={isInternal}
@@ -365,7 +365,7 @@ export default function TicketDetailPage() {
             {(ticket.onsiteSupport?.length ?? 0) > 0 && (
               <div className="space-y-2 text-xs">
                 {ticket.onsiteSupport?.map(os => (
-                  <div key={os.id} className="rounded-xl bg-orange-50 p-3 dark:bg-orange-500/10">
+                  <div key={os.id} className="rounded-inset bg-orange-50 p-3 dark:bg-orange-500/10">
                     <div className="font-medium">{t(`ticketDetail.onsiteType.${os.type}`, { defaultValue: t('ticketDetail.onsiteType.visit_employee') })}</div>
                     <div className="text-gray-500">{new Date(os.scheduledAt).toLocaleString(dateLocale())}</div>
                     <div className="text-gray-500">{os.location?.name}</div>

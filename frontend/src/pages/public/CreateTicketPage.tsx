@@ -270,7 +270,7 @@ export default function CreateTicketPage() {
       </div>
       {/* Step indicator */}
       <div className="mb-3 flex items-center justify-between sm:hidden"><span className="text-sm font-semibold">{STEPS[step]}</span><span className="text-xs text-muted">{t('createTicket.stepProgress', { current: step + 1, total: STEPS.length })}</span></div>
-      <div className="mb-8 h-2 overflow-hidden rounded-full bg-gray-200 sm:hidden dark:bg-slate-800"><div className="h-full rounded-full bg-primary-600 transition-all" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} /></div>
+      <div className="mb-8 h-2 overflow-hidden rounded-full bg-gray-200 sm:hidden dark:bg-slate-800"><div className="h-full rounded-full bg-primary-600 transition-[width]" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} /></div>
       <div className="mb-8 hidden items-center justify-between sm:flex" aria-label={t('createTicket.stepsAria')}>
         {STEPS.map((label, i) => (
           <div key={label} className="flex items-center">
@@ -300,7 +300,7 @@ export default function CreateTicketPage() {
           <div className="space-y-4">
             <div><p className="text-xs font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-300">{t('createTicket.step1.eyebrow')}</p><h3 className="mt-1 text-xl font-semibold">{t('createTicket.step1.title')}</h3></div>
             {isPortalLocked && portalCompany && (
-              <div className="flex items-center gap-2 bg-primary-50 text-primary-700 px-3 py-2 rounded-lg text-sm">
+              <div className="flex items-center gap-2 bg-primary-50 text-primary-700 px-3 py-2 rounded-inset text-sm">
                 <Building2 className="w-4 h-4" />
                 <span><strong>{portalCompany.name}</strong> {t('createTicket.step1.supportPortal')}</span>
               </div>
@@ -318,7 +318,7 @@ export default function CreateTicketPage() {
               />
               {/* Domain rejection — no detail about which domains are allowed */}
               {form.email && emailDomain && allCompanies && !hasAccessibleCompanies && (
-                <div className="mt-2 flex items-start gap-2 text-red-700 bg-red-50 rounded-lg p-3 text-sm dark:bg-red-500/15 dark:text-red-300">
+                <div className="mt-2 flex items-start gap-2 text-red-700 bg-red-50 rounded-inset p-3 text-sm dark:bg-red-500/15 dark:text-red-300">
                   <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                   <span>{t('createTicket.step1.domainRejected')}</span>
                 </div>
@@ -373,7 +373,7 @@ export default function CreateTicketPage() {
                 <button
                   key={company.id}
                   onClick={() => update({ companyId: company.id, locationId: '', categoryId: '' })}
-                  className={`p-4 rounded-xl border-2 text-left transition-all ${
+                  className={`p-4 rounded-inset border-2 text-left transition-[color,background-color,border-color,box-shadow] ${
                     form.companyId === company.id
                       ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10'
                       : 'border-gray-200 hover:border-gray-300 dark:border-slate-700 dark:hover:border-slate-600'
@@ -405,7 +405,7 @@ export default function CreateTicketPage() {
                   <button
                     key={loc.id}
                     onClick={() => update({ locationId: loc.id })}
-                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                    className={`w-full p-4 rounded-inset border-2 text-left transition-[color,background-color,border-color,box-shadow] ${
                       form.locationId === loc.id
                         ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10'
                         : 'border-gray-200 hover:border-gray-300 dark:border-slate-700 dark:hover:border-slate-600'
@@ -431,7 +431,7 @@ export default function CreateTicketPage() {
                 <button
                   key={cat.id}
                   onClick={() => update({ categoryId: cat.id })}
-                  className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                  className={`w-full p-4 rounded-inset border-2 text-left transition-[color,background-color,border-color,box-shadow] ${
                     form.categoryId === cat.id
                       ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10'
                       : 'border-gray-200 hover:border-gray-300 dark:border-slate-700 dark:hover:border-slate-600'
@@ -510,7 +510,7 @@ export default function CreateTicketPage() {
               {files.length > 0 && (
                 <div className="mt-2 space-y-1">
                   {files.map((f, i) => (
-                    <div key={i} className="surface-2 flex items-center gap-2 rounded-lg px-3 py-2 text-sm">
+                    <div key={i} className="sub-surface flex items-center gap-2 rounded-control px-3 py-2 text-sm">
                       <Paperclip className="w-3 h-3 text-muted" />
                       <span className="flex-1 truncate">{f.name}</span>
                       <span className="text-xs text-muted">{(f.size / 1024).toFixed(0)} KB</span>
@@ -579,7 +579,7 @@ export default function CreateTicketPage() {
         {step === 5 && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">{t('createTicket.step6.title')}</h3>
-            <div className="surface-2 rounded-2xl p-4 space-y-3 text-sm sm:p-5">
+            <div className="sub-surface p-4 space-y-3 text-sm sm:p-5">
               <div className="flex justify-between">
                 <span className="text-muted">{t('common.email')}:</span>
                 <span className="font-medium">{form.email}</span>

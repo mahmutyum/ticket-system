@@ -44,35 +44,36 @@
     background: rgb(var(--surface-canvas));
     @apply antialiased;
   }
+
+  :where(a, button, input, select, textarea, summary):focus-visible {
+    outline: 2px solid rgb(var(--color-primary-500));
+    outline-offset: 2px;
+  }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700
-           transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed
-           shadow-sm hover:shadow active:scale-[0.98]
-           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2
-           dark:ring-offset-slate-900;
+    @apply inline-flex min-h-10 items-center justify-center bg-primary-600 text-white px-4 py-2 rounded-control hover:bg-primary-700
+           transition-[color,background-color,border-color,box-shadow,transform] font-medium disabled:opacity-60 disabled:cursor-not-allowed
+           shadow-surface hover:shadow-raised active:scale-[0.98];
   }
 
   .btn-secondary {
-    @apply bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300
-           hover:bg-gray-50 transition-all font-medium active:scale-[0.98]
+    @apply inline-flex min-h-10 items-center justify-center bg-white text-gray-700 px-4 py-2 rounded-control border border-gray-300
+           hover:bg-gray-50 transition-[color,background-color,border-color,box-shadow,transform] font-medium active:scale-[0.98]
            dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700
-           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2
-           dark:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed;
+           disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-danger {
-    @apply bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700
-           transition-all font-medium shadow-sm active:scale-[0.98]
-           focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2
-           dark:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex min-h-10 items-center justify-center bg-red-600 text-white px-4 py-2 rounded-control hover:bg-red-700
+           transition-[color,background-color,border-color,box-shadow,transform] font-medium shadow-surface active:scale-[0.98]
+           disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .input-field {
-    @apply w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2
-           focus:ring-primary-500 focus:border-primary-500 outline-none transition-all
+    @apply min-h-10 w-full px-3 py-2 bg-white border border-gray-300 rounded-control focus:border-primary-500
+           transition-[color,background-color,border-color,box-shadow]
            text-gray-900 placeholder:text-gray-400
            dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder:text-slate-500
            dark:focus:border-primary-400;
@@ -81,25 +82,67 @@
   .card {
     background: rgb(var(--surface-card));
     border-color: rgb(var(--border-default));
-    @apply rounded-2xl shadow-soft border p-5 lg:p-6;
+    @apply rounded-surface shadow-surface border p-5 lg:p-6;
   }
 
   .icon-button {
-    @apply inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-gray-200
+    @apply inline-flex min-h-10 min-w-10 items-center justify-center rounded-control border border-gray-200
            text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900
-           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2
-           dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white dark:ring-offset-slate-900;
+           dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white;
   }
 
   /* Glassmorphism surface — for modals, headers, hero sections */
   .glass {
-    @apply bg-white/70 backdrop-blur-md border border-white/40 shadow-soft
+    @apply bg-white/80 backdrop-blur-md border border-white/40
            dark:bg-slate-900/60 dark:border-slate-700/50;
   }
 
   .glass-strong {
-    @apply bg-white/85 backdrop-blur-xl border border-white/60 shadow-soft
+    @apply bg-white/95 backdrop-blur-md border border-white/60 shadow-overlay
            dark:bg-slate-900/75 dark:border-slate-700/60;
+  }
+
+  .dialog-surface {
+    @apply glass-strong rounded-overlay;
+  }
+
+  .sub-surface {
+    background: rgb(var(--surface-muted));
+    @apply rounded-inset;
+  }
+
+  .app-bar {
+    background: rgb(var(--surface-card) / 0.96);
+    @apply border-b border-gray-200/80 backdrop-blur-sm dark:border-slate-800;
+  }
+
+  .page-title {
+    @apply text-2xl font-semibold tracking-tight sm:text-3xl;
+  }
+
+  .section-title {
+    @apply text-base font-semibold tracking-tight;
+  }
+
+  .dialog-title {
+    @apply text-lg font-semibold tracking-tight;
+  }
+
+  .data-table {
+    @apply w-full text-sm;
+  }
+
+  .data-table thead {
+    @apply bg-gray-50/80 text-left text-xs font-medium uppercase tracking-wide text-gray-500 dark:bg-slate-800/50 dark:text-slate-400;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 0.625rem 1rem !important;
+  }
+
+  .data-table tbody tr {
+    @apply border-t border-gray-200/80 transition-colors hover:bg-gray-50/80 dark:border-slate-800 dark:hover:bg-slate-800/50;
   }
 
   /* Subtle gradient background using primary tone */

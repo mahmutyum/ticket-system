@@ -115,7 +115,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {summaryCards.map(card => (
           <div key={card.label} className="card flex items-center gap-4 overflow-hidden relative">
-            <div className={`p-3 rounded-2xl ${card.color}`}>
+            <div className={`p-3 rounded-inset ${card.color}`}>
               <card.icon className="w-6 h-6" />
             </div>
             <div className="min-w-0">
@@ -139,11 +139,11 @@ export default function DashboardPage() {
                 <button
                   key={item.status}
                   onClick={() => { setStatus(item.status); setShowFilters(true); }}
-                  className="flex items-center gap-3 w-full hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-lg px-2 py-1 -mx-2 transition-colors"
+                  className="flex items-center gap-3 w-full hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-control px-2 py-1 -mx-2 transition-colors"
                 >
                   <StatusBadge status={item.status} />
                   <div className="flex-1 bg-gray-100 rounded-full h-2">
-                    <div className="bg-primary-500 h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                    <div className="bg-primary-500 h-2 rounded-full transition-[width]" style={{ width: `${pct}%` }} />
                   </div>
                   <span className="text-sm font-medium w-10 text-right">{item.count}</span>
                 </button>
@@ -160,7 +160,7 @@ export default function DashboardPage() {
               <button
                 key={item.companyId}
                 onClick={() => { setCompanyId(item.companyId); setShowFilters(true); }}
-                className="flex items-center justify-between w-full hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-lg px-2 py-1 -mx-2 transition-colors"
+                className="flex items-center justify-between w-full hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-control px-2 py-1 -mx-2 transition-colors"
               >
                 <span className="text-sm">{item.companyName}</span>
                 <span className="text-sm font-bold">{item.count}</span>
@@ -185,7 +185,7 @@ export default function DashboardPage() {
           <EmptyState title={t('dashboard.emptyTitle')} description={t('dashboard.emptyDesc')} />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="data-table">
               <thead>
                 <tr className="text-left text-gray-500 border-b">
                   <th className="pb-2 font-medium">{t('dashboard.colNo')}</th>

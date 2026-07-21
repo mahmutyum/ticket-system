@@ -1,5 +1,5 @@
 import { Outlet, Link } from 'react-router-dom';
-import { Headset, Moon, Sun, Plus, Search } from 'lucide-react';
+import { Headset, Moon, Sun, Plus, Search, MoreHorizontal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useBranding } from '../branding-context';
 import { useTheme } from '../theme-context';
@@ -23,11 +23,11 @@ export default function PublicLayout() {
             {branding?.logo ? (
               <img src={branding.logo} alt={branding.name} className="h-10 w-auto max-w-[160px] object-contain" />
             ) : (
-              <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-primary-600 text-white shadow-glow">
+              <span className="inline-flex items-center justify-center w-10 h-10 rounded-inset bg-primary-600 text-white shadow-glow">
                 <Headset className="w-5 h-5" />
               </span>
             )}
-            <div className="leading-tight">
+            <div className="hidden leading-tight min-[420px]:block">
               <h1 className="text-base font-semibold text-gray-900 dark:text-slate-100">
                 {branding?.name || t('publicLayout.appName')}
               </h1>
@@ -35,8 +35,17 @@ export default function PublicLayout() {
             </div>
           </Link>
           <nav className="flex items-center gap-2 text-sm" aria-label={t('publicLayout.mainNav')}>
-            <Link to="/create" className="btn-primary flex items-center gap-2 text-sm"><Plus className="h-4 w-4" /><span className="hidden sm:inline">{t('publicLayout.newTicket')}</span></Link>
-            <Link to="/track" className="btn-secondary flex items-center gap-2 text-sm"><Search className="h-4 w-4" /><span className="hidden sm:inline">{t('publicLayout.trackTicket')}</span></Link>
+            <Link to="/create" className="btn-primary hidden items-center gap-2 text-sm sm:inline-flex"><Plus className="h-4 w-4" />{t('publicLayout.newTicket')}</Link>
+            <Link to="/track" className="btn-secondary hidden items-center gap-2 text-sm sm:inline-flex"><Search className="h-4 w-4" />{t('publicLayout.trackTicket')}</Link>
+            <details className="group relative sm:hidden">
+              <summary className="icon-button list-none cursor-pointer" aria-label={t('publicLayout.mainNav')}>
+                <MoreHorizontal className="h-4 w-4" />
+              </summary>
+              <div className="absolute right-0 top-12 z-20 grid min-w-48 gap-1 rounded-inset border border-subtle bg-white p-1.5 shadow-overlay dark:bg-slate-900">
+                <Link to="/create" className="flex min-h-10 items-center gap-2 rounded-control px-3 text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-800"><Plus className="h-4 w-4 text-primary-600" />{t('publicLayout.newTicket')}</Link>
+                <Link to="/track" className="flex min-h-10 items-center gap-2 rounded-control px-3 text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-800"><Search className="h-4 w-4 text-primary-600" />{t('publicLayout.trackTicket')}</Link>
+              </div>
+            </details>
             <LanguageSwitcher compact />
             <button
               onClick={toggle}

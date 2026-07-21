@@ -51,20 +51,20 @@ export default function LoginPage() {
           <LanguageSwitcher />
         </div>
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-2xl mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-inset mb-4">
             <Headset className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white">{t('auth.title')}</h1>
           <p className="text-gray-400 text-sm mt-1">{t('auth.subtitle')}</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-gray-800 rounded-xl p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-gray-800 rounded-surface p-6 space-y-4">
           {!mfaChallenge && <><div>
             <label htmlFor="staff-email" className="block text-sm font-medium text-gray-300 mb-1">{t('auth.email')}</label>
             <input
               id="staff-email"
               type="email"
-              className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+              className="input-field bg-gray-700 border-gray-600 text-white placeholder-gray-400 dark:bg-gray-700 dark:border-gray-600"
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="email@company.com"
@@ -76,7 +76,7 @@ export default function LoginPage() {
             <input
               id="staff-password"
               type="password"
-              className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+              className="input-field bg-gray-700 border-gray-600 text-white placeholder-gray-400 dark:bg-gray-700 dark:border-gray-600"
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="••••••••"
@@ -86,7 +86,7 @@ export default function LoginPage() {
           {mfaChallenge && <div>
             <label htmlFor="staff-mfa-code" className="block text-sm font-medium text-gray-300 mb-1">{t('auth.mfaCode')}</label>
             <input id="staff-mfa-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6}
-              className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white tracking-[0.35em] text-center"
+              className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-control text-white tracking-[0.35em] text-center"
               value={mfaCode} onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, ''))} required autoFocus />
           </div>}
           <button

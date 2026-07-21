@@ -22,8 +22,17 @@ export default {
       backdropBlur: {
         xs: '2px',
       },
+      borderRadius: {
+        control: '0.375rem',
+        inset: '0.5rem',
+        surface: '0.625rem',
+        overlay: '0.75rem',
+      },
       boxShadow: {
-        soft: '0 1px 2px 0 rgb(0 0 0 / 0.04), 0 4px 16px -4px rgb(0 0 0 / 0.08)',
+        surface: '0 1px 2px rgb(15 23 42 / 0.04), 0 3px 10px -4px rgb(15 23 42 / 0.10)',
+        raised: '0 8px 24px -12px rgb(15 23 42 / 0.24)',
+        overlay: '0 20px 48px -20px rgb(15 23 42 / 0.32)',
+        soft: '0 1px 2px rgb(15 23 42 / 0.04), 0 3px 10px -4px rgb(15 23 42 / 0.10)',
         glow: '0 0 0 1px rgb(var(--color-primary-500) / 0.15), 0 8px 24px -8px rgb(var(--color-primary-500) / 0.35)',
       },
     },

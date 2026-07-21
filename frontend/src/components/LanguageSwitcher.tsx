@@ -25,7 +25,7 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
       title={t('lang.switchTo')}
       className={
         compact
-          ? 'inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold uppercase text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+          ? 'inline-flex items-center gap-1 rounded-control px-2 py-1 text-xs font-semibold uppercase text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
           : 'icon-button inline-flex items-center gap-1.5 text-xs font-semibold uppercase'
       }
     >

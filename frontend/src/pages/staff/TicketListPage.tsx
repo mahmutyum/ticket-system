@@ -265,7 +265,7 @@ export default function TicketListPage() {
             ))}
           </div>
           <div className="hidden overflow-x-auto md:block">
-            <table className="w-full text-sm">
+            <table className="data-table">
               <thead className="sticky top-0 z-[1]">
                 <tr className="bg-gray-50 dark:bg-slate-800/50 text-left text-gray-500">
                   {canBulk && (

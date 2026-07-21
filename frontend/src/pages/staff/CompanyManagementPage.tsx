@@ -330,32 +330,32 @@ export default function CompanyManagementPage() {
               </div>
             </div>
             {company.isActive === false && (
-              <div className="mb-2 text-xs bg-red-50 text-red-700 px-3 py-1.5 rounded-lg inline-block">
+              <div className="mb-2 text-xs bg-red-50 text-red-700 px-3 py-1.5 rounded-control inline-block">
                 {t('companyMgmt.list.inactiveBanner')}
               </div>
             )}
 
             {/* Domain restriction badges */}
             {company.allowedDomains && (company.allowedDomains as string[]).length > 0 && (
-              <div className="mb-2 text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg">
+              <div className="mb-2 text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded-control">
                 {t('companyMgmt.list.emailRestriction', { domains: (company.allowedDomains as string[]).join(', ') })}
               </div>
             )}
             {company.portalDomains && (company.portalDomains as string[]).length > 0 && (
-              <div className="mb-2 text-xs bg-purple-50 text-purple-700 px-3 py-1.5 rounded-lg">
+              <div className="mb-2 text-xs bg-purple-50 text-purple-700 px-3 py-1.5 rounded-control">
                 {t('companyMgmt.list.portalLock', { domains: (company.portalDomains as string[]).join(', ') })}
               </div>
             )}
 
             {company.notificationEmail && (
-              <div className="mb-2 text-xs bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg">
+              <div className="mb-2 text-xs bg-amber-50 text-amber-700 px-3 py-1.5 rounded-control">
                 {t('companyMgmt.list.itGroupEmail', { email: company.notificationEmail })}
               </div>
             )}
 
             {/* SMTP Status Badge */}
             {company.smtpConfig && (
-              <div className="mb-2 flex items-center gap-2 text-xs bg-green-50 text-green-700 px-3 py-1.5 rounded-lg">
+              <div className="mb-2 flex items-center gap-2 text-xs bg-green-50 text-green-700 px-3 py-1.5 rounded-control">
                 <Mail className="w-3 h-3" />
                 <span>{t('companyMgmt.list.customSmtp', { fromName: company.smtpConfig.fromName, fromEmail: company.smtpConfig.fromEmail, host: company.smtpConfig.host, port: company.smtpConfig.port })}</span>
                 {!company.smtpConfig.isActive && <span className="text-orange-600">{t('companyMgmt.list.inactiveParen')}</span>}

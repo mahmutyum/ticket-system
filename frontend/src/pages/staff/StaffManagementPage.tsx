@@ -138,7 +138,7 @@ export default function StaffManagementPage() {
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="card w-full max-w-md">
-            <h2 className="text-lg font-bold mb-4">{editId ? t('staffMgmt.editStaff') : t('staffMgmt.newStaff')}</h2>
+            <h2 className="dialog-title mb-4">{editId ? t('staffMgmt.editStaff') : t('staffMgmt.newStaff')}</h2>
             <form onSubmit={handleSubmit} className="space-y-3">
               {!editId && (
                 <div>
@@ -183,7 +183,7 @@ export default function StaffManagementPage() {
       {showCompanyModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="card w-full max-w-md">
-            <h2 className="text-lg font-bold mb-2">{t('staffMgmt.companyModal.title')}</h2>
+            <h2 className="dialog-title mb-2">{t('staffMgmt.companyModal.title')}</h2>
             <p className="text-sm text-gray-500 mb-4">
               <strong>{companyStaffName}</strong> {t('staffMgmt.companyModal.question')}
             </p>
@@ -195,7 +195,7 @@ export default function StaffManagementPage() {
               {allCompanies?.map(c => (
                 <label
                   key={c.id}
-                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                  className={`flex items-center gap-3 p-3 rounded-inset border cursor-pointer transition-colors ${
                     selectedCompanyIds.includes(c.id) ? 'border-primary-500 bg-primary-50' : 'border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50'
                   }`}
                 >
@@ -223,7 +223,7 @@ export default function StaffManagementPage() {
 
       {/* Staff table */}
       <div className="card p-0 overflow-hidden">
-        <table className="w-full text-sm">
+        <table className="data-table">
           <thead>
             <tr className="bg-gray-50 dark:bg-slate-800/50 text-left text-gray-500">
               <th className="px-4 py-3 font-medium">{t('common.fullName')}</th>

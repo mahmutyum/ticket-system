@@ -80,7 +80,7 @@ export default function TicketStatusPage() {
           </div>
         </div>
 
-        <div className="surface-2 grid grid-cols-2 gap-4 rounded-2xl p-4 text-sm sm:grid-cols-4">
+        <div className="sub-surface grid grid-cols-2 gap-4 p-4 text-sm sm:grid-cols-4">
           <div className="flex items-center gap-2 text-muted">
             <Building2 className="w-4 h-4" />
             <span>{ticket.company.name}</span>
@@ -119,7 +119,7 @@ export default function TicketStatusPage() {
           <h3 className="mb-3 font-semibold">{t('ticketStatus.extraInfoTitle')}</h3>
           <div className="grid gap-3 text-sm sm:grid-cols-2">
             {ticket.customValues.map(cv => (
-              <div key={cv.id} className="surface-2 rounded-xl p-3">
+              <div key={cv.id} className="sub-surface p-3">
                 <span className="block text-xs text-muted">{cv.customField?.fieldLabel}</span>
                 <span className="mt-1 block font-medium">{cv.value}</span>
               </div>
@@ -179,7 +179,7 @@ export default function TicketStatusPage() {
           {ticket.notes?.map(note => (
             <div key={note.id} className="flex gap-3 text-sm">
               <div className="w-2 h-2 rounded-full bg-primary-400 mt-1.5 flex-shrink-0" />
-              <div className="flex-1 rounded-xl bg-primary-50 p-3 dark:bg-primary-500/10">
+              <div className="flex-1 rounded-inset bg-primary-50 p-3 dark:bg-primary-500/10">
                 <div className="flex justify-between mb-1">
                   <span className="font-medium text-primary-700">{note.createdBy.fullName}</span>
                   <span className="text-muted text-xs">
@@ -209,7 +209,7 @@ export default function TicketStatusPage() {
                 href={publicAttachmentUrl(att.id, accessToken!)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-xl p-3 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-slate-800"
+                className="flex items-center gap-3 rounded-inset p-3 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-slate-800"
               >
                 <FileText className="w-4 h-4 text-muted" />
                 <span className="flex-1 truncate">{att.fileName}</span>

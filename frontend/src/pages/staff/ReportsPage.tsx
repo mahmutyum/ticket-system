@@ -225,7 +225,7 @@ export default function ReportsPage() {
             <p className="text-sm text-muted">{t('common.noData')}</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="data-table">
                 <thead>
                   <tr className="text-left text-muted border-b border-gray-200 dark:border-slate-800">
                     <th className="pb-2 font-medium">{t('reports.colStaff')}</th>

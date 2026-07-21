@@ -95,7 +95,7 @@ export default function TaskDetailPage() {
           </div>
         </div>
 
-        <div className="prose max-w-none text-sm whitespace-pre-wrap text-gray-700 dark:text-slate-300 mb-4 bg-gray-50 dark:bg-slate-800/50 p-3 rounded-lg">
+        <div className="prose max-w-none text-sm whitespace-pre-wrap text-gray-700 dark:text-slate-300 mb-4 bg-gray-50 dark:bg-slate-800/50 p-3 rounded-inset">
           {task.description}
         </div>
 

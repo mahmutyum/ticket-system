@@ -103,7 +103,7 @@ export default function StaffLayout() {
       >
         <div className="shrink-0 p-6 border-b border-slate-800">
           <div className="flex items-center gap-3">
-            <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-primary-600 shadow-glow">
+            <span className="inline-flex items-center justify-center w-9 h-9 rounded-inset bg-primary-600 shadow-glow">
               <LayoutDashboard className="w-4 h-4" />
             </span>
             <div>
@@ -122,7 +122,7 @@ export default function StaffLayout() {
                 key={item.path}
                 to={item.path}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-control text-sm transition-[color,background-color,box-shadow] ${
                   isActive
                     ? 'bg-primary-600 text-white shadow-glow'
                     : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
@@ -166,7 +166,7 @@ export default function StaffLayout() {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="sticky top-0 z-10 glass border-b border-subtle px-4 py-3 flex items-center gap-4 lg:px-6">
+        <header className="app-bar sticky top-0 z-10 px-4 py-3 flex items-center gap-4 lg:px-6">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="icon-button border-0 lg:hidden"
@@ -195,7 +195,7 @@ export default function StaffLayout() {
         <main className="flex-1 overflow-auto p-4 sm:p-5 lg:p-8">
           <div className="mx-auto w-full max-w-[1600px] space-y-4">
             {showMfaWarning && (
-              <div className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+              <div className="flex items-start gap-3 rounded-inset border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
                 <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" />
                 <div className="flex-1">
                   <p className="font-semibold">{t('layout.mfaWarningTitle')}</p>
@@ -205,7 +205,7 @@ export default function StaffLayout() {
                 </div>
                 <Link
                   to="/staff/account"
-                  className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700"
+                  className="shrink-0 rounded-control bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700"
                 >
                   {t('layout.mfaSetupNow')}
                 </Link>
