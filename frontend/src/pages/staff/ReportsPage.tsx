@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
+import SatisfactionReportTab from './reports/SatisfactionReport';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
   Download, BarChart3, Clock, CheckCircle2, Users, Tag,
-  LayoutDashboard, TrendingUp, PauseCircle,
+  LayoutDashboard, TrendingUp, PauseCircle, Star,
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
@@ -122,6 +123,7 @@ export default function ReportsPage() {
           { key: 'staff', label: t('reports.tabs.staff'), Icon: Users },
           { key: 'category', label: t('reports.tabs.category'), Icon: Tag },
           { key: 'sla', label: t('reports.tabs.sla'), Icon: TrendingUp },
+          { key: 'satisfaction', label: t('reports.tabs.satisfaction'), Icon: Star },
         ].map(({ key, label, Icon }) => {
           const active = tab === key;
           return (
@@ -410,6 +412,8 @@ export default function ReportsPage() {
           )}
         </div>
       )}
+
+      {tab === 'satisfaction' && <SatisfactionReportTab query={baseQS} />}
     </div>
   );
 }

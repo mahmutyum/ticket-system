@@ -57,7 +57,8 @@
       "childAdded": "Alt talep eklendi: {{value}}",
       "statusFromParent": "Durum üst talepten ({{value}}) uygulandı",
       "watcherAdded": "İzleyici eklendi: {{value}}",
-      "watcherRemoved": "İzleyici kaldırıldı: {{value}}"
+      "watcherRemoved": "İzleyici kaldırıldı: {{value}}",
+      "satisfactionRated": "Talep sahibi puan verdi: {{value}}/5"
     }
   },
   "en": {
@@ -118,7 +119,8 @@
       "childAdded": "Child request added: {{value}}",
       "statusFromParent": "Status applied from parent ({{value}})",
       "watcherAdded": "Watcher added: {{value}}",
-      "watcherRemoved": "Watcher removed: {{value}}"
+      "watcherRemoved": "Watcher removed: {{value}}",
+      "satisfactionRated": "Requester rated: {{value}}/5"
     }
   }
 }

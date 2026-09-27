@@ -26,6 +26,8 @@ export const ticketsMessages = {
     'tickets.watcher_is_requester': 'Talep sahibi zaten bildirim alıyor',
     'tickets.watcher_exists': 'Bu adres zaten izleyici',
     'tickets.watcher_not_found': 'İzleyici bulunamadı',
+    'tickets.rating_not_allowed': 'Puan yalnızca çözülmüş veya kapanmış taleplere verilebilir',
+    'tickets.rating_exists': 'Bu talep için zaten puan verildi',
   } as Record<string, string>,
   en: {
     'tickets.company_not_found': 'Company not found',
@@ -54,5 +56,7 @@ export const ticketsMessages = {
     'tickets.watcher_is_requester': 'The requester is already notified',
     'tickets.watcher_exists': 'This address is already a watcher',
     'tickets.watcher_not_found': 'Watcher not found',
+    'tickets.rating_not_allowed': 'Only resolved or closed requests can be rated',
+    'tickets.rating_exists': 'This request has already been rated',
   } as Record<string, string>,
 };

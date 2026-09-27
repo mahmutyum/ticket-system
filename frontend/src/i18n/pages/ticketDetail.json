@@ -75,7 +75,8 @@
       "ccPlaceholder": "CC e-posta ekle",
       "addCc": "CC ekle"
     },
-    "applyToChildren": "Alt taleplere de uygula ({{count}})"
+    "applyToChildren": "Alt taleplere de uygula ({{count}})",
+    "satisfaction": "Memnuniyet"
   },
   "en": {
     "statusUpdated": "Status updated",
@@ -153,6 +154,7 @@
       "ccPlaceholder": "Add CC email",
       "addCc": "Add CC"
     },
-    "applyToChildren": "Apply to child requests ({{count}})"
+    "applyToChildren": "Apply to child requests ({{count}})",
+    "satisfaction": "Satisfaction"
   }
 }

@@ -1,6 +1,6 @@
 export type Period = 'daily' | 'weekly' | 'monthly';
 export type SlaPeriod = 'weekly' | 'monthly';
-export type TabKey = 'overview' | 'staff' | 'category' | 'sla';
+export type TabKey = 'overview' | 'staff' | 'category' | 'sla' | 'satisfaction';
 
 export interface ReportFilters {
   dateFrom: string;

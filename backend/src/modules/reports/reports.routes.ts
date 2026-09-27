@@ -42,6 +42,19 @@ const slaTrendSchema = z.object({
   responseRate: z.number().int().nullable(), resolveRate: z.number().int().nullable(),
 });
 
+const breakdownRowSchema = z.object({ id: z.string().nullable(), name: z.string().nullable(), count: z.number().int(), average: z.number().nullable() });
+const satisfactionReportSchema = z.object({
+  count: z.number().int(),
+  average: z.number().nullable(),
+  surveysSent: z.number().int(),
+  responseRate: z.number().int().nullable(),
+  distribution: z.array(z.object({ rating: z.number().int(), count: z.number().int() })),
+  byStaff: z.array(breakdownRowSchema),
+  byCategory: z.array(breakdownRowSchema),
+  byCompany: z.array(breakdownRowSchema),
+  recentComments: z.array(z.object({ ticketId: z.string(), ticketNumber: z.string(), rating: z.number().int(), comment: z.string(), at: z.date().nullable() })),
+});
+
 type CommonFilters = {
   dateFrom?: string;
   dateTo?: string;
@@ -256,6 +269,65 @@ export const reportRoutes: FastifyPluginAsyncZod = async (app) => {
       .sort((a, b) => b.count - a.count);
 
     reply.send({ success: true, data: result });
+  });
+
+  // Memnuniyet (CSAT) — ortalama, dağılım, kırılımlar ve son yorumlar.
+  app.get('/satisfaction', {
+    preValidation: [app.requireRole('admin', 'it_manager')],
+    schema: {
+      querystring: commonReportFilterSchema,
+      tags: ['Reports'],
+      summary: 'Memnuniyet (CSAT) raporunu getir',
+      response: { 200: responseOf(satisfactionReportSchema), ...commonErrorResponses },
+    },
+  }, async (request, reply) => {
+    const staffUser = request.staffUser!;
+    const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
+    const where: Prisma.TicketWhereInput = { ...buildTicketWhere(request.query, scopeCompanyIds), satisfactionRating: { not: null } };
+
+    const [overall, distribution, byStaff, byCategory, byCompany, surveysSent, comments] = await Promise.all([
+      app.prisma.ticket.aggregate({ where, _avg: { satisfactionRating: true }, _count: true }),
+      app.prisma.ticket.groupBy({ by: ['satisfactionRating'], where, _count: true }),
+      app.prisma.ticket.groupBy({ by: ['assignedToId'], where, _avg: { satisfactionRating: true }, _count: true }),
+      app.prisma.ticket.groupBy({ by: ['categoryId'], where, _avg: { satisfactionRating: true }, _count: true }),
+      app.prisma.ticket.groupBy({ by: ['companyId'], where, _avg: { satisfactionRating: true }, _count: true }),
+      app.prisma.ticket.count({ where: { ...buildTicketWhere(request.query, scopeCompanyIds), surveySentAt: { not: null } } }),
+      app.prisma.ticket.findMany({
+        where: { ...where, satisfactionComment: { not: null } },
+        orderBy: { satisfactionAt: 'desc' },
+        take: 10,
+        select: { id: true, ticketNumber: true, satisfactionRating: true, satisfactionComment: true, satisfactionAt: true },
+      }),
+    ]);
+
+    const [staff, categories, companies] = await Promise.all([
+      app.prisma.staff.findMany({ where: { id: { in: byStaff.map(s => s.assignedToId).filter((x): x is string => !!x) } }, select: { id: true, fullName: true } }),
+      app.prisma.category.findMany({ where: { id: { in: byCategory.map(c => c.categoryId) } }, select: { id: true, name: true } }),
+      app.prisma.company.findMany({ where: { id: { in: byCompany.map(c => c.companyId) } }, select: { id: true, name: true } }),
+    ]);
+    const names = new Map([...staff.map(s => [s.id, s.fullName] as const), ...categories.map(c => [c.id, c.name] as const), ...companies.map(c => [c.id, c.name] as const)]);
+    const round = (v: number | null) => (v === null ? null : Math.round(v * 10) / 10);
+    const breakdown = <K extends string>(rows: Array<Record<K, string | null> & { _avg: { satisfactionRating: number | null }; _count: number }>, key: K) =>
+      rows
+        .map(r => ({ id: r[key], name: r[key] ? names.get(r[key]) ?? '?' : null, count: r._count, average: round(r._avg.satisfactionRating) }))
+        .sort((a, b) => b.count - a.count);
+
+    reply.send({
+      success: true,
+      data: {
+        count: overall._count,
+        average: round(overall._avg.satisfactionRating),
+        surveysSent,
+        responseRate: surveysSent > 0 ? Math.round((overall._count / surveysSent) * 100) : null,
+        distribution: [1, 2, 3, 4, 5].map(rating => ({ rating, count: distribution.find(d => d.satisfactionRating === rating)?._count ?? 0 })),
+        byStaff: breakdown(byStaff, 'assignedToId'),
+        byCategory: breakdown(byCategory, 'categoryId'),
+        byCompany: breakdown(byCompany, 'companyId'),
+        recentComments: comments.map(c => ({
+          ticketId: c.id, ticketNumber: c.ticketNumber, rating: c.satisfactionRating!, comment: c.satisfactionComment!, at: c.satisfactionAt,
+        })),
+      },
+    });
   });
 
   // CSV export

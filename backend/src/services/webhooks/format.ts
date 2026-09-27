@@ -17,6 +17,7 @@ export const WEBHOOK_EVENTS = [
   'ticket.user_reply',
   'sla.warning',
   'sla.breached',
+  'ticket.rated',
 ] as const;
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number] | 'ping';
 
@@ -57,6 +58,7 @@ const EVENT_TITLES: Record<WebhookEvent, string> = {
   'ticket.user_reply': 'Kullanıcı yanıtı / User reply',
   'sla.warning': '⏳ SLA yaklaşıyor / SLA approaching',
   'sla.breached': '🚨 SLA ihlali / SLA breached',
+  'ticket.rated': '⭐ Memnuniyet puanı / Satisfaction rating',
   ping: 'Test bildirimi / Test notification',
 };
 
@@ -78,6 +80,8 @@ function detailLine(payload: WebhookPayload): string {
     case 'ticket.note_added':
     case 'ticket.user_reply':
       return str(d.excerpt);
+    case 'ticket.rated':
+      return `${'★'.repeat(Number(d.rating) || 0)} ${str(d.comment)}`.trim();
     case 'sla.warning':
     case 'sla.breached':
       return d.kind === 'response' ? 'Yanıt süresi / Response time' : 'Çözüm süresi / Resolution time';

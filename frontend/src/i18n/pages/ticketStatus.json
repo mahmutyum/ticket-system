@@ -29,7 +29,23 @@
     "autoClosed": "Talep otomatik olarak kapatıldı",
     "autoCloseReminder": "Yanıt hatırlatması gönderildi",
     "mergedBanner": "Bu talep aynı konudaki {{number}} numaralı talep ile birleştirildi. Gelişmeler {{number}} üzerinden bildirilecek.",
-    "mergedInto": "{{number}} ile birleştirildi"
+    "mergedInto": "{{number}} ile birleştirildi",
+    "satisfaction": {
+      "title": "Hizmetimizi değerlendirin",
+      "description": "Talebiniz sonuçlandı. Aldığınız destekten ne kadar memnun kaldınız?",
+      "stars": "{{count}} yıldız",
+      "label1": "Hiç memnun kalmadım",
+      "label2": "Memnun kalmadım",
+      "label3": "İdare eder",
+      "label4": "Memnun kaldım",
+      "label5": "Çok memnun kaldım",
+      "commentPlaceholder": "Eklemek istediğiniz bir şey var mı? (isteğe bağlı)",
+      "submit": "Gönder",
+      "saved": "Değerlendirmeniz için teşekkürler",
+      "thanks": "Değerlendirmeniz için teşekkür ederiz",
+      "yourRating": "Puanınız: {{rating}} / 5"
+    },
+    "satisfactionRated": "Memnuniyet puanı verildi: {{rating}}/5"
   },
   "en": {
     "notFoundTitle": "Ticket not found",
@@ -61,6 +77,22 @@
     "autoClosed": "Request was closed automatically",
     "autoCloseReminder": "Reply reminder sent",
     "mergedBanner": "This request was merged into request {{number}} about the same issue. Updates will follow via {{number}}.",
-    "mergedInto": "Merged into {{number}}"
+    "mergedInto": "Merged into {{number}}",
+    "satisfaction": {
+      "title": "Rate our support",
+      "description": "Your request has been completed. How satisfied are you with the support you received?",
+      "stars": "{{count}} stars",
+      "label1": "Very dissatisfied",
+      "label2": "Dissatisfied",
+      "label3": "Neutral",
+      "label4": "Satisfied",
+      "label5": "Very satisfied",
+      "commentPlaceholder": "Anything you would like to add? (optional)",
+      "submit": "Submit",
+      "saved": "Thank you for your feedback",
+      "thanks": "Thank you for your feedback",
+      "yourRating": "Your rating: {{rating}} / 5"
+    },
+    "satisfactionRated": "Satisfaction rated: {{rating}}/5"
   }
 }

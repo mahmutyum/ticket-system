@@ -67,6 +67,15 @@ Giriş yok, kayıt yok. Talep eden yalnızca e-posta adresini verir.
 
 > Şirketin `allowedDomains` ayarı varsa, talep edenin e-posta domain'i bu listede olmalıdır.
 
+### Memnuniyet anketi (CSAT)
+
+Talep çözülünce/kapanınca talep sahibine bir kez anket e-postası gider (şirketin **SLA &
+Mesai** ekranından kapatılabilir). E-postadaki yıldızlar puanı takip sayfasında önceden
+seçer; puan kullanıcı **Gönder**'e bastığında kaydedilir (e-posta güvenlik tarayıcılarının
+bağlantıları otomatik açması sahte oy üretmesin). Puan 1–5, isteğe bağlı yorumla; talep
+başına bir kez. Sonuçlar **Raporlar → Memnuniyet** sekmesinde: ortalama, yanıt oranı,
+dağılım, personel/kategori/şirket kırılımı ve son yorumlar.
+
 ### Durum takibi — erişim linki
 
 Oluşturma sonrası (ve bildirim e-postalarında) verilen link:

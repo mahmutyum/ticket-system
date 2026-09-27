@@ -16,6 +16,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { publicAttachmentUrl } from '../../utils/download';
 import { EmptyState, SkeletonRows } from '../../components/ui/AsyncState';
 import { PriorityBadge, StatusBadge } from '../../components/ui/Badge';
+import SatisfactionCard from './SatisfactionCard';
 
 export default function TicketStatusPage() {
   const { t } = useTranslation();
@@ -178,6 +179,7 @@ export default function TicketStatusPage() {
                   {h.action === 'onsite_scheduled' && t('ticketStatus.onsiteScheduled')}
                   {h.action === 'auto_closed' && t('ticketStatus.autoClosed')}
                   {h.action === 'merged_into' && t('ticketStatus.mergedInto', { number: h.newValue })}
+                  {h.action === 'satisfaction_rated' && t('ticketStatus.satisfactionRated', { rating: h.newValue })}
                   {h.action === 'auto_close_reminder' && t('ticketStatus.autoCloseReminder')}
                 </span>
               </div>
@@ -227,6 +229,10 @@ export default function TicketStatusPage() {
             ))}
           </div>
         </div>
+      )}
+
+      {closedStatuses.includes(ticket.status) && !ticket.mergedInto && accessToken && (
+        <SatisfactionCard accessToken={accessToken} rating={ticket.satisfactionRating} onRated={() => void refetch()} />
       )}
 
       {/* Reply form + file upload */}

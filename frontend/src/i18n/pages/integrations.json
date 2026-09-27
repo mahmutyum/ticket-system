@@ -25,7 +25,8 @@
       "ticket_note_added": "IT public yanıtı",
       "ticket_user_reply": "Kullanıcı yanıtı",
       "sla_warning": "SLA yaklaşıyor",
-      "sla_breached": "SLA ihlali"
+      "sla_breached": "SLA ihlali",
+      "ticket_rated": "Memnuniyet puanı"
     },
     "eventsShort": "olay",
     "internalNotesHint": "İç notlar ve talep sahibinin takip bağlantısı hiçbir kanala gönderilmez.",
@@ -78,7 +79,8 @@
       "ticket_note_added": "IT public reply",
       "ticket_user_reply": "User reply",
       "sla_warning": "SLA approaching",
-      "sla_breached": "SLA breached"
+      "sla_breached": "SLA breached",
+      "ticket_rated": "Satisfaction rating"
     },
     "eventsShort": "events",
     "internalNotesHint": "Internal notes and the requester's tracking link are never sent to any channel.",

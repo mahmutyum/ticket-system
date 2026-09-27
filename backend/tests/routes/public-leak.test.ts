@@ -41,6 +41,7 @@ const TICKET = {
   category: { name: 'Donanım' },
   assignedTo: null,
   mergedInto: null,
+  satisfactionRating: null,
   notes: [],
   history: [],
   attachments: [],

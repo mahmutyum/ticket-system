@@ -9,6 +9,7 @@ import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.
 import { getStaffCompanyScope, resolveCompanyFilter, isCompanyInScope } from '../../utils/staff-scope.js';
 import { planStatusTransition } from '../../utils/ticket-lifecycle.js';
 import { emitTicketChanges } from '../../services/webhooks/emit.js';
+import { maybeSendSurvey } from '../../services/satisfaction.js';
 import { createRequesterTicket, isEmailDomainAllowed, trackingUrlFor } from '../../services/ticket-intake.js';
 import { calendarFor, createSlaContextCache, loadCompanySlaContext } from '../../services/sla-context.js';
 import { commonErrorResponses } from '../../utils/api-schema.js';
@@ -125,6 +126,7 @@ const staffTicketBaseSchema = z.object({
   slaResponseDue: z.date().nullable(), slaResolveDue: z.date().nullable(),
   slaResponseMet: z.boolean().nullable(), slaResolveMet: z.boolean().nullable(),
   slaPausedAt: z.date().nullable(), slaPausedMinutes: z.number().int(), source: z.string(),
+  satisfactionRating: z.number().int().nullable(), satisfactionComment: z.string().nullable(), satisfactionAt: z.date().nullable(),
   firstRespondedAt: z.date().nullable(), resolvedAt: z.date().nullable(), closedAt: z.date().nullable(),
   createdAt: z.date(), updatedAt: z.date(),
 });
@@ -504,6 +506,7 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
           },
         });
         await emitTicketChanges(app.prisma, child.id, child, { status: body.status });
+        await maybeSendSurvey(app.prisma, child.id, queueEmail);
         broadcastToStaff('ticket_updated', { id: child.id, ticketNumber: child.ticketNumber, status: body.status }, child.companyId);
         broadcastToTicket(child.accessToken, 'ticket_updated', { status: body.status, priority: child.priority });
       }
@@ -512,6 +515,7 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
     await emitTicketChanges(app.prisma, ticket.id, currentTicket, {
       status: body.status, priority: body.priority, assignedToId: body.assignedToId, assigneeName: ticket.assignedTo?.fullName,
     });
+    if (body.status) await maybeSendSurvey(app.prisma, ticket.id, queueEmail);
 
     // SSE broadcast
     broadcastToStaff('ticket_updated', {
@@ -596,6 +600,7 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
 
     for (const ticket of tickets) {
       await emitTicketChanges(app.prisma, ticket.id, ticket, { status: body.status, priority: body.priority, assignedToId: body.assignedToId });
+      if (body.status) await maybeSendSurvey(app.prisma, ticket.id, queueEmail);
       broadcastToStaff('ticket_updated', { id: ticket.id, ticketNumber: ticket.ticketNumber }, ticket.companyId);
     }
 

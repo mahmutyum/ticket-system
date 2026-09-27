@@ -415,6 +415,12 @@ model Ticket {
   statusChangedAt      DateTime?    @map("status_changed_at")
   /// Ticket'ın geldiği kanal: portal | email
   source               String       @default("portal")
+  /// Memnuniyet anketi (CSAT): 1–5 puan, isteğe bağlı yorum.
+  satisfactionRating   Int?         @map("satisfaction_rating")
+  satisfactionComment  String?      @map("satisfaction_comment")
+  satisfactionAt       DateTime?    @map("satisfaction_at")
+  /// Anket e-postası gönderildi mi (ticket başına bir kez).
+  surveySentAt         DateTime?    @map("survey_sent_at")
   /// Üst ticket (yaygın arıza). Tek seviye: üst ticket'ın kendi üstü olamaz.
   parentId             String?      @map("parent_id")
   /// Bu ticket başka bir ticket'a birleştirildiyse hedef.

@@ -167,7 +167,8 @@
       "resolvedAfterDays": "Çözüldü → kapat (gün)",
       "waitingReminderAfterDays": "Yanıt bekleniyor → hatırlat (gün)",
       "waitingCloseAfterDays": "Yanıt bekleniyor → kapat (gün)",
-      "reminderBeforeClose": "Hatırlatma süresi kapatma süresinden kısa olmalı."
+      "reminderBeforeClose": "Hatırlatma süresi kapatma süresinden kısa olmalı.",
+      "satisfactionSurvey": "Çözüm/kapanışta talep sahibine memnuniyet anketi gönder"
     },
     "mailboxButton": "Gelen Posta",
     "mailbox": {
@@ -401,7 +402,8 @@
       "resolvedAfterDays": "Resolved → close (days)",
       "waitingReminderAfterDays": "Awaiting reply → remind (days)",
       "waitingCloseAfterDays": "Awaiting reply → close (days)",
-      "reminderBeforeClose": "The reminder must come before the close."
+      "reminderBeforeClose": "The reminder must come before the close.",
+      "satisfactionSurvey": "Send a satisfaction survey to the requester on resolution/closure"
     },
     "mailboxButton": "Inbound Mail",
     "mailbox": {

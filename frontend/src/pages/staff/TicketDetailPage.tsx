@@ -368,6 +368,14 @@ export default function TicketDetailPage() {
             </div>
           </div>
 
+          {ticket.satisfactionRating && (
+            <div className="card text-sm">
+              <h2 className="font-semibold">{t('ticketDetail.satisfaction')}</h2>
+              <p className="mt-1 text-xl text-amber-500">{'★'.repeat(ticket.satisfactionRating)}<span className="text-gray-300 dark:text-slate-600">{'★'.repeat(5 - ticket.satisfactionRating)}</span></p>
+              {ticket.satisfactionComment && <p className="mt-2 whitespace-pre-wrap text-gray-700 dark:text-slate-200">“{ticket.satisfactionComment}”</p>}
+            </div>
+          )}
+
           <TicketRelations ticket={ticket} />
 
           {/* Onsite support */}

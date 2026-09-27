@@ -4,7 +4,8 @@ import { broadcastToStaff } from '../../services/sse.service.js';
 import { queueEmail } from '../../jobs/queue.js';
 import { saveFile, isAllowedMimeType, isBufferConsistentWithMime } from '../../services/storage.service.js';
 import { requiredText, emailSchema, LIMITS } from '../../utils/validation.js';
-import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
+import { commonErrorResponses, errorResponseSchema, successResponseSchema } from '../../utils/api-schema.js';
+import { emitTicketEvent } from '../../services/webhooks/emit.js';
 import { t } from '../../i18n/index.js';
 import { addRequesterReply, replyTicketSelect } from '../../services/ticket-intake.js';
 
@@ -47,6 +48,7 @@ const publicTicketSchema = z.object({
   assignedTo: z.object({ fullName: z.string() }).nullable(),
   /** Birleştirildiyse hedef ticket numarası (erişim token'ı DEĞİL). */
   mergedInto: z.object({ ticketNumber: z.string() }).nullable(),
+  satisfactionRating: z.number().int().nullable(),
   customValues: z.array(z.object({
     id: z.string(),
     value: z.string(),
@@ -126,6 +128,7 @@ export const publicRoutes: FastifyPluginAsyncZod = async (app) => {
         createdAt: true,
         updatedAt: true,
         mergedInto: { select: { ticketNumber: true } },
+        satisfactionRating: true,
         company: { select: { name: true } },
         location: { select: { name: true } },
         category: { select: { name: true } },
@@ -220,6 +223,49 @@ export const publicRoutes: FastifyPluginAsyncZod = async (app) => {
     // e-posta kanalıyla ortak.
     await addRequesterReply(app.prisma, ticket, body.content, { queueEmail, broadcastStaff: broadcastToStaff });
 
+    reply.send({ success: true });
+  });
+
+  // Public: Memnuniyet puanı (CSAT) — yalnızca çözülmüş/kapanmış talepte, bir kez.
+  app.post('/ticket/:accessToken/satisfaction', {
+    schema: {
+      tags: ['Public Tickets'],
+      summary: 'Talebe memnuniyet puanı verir',
+      params: accessTokenParamsSchema,
+      body: z.object({
+        rating: z.number().int().min(1).max(5),
+        comment: z.string().trim().max(1000).optional(),
+      }),
+      response: { 200: successResponseSchema, ...commonErrorResponses, 409: errorResponseSchema },
+    },
+    config: { rateLimit: { max: 10, timeWindow: '10 minutes' } },
+  }, async (request, reply) => {
+    const ticket = await app.prisma.ticket.findUnique({
+      where: { accessToken: request.params.accessToken },
+      select: { id: true, status: true, accessTokenExpiresAt: true, satisfactionRating: true, createdByEmail: true, mergedIntoId: true },
+    });
+    if (!ticket || isAccessExpired(ticket.accessTokenExpiresAt)) {
+      return reply.status(404).send({ success: false, error: t(request, 'tickets.ticket_not_found') });
+    }
+    if ((ticket.status !== 'resolved' && ticket.status !== 'closed') || ticket.mergedIntoId) {
+      return reply.status(400).send({ success: false, error: t(request, 'tickets.rating_not_allowed') });
+    }
+    // Koşullu güncelleme: eşzamanlı iki gönderimden yalnızca biri yazar.
+    const updated = await app.prisma.ticket.updateMany({
+      where: { id: ticket.id, satisfactionRating: null },
+      data: {
+        satisfactionRating: request.body.rating,
+        satisfactionComment: request.body.comment || null,
+        satisfactionAt: new Date(),
+      },
+    });
+    if (updated.count === 0) {
+      return reply.status(409).send({ success: false, error: t(request, 'tickets.rating_exists') });
+    }
+    await app.prisma.ticketHistory.create({
+      data: { ticketId: ticket.id, action: 'satisfaction_rated', field: 'satisfaction', newValue: String(request.body.rating), createdByEmail: ticket.createdByEmail },
+    });
+    await emitTicketEvent(app.prisma, 'ticket.rated', ticket.id, { rating: request.body.rating, comment: request.body.comment?.substring(0, 200) ?? null });
     reply.send({ success: true });
   });
 

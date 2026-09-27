@@ -36,7 +36,7 @@ type Delivery = {
 
 const EVENTS = [
   'ticket.created', 'ticket.status_changed', 'ticket.assigned', 'ticket.priority_changed',
-  'ticket.note_added', 'ticket.user_reply', 'sla.warning', 'sla.breached',
+  'ticket.note_added', 'ticket.user_reply', 'sla.warning', 'sla.breached', 'ticket.rated',
 ] as const;
 
 type FormState = { id: string | null; name: string; kind: Kind; url: string; events: string[]; companyId: string; isActive: boolean };

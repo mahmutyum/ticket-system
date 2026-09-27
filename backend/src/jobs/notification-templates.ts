@@ -164,8 +164,35 @@ export const MERGE_EMAIL_TEMPLATES = [
   },
 ];
 
+export const SURVEY_EMAIL_TEMPLATES = [
+  {
+    slug: 'ticket_survey',
+    locale: 'tr',
+    subject: 'Talebiniz Hakkında Görüşünüz - {{ticketNumber}}',
+    bodyHtml: `<h2>Hizmetimizi Değerlendirin</h2>
+<p>Sayın {{userName}},</p>
+<p><strong>{{ticketNumber}}</strong> numaralı talebiniz (<em>{{subject}}</em>) sonuçlandı. Aldığınız destekten ne kadar memnun kaldınız?</p>
+<p><a href="{{trackingUrl}}?rate=1#satisfaction" style="display:inline-block;margin:0 4px;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;text-decoration:none;color:#111;">★</a><a href="{{trackingUrl}}?rate=2#satisfaction" style="display:inline-block;margin:0 4px;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;text-decoration:none;color:#111;">★★</a><a href="{{trackingUrl}}?rate=3#satisfaction" style="display:inline-block;margin:0 4px;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;text-decoration:none;color:#111;">★★★</a><a href="{{trackingUrl}}?rate=4#satisfaction" style="display:inline-block;margin:0 4px;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;text-decoration:none;color:#111;">★★★★</a><a href="{{trackingUrl}}?rate=5#satisfaction" style="display:inline-block;margin:0 4px;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;text-decoration:none;color:#111;">★★★★★</a></p>
+<p style="color:#666;font-size:12px;">Bir yıldıza tıkladıktan sonra açılan sayfada puanınızı onaylayabilir ve isterseniz yorum ekleyebilirsiniz.</p>`,
+    bodyText: 'Talebiniz {{ticketNumber}} sonuçlandı. Değerlendirmek için: {{trackingUrl}}#satisfaction',
+    variables: ['userName', 'ticketNumber', 'subject', 'trackingUrl'],
+  },
+  {
+    slug: 'ticket_survey',
+    locale: 'en',
+    subject: 'How Did We Do? - {{ticketNumber}}',
+    bodyHtml: `<h2>Rate Our Support</h2>
+<p>Dear {{userName}},</p>
+<p>Your request <strong>{{ticketNumber}}</strong> (<em>{{subject}}</em>) has been completed. How satisfied are you with the support you received?</p>
+<p><a href="{{trackingUrl}}?rate=1#satisfaction" style="display:inline-block;margin:0 4px;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;text-decoration:none;color:#111;">★</a><a href="{{trackingUrl}}?rate=2#satisfaction" style="display:inline-block;margin:0 4px;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;text-decoration:none;color:#111;">★★</a><a href="{{trackingUrl}}?rate=3#satisfaction" style="display:inline-block;margin:0 4px;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;text-decoration:none;color:#111;">★★★</a><a href="{{trackingUrl}}?rate=4#satisfaction" style="display:inline-block;margin:0 4px;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;text-decoration:none;color:#111;">★★★★</a><a href="{{trackingUrl}}?rate=5#satisfaction" style="display:inline-block;margin:0 4px;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;text-decoration:none;color:#111;">★★★★★</a></p>
+<p style="color:#666;font-size:12px;">After clicking a star you can confirm your rating on the page that opens and optionally add a comment.</p>`,
+    bodyText: 'Your request {{ticketNumber}} has been completed. Rate it here: {{trackingUrl}}#satisfaction',
+    variables: ['userName', 'ticketNumber', 'subject', 'trackingUrl'],
+  },
+];
+
 export async function ensureSystemEmailTemplates(prisma: Pick<PrismaClient, 'emailTemplate'>) {
-  for (const tmpl of [...SLA_EMAIL_TEMPLATES, ...AUTO_CLOSE_EMAIL_TEMPLATES, ...MERGE_EMAIL_TEMPLATES]) {
+  for (const tmpl of [...SLA_EMAIL_TEMPLATES, ...AUTO_CLOSE_EMAIL_TEMPLATES, ...MERGE_EMAIL_TEMPLATES, ...SURVEY_EMAIL_TEMPLATES]) {
     await prisma.emailTemplate.upsert({
       where: { slug_locale: { slug: tmpl.slug, locale: tmpl.locale } },
       update: {},

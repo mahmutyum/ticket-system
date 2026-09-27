@@ -206,6 +206,12 @@ export function SlaSettingsModal({ companyId, companyName, onClose }: {
                 </label>
               </section>
 
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={settings.satisfactionSurvey}
+                  onChange={(event) => update({ satisfactionSurvey: event.target.checked })} />
+                {t('companyMgmt.sla.satisfactionSurvey')}
+              </label>
+
               {/* Otomatik kapatma */}
               <section className="space-y-2">
                 <h3 className="text-sm font-semibold">{t('companyMgmt.sla.autoCloseTitle')}</h3>

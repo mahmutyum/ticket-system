@@ -88,6 +88,9 @@ export interface Ticket {
   slaPausedAt?: string | null;
   slaPausedMinutes?: number;
   source?: 'portal' | 'email' | string;
+  satisfactionRating?: number | null;
+  satisfactionComment?: string | null;
+  satisfactionAt?: string | null;
   parent?: RelatedTicket | null;
   children?: RelatedTicket[];
   mergedInto?: RelatedTicket | null;

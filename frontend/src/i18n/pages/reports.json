@@ -8,7 +8,8 @@
       "overview": "Genel Bakış",
       "staff": "Personel",
       "category": "Kategori & Şirket",
-      "sla": "SLA Trend"
+      "sla": "SLA Trend",
+      "satisfaction": "Memnuniyet"
     },
     "created": "Oluşturulan",
     "resolved": "Çözülen",
@@ -47,7 +48,18 @@
     "allCategories": "Tüm Kategoriler",
     "allStaff": "Tüm Personel",
     "slaPausedNow": "Şu an SLA'sı duraklatılmış talep",
-    "slaPausedAvg": "Duraklatılan taleplerde ortalama {{count}} dk bekleme (SLA'ya sayılmaz)"
+    "slaPausedAvg": "Duraklatılan taleplerde ortalama {{count}} dk bekleme (SLA'ya sayılmaz)",
+    "csat": {
+      "average": "Ortalama puan (5 üzerinden)",
+      "responses": "Değerlendirme",
+      "responseRate": "Yanıt oranı ({{sent}} anket gönderildi)",
+      "distribution": "Puan dağılımı",
+      "byStaff": "Personele göre",
+      "byCategory": "Kategoriye göre",
+      "byCompany": "Şirkete göre",
+      "comments": "Son yorumlar",
+      "noComments": "Yorum yok."
+    }
   },
   "en": {
     "eyebrow": "Analytics center",
@@ -58,7 +70,8 @@
       "overview": "Overview",
       "staff": "Staff",
       "category": "Category & Company",
-      "sla": "SLA Trend"
+      "sla": "SLA Trend",
+      "satisfaction": "Satisfaction"
     },
     "created": "Created",
     "resolved": "Resolved",
@@ -97,6 +110,17 @@
     "allCategories": "All Categories",
     "allStaff": "All Staff",
     "slaPausedNow": "Tickets with SLA currently paused",
-    "slaPausedAvg": "Average {{count}} min waiting on paused tickets (not counted toward SLA)"
+    "slaPausedAvg": "Average {{count}} min waiting on paused tickets (not counted toward SLA)",
+    "csat": {
+      "average": "Average rating (out of 5)",
+      "responses": "Ratings",
+      "responseRate": "Response rate ({{sent}} surveys sent)",
+      "distribution": "Rating distribution",
+      "byStaff": "By staff",
+      "byCategory": "By category",
+      "byCompany": "By company",
+      "comments": "Recent comments",
+      "noComments": "No comments."
+    }
   }
 }

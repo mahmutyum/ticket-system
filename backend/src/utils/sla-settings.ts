@@ -47,6 +47,8 @@ export const slaSettingsSchema = z.object({
       bumpPriority: z.boolean().default(false),
     })
     .default({}),
+  /** Çözüm/kapanışta talep sahibine memnuniyet anketi (CSAT) gönderilsin mi. */
+  satisfactionSurvey: z.boolean().default(true),
   /** Otomatik kapatma (gün). 0 → kapalı. */
   autoClose: z
     .object({

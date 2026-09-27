@@ -6,6 +6,7 @@ import { parseSlaSettings } from '../utils/sla-settings.js';
 import { planStatusTransition } from '../utils/ticket-lifecycle.js';
 import { requesterSideRecipients } from '../services/ticket-relations.js';
 import { emitTicketEvent } from '../services/webhooks/emit.js';
+import { maybeSendSurvey } from '../services/satisfaction.js';
 import type { EmailJobData } from './queue.js';
 
 /**
@@ -88,6 +89,7 @@ export async function runAutoClose(prisma: PrismaClient, now: Date, deps: AutoCl
     });
     result.closed++;
     await emitTicketEvent(prisma, 'ticket.status_changed', ticket.id, { from: ticket.status, to: TicketStatus.closed, reason: `auto_${reason}` });
+    await maybeSendSurvey(prisma, ticket.id, deps.queueEmail);
 
     for (const to of await requesterSideRecipients(prisma, ticket)) {
       await deps.queueEmail({
