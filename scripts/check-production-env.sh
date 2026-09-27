@@ -42,5 +42,15 @@ if [ "$(value ENABLE_API_DOCS)" != "false" ]; then
   echo "UYARI: ENABLE_API_DOCS=false değil; internete açık kurulumda endpoint listesi yayınlanır." >&2
 fi
 
+metrics_token="$(value METRICS_TOKEN)"
+if [ -n "$metrics_token" ] && [ "${#metrics_token}" -lt 24 ]; then
+  echo "METRICS_TOKEN en az 24 karakter olmalı (boş bırakılırsa /metrics kapalı)" >&2
+  fail=1
+fi
+
+if [ "$(value ALLOW_PRIVATE_INTEGRATION_HOSTS)" = "true" ]; then
+  echo "UYARI: ALLOW_PRIVATE_INTEGRATION_HOSTS=true; admin iç ağ adreslerine (SMTP/IMAP/LDAP/OIDC/webhook) bağlantı tanımlayabilir." >&2
+fi
+
 test "$fail" -eq 0 || exit 1
 echo "Production env kontrolü başarılı."

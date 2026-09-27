@@ -40,6 +40,9 @@ const envSchema = z.object({
   // SMTP/IMAP/LDAP/OIDC hedeflerinde kurum içi ağ adreslerine izin ver (şirket içi
   // Exchange, AD, Keycloak). Loopback ve bulut metadata her durumda engelli kalır.
   ALLOW_PRIVATE_INTEGRATION_HOSTS: z.string().transform((v) => v === 'true').default('false'),
+  // Prometheus /metrics için Bearer token. Boşsa uç kapalıdır (404) — /api/* dış
+  // proxy'den erişilebildiği için metrikler kimliksiz yayınlanmaz. En az 24 karakter.
+  METRICS_TOKEN: z.string().min(24).optional().or(z.literal('').transform(() => undefined)),
 
   /**
    * Kaç reverse proxy hop'una güvenilecek. Rate limiting'in TAMAMI buna bağlıdır.

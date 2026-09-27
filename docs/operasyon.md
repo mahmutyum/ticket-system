@@ -43,6 +43,59 @@ Otomatik raporlama için host cron/systemd timer ile her gün yalnızca check mo
 Silme işlemi için bakım penceresinde güncel backup sonrası `db:retention:apply`
 çalıştırın. Çıktı JSON'dur ve merkezi log/uyarı sistemi tarafından izlenebilir.
 
+## Metrikler (Prometheus)
+
+`METRICS_TOKEN` tanımlıysa backend `/metrics` ucunu Bearer token ile yayınlar (boşsa uç
+yoktur). Prometheus'u backend'e **Docker ağı içinden** bağlayın:
+
+```yaml
+scrape_configs:
+  - job_name: ticket-system
+    metrics_path: /metrics
+    authorization: { type: Bearer, credentials: "<METRICS_TOKEN>" }
+    static_configs: [{ targets: ["backend:4000"] }]
+```
+
+| Metrik | Anlamı |
+|---|---|
+| `ticket_http_request_duration_seconds` | HTTP süre histogramı (`method`, `route` şablonu, `status`) |
+| `ticket_http_errors_total` | 5xx yanıtlar |
+| `ticket_queue_jobs{queue,state}` | BullMQ işleri: email, sms, sla-check, mail-fetch, webhook × waiting/active/delayed/failed |
+| `ticket_notifications_failed{type}` | Kalıcı başarısız e-posta/SMS |
+| `ticket_sla_breaches_open{kind}` | Çözülmemiş ve SLA'sı ihlal edilmiş ticket'lar |
+| `ticket_open_tickets` | Açık ticket sayısı |
+| `ticket_webhook_deliveries_failed` | Son 24 saatteki başarısız webhook teslimatları |
+| `ticket_mailbox_errors` | Son çekmede hata veren gelen posta kutuları |
+| `ticket_sse_connections{type}` | Açık SSE bağlantıları |
+| `ticket_process_*`, `ticket_nodejs_*` | Süreç ve Node.js varsayılanları |
+
+Örnek alarm kuralları:
+
+```yaml
+groups:
+  - name: ticket-system
+    rules:
+      - alert: TicketBackendDown
+        expr: up{job="ticket-system"} == 0
+        for: 2m
+      - alert: TicketHighErrorRate
+        expr: sum(rate(ticket_http_errors_total[5m])) / sum(rate(ticket_http_request_duration_seconds_count[5m])) > 0.05
+        for: 10m
+      - alert: TicketQueueBacklog
+        expr: ticket_queue_jobs{state="waiting"} > 100
+        for: 15m
+      - alert: TicketQueueFailures
+        expr: increase(ticket_queue_jobs{state="failed"}[1h]) > 10
+      - alert: TicketNotificationsFailing
+        expr: increase(ticket_notifications_failed[1h]) > 5
+      - alert: TicketMailboxError
+        expr: ticket_mailbox_errors > 0
+        for: 15m
+      - alert: TicketSlaBreaches
+        expr: sum(ticket_sla_breaches_open) > 10
+        for: 30m
+```
+
 ## Sağlık ve kapanış
 
 - `/health/live`: Node.js process'i cevap veriyor mu.

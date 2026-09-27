@@ -45,6 +45,7 @@ Passwordless public portal for requesters · role-based admin panel for the IT t
 - **Integrations**: Microsoft Teams, Slack and HMAC-signed generic webhooks (ticket and SLA events).
 - **SSO**: OpenID Connect, SAML 2.0 and LDAP/Active Directory for staff sign-in; group → role/company mapping, JIT, optional local-login shutdown.
 - **Reply by email**: IMAP, Microsoft 365 or Gmail mailbox; replies land on the ticket, unmatched emails can open new tickets.
+- **Prometheus `/metrics`** (bearer token): HTTP latency/errors, queue depth, failed notifications, SLA breaches, SSE; sample alert rules in `docs/operasyon.md`.
 - SLA checks every 5 minutes; per-category response/resolution targets, per-company business hours and holidays, SLA pausing in waiting statuses, pre-breach warnings and escalation to managers.
 - Live panel updates over SSE; per-domain company branding (logo + theme).
 - **Bilingual**: UI follows the browser language and switches instantly; API messages by `Accept-Language`, notifications in the recipient's language.

@@ -45,6 +45,10 @@ _Planned work is tracked in [docs/yol-haritasi.md](docs/yol-haritasi.md)._
   HMAC-SHA256 signed generic webhooks for ticket and SLA events; encrypted targets,
   queued delivery with retries, SSRF-checked per delivery, no redirects, delivery log with
   retry. Internal notes and requester tracking links are never sent.
+- **Prometheus metrics** at `/metrics` behind a `METRICS_TOKEN` bearer token (disabled when
+  unset): HTTP latency/5xx by route template, BullMQ queue depth, failed notifications, open
+  SLA breaches, failed webhook deliveries, mailbox errors, SSE connections and process
+  defaults; sample alert rules in the operations guide.
 - `ALLOW_PRIVATE_INTEGRATION_HOSTS` to allow internal-network SMTP/IMAP/LDAP/OIDC hosts
   (loopback and cloud metadata stay blocked).
 - Live `sla_alert` panel notifications; SLA events in the ticket timeline; paused-time

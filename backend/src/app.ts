@@ -41,6 +41,9 @@ import { kbRoutes, kbPublicRoutes } from './modules/kb/kb.routes.js';
 import { assetRoutes } from './modules/assets/assets.routes.js';
 import { registerMutationAuditHook } from './middleware/audit.js';
 import { t } from './i18n/index.js';
+import { timingSafeEqual } from 'node:crypto';
+import { httpDuration, httpErrors, registerCollectors, registry } from './services/metrics.js';
+import { emailQueue, mailFetchQueue, slaCheckQueue, smsQueue, webhookQueue } from './jobs/queue.js';
 
 export async function buildApp() {
   const app = Fastify({
@@ -181,6 +184,29 @@ export async function buildApp() {
 
   // Geriye dönük uyumluluk: eski monitörler process canlılığını ölçmeye devam eder.
   app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
+
+  // HTTP metrikleri — etiket olarak ham URL değil route şablonu (kardinalite).
+  app.addHook('onResponse', async (request, reply) => {
+    const route = request.routeOptions.url ?? 'unmatched';
+    httpDuration.labels(request.method, route, String(reply.statusCode)).observe(reply.elapsedTime / 1000);
+    if (reply.statusCode >= 500) httpErrors.labels(request.method, route).inc();
+  });
+
+  // Prometheus — yalnızca METRICS_TOKEN tanımlıysa ve Bearer ile. /api/* dış proxy
+  // üzerinden erişilebildiği için metrikler kimliksiz yayınlanmaz.
+  if (config.METRICS_TOKEN) {
+    const expected = Buffer.from(`Bearer ${config.METRICS_TOKEN}`);
+    registerCollectors(app.prisma, {
+      email: emailQueue, sms: smsQueue, 'sla-check': slaCheckQueue, 'mail-fetch': mailFetchQueue, webhook: webhookQueue,
+    });
+    app.get('/metrics', { schema: { hide: true }, config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (request, reply) => {
+      const given = Buffer.from(request.headers.authorization ?? '');
+      if (given.length !== expected.length || !timingSafeEqual(given, expected)) {
+        return reply.status(401).send({ success: false, error: 'unauthorized' });
+      }
+      reply.type(registry.contentType).send(await registry.metrics());
+    });
+  }
 
   // Global error handler
   //
