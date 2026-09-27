@@ -11,8 +11,11 @@ export const emailLookupSchema = z.object({
   email: z.string().email('Geçerli bir email adresi girin'),
 });
 
+// Refresh token normalde httpOnly cookie'den okunur; frontend gövdeye `{}` gönderir.
+// Alan zorunlu olduğunda `{}` doğrulamada 400 alıyordu → sayfa yenilemede oturum geri
+// yüklenemiyor ve 401 sonrası otomatik yenileme çalışmıyordu.
 export const refreshTokenSchema = z.object({
-  refreshToken: z.string().min(1),
+  refreshToken: z.string().min(1).optional(),
 });
 
 export const changePasswordSchema = z.object({

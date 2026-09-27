@@ -34,6 +34,18 @@ describe('gerçek PostgreSQL + Redis entegrasyonu', () => {
     expect(response.headers['set-cookie']).toContain('refresh_token=');
   });
 
+  it('refresh cookie ile ve boş JSON gövdeyle oturum yenilenir (frontend {} gönderir)', async () => {
+    const login = await app.inject({
+      method: 'POST', url: '/auth/staff/login',
+      payload: { email: 'admin@company.com', password: 'admin123' },
+    });
+    const setCookie = login.headers['set-cookie'];
+    const cookie = (Array.isArray(setCookie) ? setCookie : [setCookie]).find(c => c?.startsWith('refresh_token='))!.split(';')[0];
+    const refresh = await app.inject({ method: 'POST', url: '/auth/staff/refresh', headers: { cookie }, payload: {} });
+    expect(refresh.statusCode, refresh.body).toBe(200);
+    expect(refresh.json().data.accessToken).toEqual(expect.any(String));
+  });
+
   it('geçersiz Zod gövdesini route sözleşmesinde 400 yapar', async () => {
     const response = await app.inject({ method: 'POST', url: '/auth/staff/login', payload: {} });
     expect(response.statusCode).toBe(400);
