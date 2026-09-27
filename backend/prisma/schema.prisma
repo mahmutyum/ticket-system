@@ -94,6 +94,12 @@ enum IdentityProviderType {
   ldap
 }
 
+enum WebhookKind {
+  generic
+  teams
+  slack
+}
+
 enum MailboxProvider {
   imap
   microsoft365
@@ -131,6 +137,7 @@ model Company {
 
   holidays          CompanyHoliday[]
   mailbox           CompanyMailbox?
+  webhooks          Webhook[]
   locations         Location[]
   categories        Category[]
   customFields      CustomField[]
@@ -499,6 +506,51 @@ model IdentityProvider {
   staff Staff[]
 
   @@map("identity_providers")
+}
+
+/// Giden webhook / sohbet kanalı. `companyId` boşsa tüm şirketlerin olayları.
+/// Hedef URL (Slack/Teams URL'leri yetki anahtarı içerir) ve HMAC sırrı şifrelidir.
+model Webhook {
+  id              String      @id @default(cuid())
+  name            String
+  kind            WebhookKind
+  urlEnc          String      @map("url_enc")
+  /// Genel webhook imza sırrı (HMAC-SHA256) — AES-256-GCM.
+  secretEnc       String?     @map("secret_enc")
+  /// Abone olunan olaylar: ["ticket.created", "sla.breached", ...]
+  events          Json        @default("[]")
+  companyId       String?     @map("company_id")
+  isActive        Boolean     @default(true) @map("is_active")
+  lastDeliveredAt DateTime?   @map("last_delivered_at")
+  lastError       String?     @map("last_error")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  company    Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  deliveries WebhookDelivery[]
+
+  @@map("webhooks")
+}
+
+/// Webhook teslimat kaydı (yeniden deneme durumu ve hata ayıklama için).
+model WebhookDelivery {
+  id          String    @id @default(cuid())
+  webhookId   String    @map("webhook_id")
+  event       String
+  /// Gönderilen olay gövdesi (kanal biçimlendirmesinden önceki genel biçim).
+  payload     Json
+  /// pending | success | failed
+  status      String    @default("pending")
+  statusCode  Int?      @map("status_code")
+  error       String?
+  attempts    Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  deliveredAt DateTime? @map("delivered_at")
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId, createdAt])
+  @@map("webhook_deliveries")
 }
 
 /// Sistem geneli ayarlar (anahtar → JSON). Ör. `auth`: yerel giriş kapalı mı.

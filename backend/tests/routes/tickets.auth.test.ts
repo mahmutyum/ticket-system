@@ -20,6 +20,7 @@ vi.mock('../../src/db.js', () => ({
 vi.mock('../../src/jobs/queue.js', () => ({
   queueEmail: vi.fn(),
   queueSms: vi.fn(),
+  queueWebhookDelivery: vi.fn(),
   redisConnection: { eval: vi.fn(async () => 1) },
 }));
 vi.mock('../../src/services/sse.service.js', () => ({

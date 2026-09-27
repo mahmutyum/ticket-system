@@ -10,6 +10,7 @@ import { mergeError, parentError } from '../../services/ticket-relations.js';
 import { commonErrorResponses, errorResponseSchema, successResponseSchema } from '../../utils/api-schema.js';
 import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
 import { planStatusTransition } from '../../utils/ticket-lifecycle.js';
+import { emitTicketEvent } from '../../services/webhooks/emit.js';
 import { emailSchema } from '../../utils/validation.js';
 import { t } from '../../i18n/index.js';
 
@@ -123,6 +124,7 @@ export const relationRoutes: FastifyPluginAsyncZod = async (app) => {
       });
     });
 
+    await emitTicketEvent(app.prisma, 'ticket.status_changed', source.id, { from: source.status, to: TicketStatus.closed, mergedInto: target.ticketNumber });
     await queueEmail({
       to: source.createdByEmail,
       templateSlug: 'ticket_merged',

@@ -39,6 +39,7 @@ Talep edenler için şifresiz public portal · IT ekibi için rollü yönetim pa
 
 **⚙️ Arka planda**
 - E-posta / SMS bildirimleri BullMQ ile asenkron (3 deneme, exponential backoff).
+- **Entegrasyonlar**: Microsoft Teams, Slack ve HMAC imzalı genel webhook'lar (talep ve SLA olayları).
 - **SSO**: personel girişi için OpenID Connect, SAML 2.0 ve LDAP/Active Directory; grup → rol/şirket eşlemesi, JIT, yerel girişi kapatma.
 - **E-postayla yanıt**: IMAP, Microsoft 365 veya Gmail posta kutusu; yanıtlar ticket'a düşer, eşleşmeyen e-postalardan talep açılabilir.
 - SLA kontrolü her 5 dakikada; kategori bazlı yanıt/çözüm süreleri, şirket bazlı mesai takvimi ve tatiller, bekleme durumlarında SLA duraklatma, ihlal öncesi uyarı ve yöneticiye eskalasyon.

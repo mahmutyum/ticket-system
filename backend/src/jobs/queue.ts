@@ -8,6 +8,17 @@ export const emailQueue = new Queue('email', { connection: redisConnection });
 export const smsQueue = new Queue('sms', { connection: redisConnection });
 export const slaCheckQueue = new Queue('sla-check', { connection: redisConnection });
 export const mailFetchQueue = new Queue('mail-fetch', { connection: redisConnection });
+export const webhookQueue = new Queue('webhook', { connection: redisConnection });
+
+/** Webhook teslimatını kuyruğa atar: 5 deneme, üstel bekleme (10 sn → ~2.7 dk). */
+export async function queueWebhookDelivery(deliveryId: string) {
+  await webhookQueue.add('deliver', { deliveryId }, {
+    attempts: 5,
+    backoff: { type: 'exponential', delay: 10_000 },
+    removeOnComplete: 500,
+    removeOnFail: 500,
+  });
+}
 
 export interface EmailJobData {
   to: string;
@@ -54,6 +65,7 @@ export async function closeQueues(): Promise<void> {
     smsQueue.close(),
     slaCheckQueue.close(),
     mailFetchQueue.close(),
+    webhookQueue.close(),
   ]);
   await redisConnection.quit();
 }

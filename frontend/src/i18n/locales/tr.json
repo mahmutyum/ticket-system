@@ -138,7 +138,8 @@
     "reports": "Raporlar",
     "templates": "Şablonlar",
     "passwords": "Şifreler",
-    "account": "Hesap ve Güvenlik"
+    "account": "Hesap ve Güvenlik",
+    "integrations": "Entegrasyonlar"
   },
   "layout": {
     "appName": "IT Destek",

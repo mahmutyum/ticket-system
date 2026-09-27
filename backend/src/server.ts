@@ -11,6 +11,7 @@ import { emailWorker } from './jobs/email.worker.js';
 import { smsWorker } from './jobs/sms.worker.js';
 import { slaCheckWorker } from './jobs/sla-check.worker.js';
 import { mailFetchWorker } from './jobs/mail-fetch.worker.js';
+import { webhookWorker } from './jobs/webhook.worker.js';
 
 async function start() {
   const app = await buildApp();
@@ -27,7 +28,7 @@ async function start() {
     forceExit.unref();
     try {
       await app.close();
-      await Promise.all([emailWorker.close(), smsWorker.close(), slaCheckWorker.close(), mailFetchWorker.close()]);
+      await Promise.all([emailWorker.close(), smsWorker.close(), slaCheckWorker.close(), mailFetchWorker.close(), webhookWorker.close()]);
       await closeQueues();
       clearTimeout(forceExit);
       process.exit(0);

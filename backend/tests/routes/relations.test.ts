@@ -3,7 +3,8 @@ import { StaffRole } from '@prisma/client';
 import { buildTestApp, authHeader } from '../helpers/app.js';
 import { mergeError, normalizeCc, parentError, type RelationTicket } from '../../src/services/ticket-relations.js';
 
-vi.mock('../../src/jobs/queue.js', () => ({ queueEmail: vi.fn(async () => {}), queueSms: vi.fn(async () => {}) }));
+vi.mock('../../src/jobs/queue.js', () => ({ queueEmail: vi.fn(async () => {}), queueSms: vi.fn(async () => {}),
+  queueWebhookDelivery: vi.fn(async () => {}) }));
 const { relationRoutes } = await import('../../src/modules/tickets/relations.routes.js');
 
 const rt = (o: Partial<RelationTicket> = {}): RelationTicket => ({

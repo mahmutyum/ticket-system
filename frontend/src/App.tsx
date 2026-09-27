@@ -25,6 +25,7 @@ const TasksPage = lazy(() => import('./pages/staff/TasksPage'));
 const TaskDetailPage = lazy(() => import('./pages/staff/TaskDetailPage'));
 const PasswordsPage = lazy(() => import('./pages/staff/PasswordsPage'));
 const AccountPage = lazy(() => import('./pages/staff/AccountPage'));
+const IntegrationsPage = lazy(() => import('./pages/staff/IntegrationsPage'));
 
 function PageLoader() {
   const { t } = useTranslation();
@@ -138,6 +139,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['admin', 'it_manager']}>
                 <TemplatesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="integrations"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <IntegrationsPage />
               </ProtectedRoute>
             }
           />

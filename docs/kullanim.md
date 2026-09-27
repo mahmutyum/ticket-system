@@ -269,6 +269,24 @@ aktif sağlayıcı için bir düğme görünür.
 
 ---
 
+### Entegrasyonlar — `/staff/integrations` (yalnızca `admin`)
+
+Talep olaylarını dış kanallara iletir: **Microsoft Teams** (kanalda *Workflows → "Post to a
+channel when a webhook request is received"* ile alınan adres), **Slack** (Incoming Webhook)
+ve **genel webhook** (n8n, Power Automate, kendi servisiniz).
+
+- **Olaylar:** talep oluşturuldu, durum/öncelik/atama değişti, IT public yanıtı, kullanıcı
+  yanıtı, SLA yaklaşıyor, SLA ihlali. Entegrasyon tüm şirketler ya da tek şirket için olabilir.
+- **İç notlar ve talep sahibinin takip bağlantısı hiçbir kanala gönderilmez**; mesajlar
+  personel bağlantısı (oturum gerektirir) içerir.
+- **Genel webhook imzası:** gövde JSON'dur; `X-Ticket-Event`, `X-Ticket-Delivery`,
+  `X-Ticket-Timestamp` ve `X-Ticket-Signature: sha256=<HMAC-SHA256(sır, "zaman.gövde")>`
+  başlıkları gönderilir. Sır kayıttan sonra **bir kez** gösterilir; yenilenebilir. Alıcı,
+  zaman damgası eski (ör. 5 dakikadan eski) isteği reddetmelidir.
+- **Teslimat:** kuyrukla, 5 deneme ve üstel bekleme; yönlendirmeler izlenmez, hedef her
+  teslimatta SSRF denetiminden geçer. Son 30 teslimat, hata ve "yeniden dene" sayfada görünür.
+  Kurum içi hedefler için `ALLOW_PRIVATE_INTEGRATION_HOSTS=true` gerekir.
+
 ## Şifre kasası
 
 `/staff/passwords` — **`admin` ve `it_manager`**.

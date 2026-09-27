@@ -4,6 +4,7 @@ import { config } from '../config/index.js';
 import { formatDateTime, priorityLabel, slaTypeLabel, type SlaKind } from '../i18n/labels.js';
 import { createSlaContextCache } from '../services/sla-context.js';
 import type { EmailJobData } from './queue.js';
+import { emitTicketEvent } from '../services/webhooks/emit.js';
 
 /**
  * SLA kontrol turu — ihlal öncesi uyarı, ihlal kaydı ve eskalasyon.
@@ -145,6 +146,8 @@ export async function runSlaCheck(prisma: PrismaClient, now: Date, deps: SlaChec
         },
       });
       result.breaches++;
+      await emitTicketEvent(prisma, 'sla.breached', ticket.id, { kind });
+      if (bump) await emitTicketEvent(prisma, 'ticket.priority_changed', ticket.id, { from: ticket.priority, to: bump, reason: 'sla_escalation' });
 
       const assignee = assigneeOf(ticket);
       if (assignee) await notify(ticket, assignee, 'sla_warning', kind);
@@ -192,6 +195,7 @@ export async function runSlaCheck(prisma: PrismaClient, now: Date, deps: SlaChec
         },
       });
       result.warnings++;
+      await emitTicketEvent(prisma, 'sla.warning', ticket.id, { kind });
 
       const due = kind === 'response' ? ticket.slaResponseDue : ticket.slaResolveDue;
       // Son tarih şirketin mesai saat diliminde gösterilir (tanımlıysa).

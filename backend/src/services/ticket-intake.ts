@@ -8,6 +8,7 @@ import { generateTicketNumber } from '../utils/ticket-number.js';
 import { planStatusTransition } from '../utils/ticket-lifecycle.js';
 import { calendarFor, loadCompanySlaContext } from './sla-context.js';
 import { normalizeCc, staffWatchers } from './ticket-relations.js';
+import { emitTicketEvent } from './webhooks/emit.js';
 
 /**
  * Talep sahibi tarafındaki ticket işlemleri — portal (HTTP) ve e-posta (gelen
@@ -171,6 +172,8 @@ export async function createRequesterTicket(prisma: PrismaClient, input: NewRequ
     });
   }
 
+  await emitTicketEvent(prisma, 'ticket.created', ticket.id);
+
   deps.broadcastStaff('ticket_created', {
     id: ticket.id,
     ticketNumber: ticket.ticketNumber,
@@ -270,6 +273,9 @@ export async function addRequesterReply(
     email: author,
     content: content.substring(0, 100),
   }, ticket.companyId);
+
+  await emitTicketEvent(prisma, 'ticket.user_reply', ticket.id, { excerpt: content.substring(0, 200), author, via: options.via ?? 'portal' });
+  if (plan) await emitTicketEvent(prisma, 'ticket.status_changed', ticket.id, { from: ticket.status, to: TicketStatus.open });
 
   // Atanan + personel izleyiciler (aynı kişiye iki kez gitmez).
   const recipients = [

@@ -21,6 +21,7 @@ vi.mock('../../src/db.js', () => ({ prisma: { auditLog: { create: vi.fn() } } })
 vi.mock('../../src/jobs/queue.js', () => ({
   queueEmail: vi.fn(async () => {}),
   queueSms: vi.fn(async () => {}),
+  queueWebhookDelivery: vi.fn(async () => {}),
 }));
 
 const TICKET = {

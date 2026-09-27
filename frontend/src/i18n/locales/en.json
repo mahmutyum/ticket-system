@@ -138,7 +138,8 @@
     "reports": "Reports",
     "templates": "Templates",
     "passwords": "Passwords",
-    "account": "Account & Security"
+    "account": "Account & Security",
+    "integrations": "Integrations"
   },
   "layout": {
     "appName": "IT Support",

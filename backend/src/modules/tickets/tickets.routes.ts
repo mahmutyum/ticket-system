@@ -8,6 +8,7 @@ import { saveFile, isAllowedMimeType, isBufferConsistentWithMime } from '../../s
 import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.js';
 import { getStaffCompanyScope, resolveCompanyFilter, isCompanyInScope } from '../../utils/staff-scope.js';
 import { planStatusTransition } from '../../utils/ticket-lifecycle.js';
+import { emitTicketChanges } from '../../services/webhooks/emit.js';
 import { createRequesterTicket, isEmailDomainAllowed, trackingUrlFor } from '../../services/ticket-intake.js';
 import { calendarFor, createSlaContextCache, loadCompanySlaContext } from '../../services/sla-context.js';
 import { commonErrorResponses } from '../../utils/api-schema.js';
@@ -502,10 +503,15 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
             history: { create: [...plan.history, { action: 'status_from_parent', field: 'status', newValue: currentTicket.ticketNumber, createdById: staffUser.id }] },
           },
         });
+        await emitTicketChanges(app.prisma, child.id, child, { status: body.status });
         broadcastToStaff('ticket_updated', { id: child.id, ticketNumber: child.ticketNumber, status: body.status }, child.companyId);
         broadcastToTicket(child.accessToken, 'ticket_updated', { status: body.status, priority: child.priority });
       }
     }
+
+    await emitTicketChanges(app.prisma, ticket.id, currentTicket, {
+      status: body.status, priority: body.priority, assignedToId: body.assignedToId, assigneeName: ticket.assignedTo?.fullName,
+    });
 
     // SSE broadcast
     broadcastToStaff('ticket_updated', {
@@ -589,6 +595,7 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
     });
 
     for (const ticket of tickets) {
+      await emitTicketChanges(app.prisma, ticket.id, ticket, { status: body.status, priority: body.priority, assignedToId: body.assignedToId });
       broadcastToStaff('ticket_updated', { id: ticket.id, ticketNumber: ticket.ticketNumber }, ticket.companyId);
     }
 

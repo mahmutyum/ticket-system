@@ -4,6 +4,7 @@ import { requiredText, LIMITS } from '../../utils/validation.js';
 import { queueEmail } from '../../jobs/queue.js';
 import { isSlaMet } from '../../utils/sla.js';
 import { requesterSideRecipients } from '../../services/ticket-relations.js';
+import { emitTicketEvent } from '../../services/webhooks/emit.js';
 import { config } from '../../config/index.js';
 import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.js';
 import { getStaffCompanyScope } from '../../utils/staff-scope.js';
@@ -116,6 +117,9 @@ export const noteRoutes: FastifyPluginAsyncZod = async (app) => {
         staffName: note.createdBy.fullName,
         createdAt: note.createdAt,
       });
+
+      // Dış kanallara yalnızca PUBLIC not gider (iç not asla).
+      await emitTicketEvent(app.prisma, 'ticket.note_added', ticket.id, { excerpt: body.content.substring(0, 200), author: note.createdBy.fullName });
 
       // Talep sahibi + CC izleyicileri. İzleyiciler de aynı takip bağlantısını alır:
       // CC, talebin katılımcısıdır (personel ya da talep sahibi tarafından eklenir,

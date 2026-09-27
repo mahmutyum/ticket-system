@@ -30,6 +30,10 @@ _Planned work is tracked in [docs/yol-haritasi.md](docs/yol-haritasi.md)._
   replay protection) and LDAP/AD (escaped filters, user bind); group → role/company
   mapping synced on every sign-in, opt-in JIT provisioning, account linking by subject,
   and an option to disable local password sign-in (admins keep break-glass access).
+- **Webhooks & chat notifications**: Microsoft Teams (Adaptive Card), Slack (Block Kit) and
+  HMAC-SHA256 signed generic webhooks for ticket and SLA events; encrypted targets,
+  queued delivery with retries, SSRF-checked per delivery, no redirects, delivery log with
+  retry. Internal notes and requester tracking links are never sent.
 - `ALLOW_PRIVATE_INTEGRATION_HOSTS` to allow internal-network SMTP/IMAP/LDAP/OIDC hosts
   (loopback and cloud metadata stay blocked).
 - Live `sla_alert` panel notifications; SLA events in the ticket timeline; paused-time
