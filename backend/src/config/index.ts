@@ -37,6 +37,9 @@ const envSchema = z.object({
   // Swagger UI (/docs) tüm endpoint listesini yayınlar. İç ağda kabul edilebilir;
   // internete açık bir kurulumda kapatılabilsin diye bayrağa bağlı.
   ENABLE_API_DOCS: z.string().transform((v) => v !== 'false').default('true'),
+  // SMTP/IMAP/LDAP/OIDC hedeflerinde kurum içi ağ adreslerine izin ver (şirket içi
+  // Exchange, AD, Keycloak). Loopback ve bulut metadata her durumda engelli kalır.
+  ALLOW_PRIVATE_INTEGRATION_HOSTS: z.string().transform((v) => v === 'true').default('false'),
 
   /**
    * Kaç reverse proxy hop'una güvenilecek. Rate limiting'in TAMAMI buna bağlıdır.

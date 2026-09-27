@@ -2,11 +2,12 @@ import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { Prisma, CompanyGroupType } from '@prisma/client';
 import { testSmtpConnection, invalidateCompanyTransporter } from '../../services/email.service.js';
+import { config } from '../../config/index.js';
 import { createAuditLog } from '../../middleware/audit.js';
 import { saveLogo, isAllowedLogoMimeType, isBufferConsistentWithMime } from '../../services/storage.service.js';
 import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
 import { encrypt } from '../../utils/crypto.js';
-import { assertPublicHost, BlockedHostError } from '../../utils/net-guard.js';
+import { assertIntegrationHost, BlockedHostError } from '../../utils/net-guard.js';
 import { commonErrorResponses } from '../../utils/api-schema.js';
 import { t } from '../../i18n/index.js';
 
@@ -409,7 +410,7 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
     // Dahili ağa (postgres:5432, redis:6379) veya bulut metadata'sına
     // yönlendirilmemeli. Kontrol DNS çözümlemesinden SONRA yapılır.
     try {
-      await assertPublicHost(body.host);
+      await assertIntegrationHost(body.host, config.ALLOW_PRIVATE_INTEGRATION_HOSTS);
     } catch (err) {
       if (err instanceof BlockedHostError) {
         return reply.status(400).send({
@@ -479,7 +480,7 @@ export const companyRoutes: FastifyPluginAsyncZod = async (app) => {
     // SSRF: bu uç gerçek bir TCP bağlantısı açar. Dahili ağa yönlendirilirse
     // bir port tarayıcısına dönüşür.
     try {
-      await assertPublicHost(body.host);
+      await assertIntegrationHost(body.host, config.ALLOW_PRIVATE_INTEGRATION_HOSTS);
     } catch (err) {
       if (err instanceof BlockedHostError) {
         return reply.status(400).send({

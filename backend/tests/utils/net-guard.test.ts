@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isBlockedAddress, assertPublicHost, BlockedHostError } from '../../src/utils/net-guard.js';
+import { isBlockedAddress, assertPublicHost, assertIntegrationHost, BlockedHostError } from '../../src/utils/net-guard.js';
 
 /**
  * SSRF koruması.
@@ -102,5 +102,23 @@ describe('assertPublicHost', () => {
 
   it('public IP kabul edilir', async () => {
     await expect(assertPublicHost('8.8.8.8')).resolves.toBeUndefined();
+  });
+});
+
+describe('assertIntegrationHost', () => {
+  it('varsayılan: özel ağ adresleri engelli', async () => {
+    await expect(assertIntegrationHost('10.0.0.5', false)).rejects.toBeInstanceOf(BlockedHostError);
+  });
+
+  it('izin verilirse kurum içi aralıklar geçer', async () => {
+    await expect(assertIntegrationHost('10.0.0.5', true)).resolves.toBeUndefined();
+    await expect(assertIntegrationHost('192.168.1.10', true)).resolves.toBeUndefined();
+    await expect(assertIntegrationHost('172.20.0.3', true)).resolves.toBeUndefined();
+  });
+
+  it('izin verilse bile loopback ve metadata engelli', async () => {
+    await expect(assertIntegrationHost('127.0.0.1', true)).rejects.toBeInstanceOf(BlockedHostError);
+    await expect(assertIntegrationHost('169.254.169.254', true)).rejects.toBeInstanceOf(BlockedHostError);
+    await expect(assertIntegrationHost('::1', true)).rejects.toBeInstanceOf(BlockedHostError);
   });
 });

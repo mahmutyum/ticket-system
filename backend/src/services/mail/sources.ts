@@ -8,8 +8,8 @@ import { ImapFlow } from 'imapflow';
  * (`parse.ts`, `jobs/mail-fetch.ts`).
  *
  * Microsoft 365 ve Gmail uçları sabit, bilinen host'lardır (SSRF yüzeyi yok).
- * IMAP host'u admin tarafından girildiği için kaydedilirken `assertPublicHost`
- * ile denetlenir (SMTP ile aynı kural).
+ * IMAP host'u admin tarafından girildiği için kaydederken, testte ve her turda
+ * `assertIntegrationHost` ile denetlenir (SMTP ile aynı kural).
  */
 
 export interface FetchedMail {

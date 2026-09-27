@@ -118,3 +118,58 @@ export async function assertPublicHost(host: string): Promise<void> {
     if (isBlockedAddress(r.address)) throw new BlockedHostError(host);
   }
 }
+
+/** RFC 1918 / CGNAT / IPv6 ULA — kurum içi ağ adresleri. */
+const PRIVATE_V4: Array<[string, number]> = [
+  ['10.0.0.0', 8],
+  ['172.16.0.0', 12],
+  ['192.168.0.0', 16],
+  ['100.64.0.0', 10],
+];
+
+export function isPrivateNetworkAddress(ip: string): boolean {
+  const v = isIP(ip);
+  if (v === 6) {
+    const a = ip.toLowerCase();
+    const mapped = a.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+    if (mapped) return isPrivateNetworkAddress(mapped[1]);
+    return a.startsWith('fc') || a.startsWith('fd');
+  }
+  if (v !== 4) return false;
+  const addr = v4ToInt(ip);
+  if (addr === null) return false;
+  return PRIVATE_V4.some(([net, bits]) => {
+    const mask = (0xffffffff << (32 - bits)) >>> 0;
+    return (addr & mask) === (v4ToInt(net)! & mask);
+  });
+}
+
+/**
+ * Admin'in girdiği entegrasyon hedefi (SMTP, IMAP, LDAP, OIDC issuer) için SSRF denetimi.
+ *
+ * Varsayılan `assertPublicHost` ile aynıdır. `allowPrivate` (env:
+ * `ALLOW_PRIVATE_INTEGRATION_HOSTS=true`) yalnızca KURUM İÇİ ağ aralıklarına
+ * (10/8, 172.16/12, 192.168/16, 100.64/10, fc00::/7) izin verir — şirket içi Exchange,
+ * AD ya da Keycloak için. Loopback, link-local (bulut metadata 169.254.169.254) ve
+ * diğer ayrılmış aralıklar HER DURUMDA engelli kalır.
+ *
+ * Bilinçli bir tercih: açıldığında admin, aynı ağdaki iç servislere (ör. Docker ağındaki
+ * veritabanı) bağlantı denetleyebilir. Yalnızca iç ağ entegrasyonu gerekiyorsa açılmalı.
+ */
+export async function assertIntegrationHost(host: string, allowPrivate: boolean): Promise<void> {
+  if (!allowPrivate) return assertPublicHost(host);
+  const trimmed = host.trim();
+  if (!trimmed) throw new BlockedHostError(host);
+  const check = (ip: string) => {
+    if (isBlockedAddress(ip) && !isPrivateNetworkAddress(ip)) throw new BlockedHostError(host);
+  };
+  if (isIP(trimmed)) return check(trimmed);
+  let results: Array<{ address: string }>;
+  try {
+    results = await lookup(trimmed, { all: true });
+  } catch {
+    throw new BlockedHostError(host);
+  }
+  if (results.length === 0) throw new BlockedHostError(host);
+  results.forEach(r => check(r.address));
+}

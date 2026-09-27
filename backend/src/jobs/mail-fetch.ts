@@ -1,4 +1,5 @@
-import { Priority, TicketStatus, type CompanyMailbox, type PrismaClient } from '@prisma/client';
+import { MailboxProvider, Priority, TicketStatus, type CompanyMailbox, type PrismaClient } from '@prisma/client';
+import { assertIntegrationHost } from '../utils/net-guard.js';
 import { config } from '../config/index.js';
 import { extractTicketNumber, parseMail, type ParsedMail } from '../services/mail/parse.js';
 import { createMailSource, isMailboxConfigured } from '../services/mail/mailbox.js';
@@ -180,6 +181,10 @@ export async function runMailFetch(prisma: PrismaClient, now: Date, deps: MailFe
     summary.mailboxes++;
     let source: MailSource | null = null;
     try {
+      // DNS sonradan değişmiş olabilir (rebinding): IMAP hedefi her turda yeniden denetlenir.
+      if (mailbox.provider === MailboxProvider.imap && !deps.createSource) {
+        await assertIntegrationHost(mailbox.imapHost ?? '', config.ALLOW_PRIVATE_INTEGRATION_HOSTS);
+      }
       source = createSource(mailbox);
       const mails = await source.fetchUnread(BATCH);
       for (const fetched of mails) {

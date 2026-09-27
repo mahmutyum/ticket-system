@@ -6,7 +6,7 @@ import { config } from '../../config/index.js';
 import { createAuditLog } from '../../middleware/audit.js';
 import { commonErrorResponses, errorResponseSchema, successResponseSchema } from '../../utils/api-schema.js';
 import { decrypt, encrypt } from '../../utils/crypto.js';
-import { assertPublicHost, BlockedHostError } from '../../utils/net-guard.js';
+import { assertIntegrationHost, BlockedHostError } from '../../utils/net-guard.js';
 import { createMailSource } from '../../services/mail/mailbox.js';
 import { exchangeGoogleCode, googleAuthorizeUrl } from '../../services/mail/sources.js';
 import { t } from '../../i18n/index.js';
@@ -164,7 +164,7 @@ export const mailboxRoutes: FastifyPluginAsyncZod = async (app) => {
     // SSRF: IMAP host'u admin girer, sunucu ona bağlanır (SMTP ile aynı kural).
     if (body.provider === MailboxProvider.imap) {
       try {
-        await assertPublicHost(body.imapHost!);
+        await assertIntegrationHost(body.imapHost!, config.ALLOW_PRIVATE_INTEGRATION_HOSTS);
       } catch (err) {
         if (err instanceof BlockedHostError) {
           return reply.status(400).send({ success: false, error: t(request, 'companies.mailboxHostBlocked') });
@@ -269,7 +269,7 @@ export const mailboxRoutes: FastifyPluginAsyncZod = async (app) => {
 
     let source;
     try {
-      if (mailbox.provider === MailboxProvider.imap) await assertPublicHost(mailbox.imapHost ?? '');
+      if (mailbox.provider === MailboxProvider.imap) await assertIntegrationHost(mailbox.imapHost ?? '', config.ALLOW_PRIVATE_INTEGRATION_HOSTS);
       source = createMailSource(mailbox);
       // Test hiçbir iletiyi okundu işaretlemez; yalnızca bağlanıp listeler.
       const sample = await source.fetchUnread(5);
