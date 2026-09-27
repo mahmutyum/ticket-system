@@ -37,6 +37,11 @@ export function SlaSettingsModal({ companyId, companyName, onClose }: {
   const currentYear = new Date().getFullYear();
 
   const update = (patch: Partial<SlaSettings>) => settings && setDraft({ ...settings, ...patch });
+  // Backend ile aynı kural: hatırlatma kapatmadan önce gelmeli (ikisi de açıksa).
+  const reminderInvalid = !!settings
+    && settings.autoClose.waitingReminderAfterDays > 0
+    && settings.autoClose.waitingCloseAfterDays > 0
+    && settings.autoClose.waitingReminderAfterDays >= settings.autoClose.waitingCloseAfterDays;
 
   const businessHours = settings?.businessHours ?? null;
   const toggleBusinessHours = (enabled: boolean) => {
@@ -201,9 +206,25 @@ export function SlaSettingsModal({ companyId, companyName, onClose }: {
                 </label>
               </section>
 
+              {/* Otomatik kapatma */}
+              <section className="space-y-2">
+                <h3 className="text-sm font-semibold">{t('companyMgmt.sla.autoCloseTitle')}</h3>
+                <p className="text-xs text-muted">{t('companyMgmt.sla.autoCloseHint')}</p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {(['resolvedAfterDays', 'waitingReminderAfterDays', 'waitingCloseAfterDays'] as const).map((key) => (
+                    <div key={key}>
+                      <label className="mb-1 block text-xs font-medium" htmlFor={`auto-close-${key}`}>{t(`companyMgmt.sla.${key}`)}</label>
+                      <input id={`auto-close-${key}`} type="number" min={0} max={365} className="input-field" value={settings.autoClose[key]}
+                        onChange={(event) => update({ autoClose: { ...settings.autoClose, [key]: Math.max(0, Math.min(365, Number(event.target.value) || 0)) } })} />
+                    </div>
+                  ))}
+                </div>
+                {reminderInvalid && <p className="text-xs text-red-600">{t('companyMgmt.sla.reminderBeforeClose')}</p>}
+              </section>
+
               <div className="flex justify-end gap-2 border-t border-subtle pt-4">
                 {draft && <button type="button" className="btn-secondary" onClick={() => setDraft(null)}>{t('common.cancel')}</button>}
-                <button type="button" className="btn-primary" disabled={!draft || saving} onClick={() => void handleSave()}>
+                <button type="button" className="btn-primary" disabled={!draft || saving || reminderInvalid} onClick={() => void handleSave()}>
                   {saving ? t('common.saving') : t('common.save')}
                 </button>
               </div>

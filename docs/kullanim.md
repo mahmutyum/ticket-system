@@ -179,6 +179,10 @@ değiştirilebilir.
     atanmamışsa şirketin IT yöneticilerine e-posta + panel bildirimi gider.
   - **Eskalasyon** — ihlalde yöneticilere bildirim; isteğe bağlı olarak çözüm SLA'sı
     aşılınca öncelik bir kademe yükseltilir.
+  - **Otomatik kapatma** (gün, 0 = kapalı) — `Çözüldü` durumunda N gün yeniden
+    açılmayan ticket kapatılır (varsayılan 7). `Kullanıcı Yanıtı Bekleniyor` için önce
+    hatırlatma, sonra kapatma süresi tanımlanabilir (varsayılan kapalı). Talep sahibine
+    çift dilli bildirim gider; işlem ticket geçmişine sistem kaydı olarak düşer.
 
 > **SLA duraklatma:** ticket `Kullanıcı Yanıtı Bekleniyor`, `Diğer Birimden Destek
 > Bekleniyor`, `Süreç IT Dışında İlerliyor` veya `Beklemede` durumundayken SLA saati

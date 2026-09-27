@@ -170,6 +170,8 @@ export default function TicketStatusPage() {
                   {h.action === 'user_reply' && t('ticketStatus.userReply', { content: h.newValue })}
                   {h.action === 'note_added' && t('ticketStatus.noteAdded')}
                   {h.action === 'onsite_scheduled' && t('ticketStatus.onsiteScheduled')}
+                  {h.action === 'auto_closed' && t('ticketStatus.autoClosed')}
+                  {h.action === 'auto_close_reminder' && t('ticketStatus.autoCloseReminder')}
                 </span>
               </div>
             </div>

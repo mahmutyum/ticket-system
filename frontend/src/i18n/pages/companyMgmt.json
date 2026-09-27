@@ -161,7 +161,13 @@
       "noHolidays": "Tanımlı tatil yok",
       "holidayFailed": "Tatil işlemi başarısız",
       "copyYear": "{{from}} tatillerini {{to}} yılına kopyala",
-      "copied": "{{year}} yılına {{count}} tatil kopyalandı"
+      "copied": "{{year}} yılına {{count}} tatil kopyalandı",
+      "autoCloseTitle": "Otomatik kapatma",
+      "autoCloseHint": "Gün cinsinden; 0 = kapalı. Süre, ticket'ın o duruma geçtiği andan sayılır.",
+      "resolvedAfterDays": "Çözüldü → kapat (gün)",
+      "waitingReminderAfterDays": "Yanıt bekleniyor → hatırlat (gün)",
+      "waitingCloseAfterDays": "Yanıt bekleniyor → kapat (gün)",
+      "reminderBeforeClose": "Hatırlatma süresi kapatma süresinden kısa olmalı."
     }
   },
   "en": {
@@ -326,7 +332,13 @@
       "noHolidays": "No holidays defined",
       "holidayFailed": "Holiday operation failed",
       "copyYear": "Copy {{from}} holidays to {{to}}",
-      "copied": "Copied {{count}} holidays to {{year}}"
+      "copied": "Copied {{count}} holidays to {{year}}",
+      "autoCloseTitle": "Auto-close",
+      "autoCloseHint": "In days; 0 = off. Counted from when the ticket entered that status.",
+      "resolvedAfterDays": "Resolved → close (days)",
+      "waitingReminderAfterDays": "Awaiting reply → remind (days)",
+      "waitingCloseAfterDays": "Awaiting reply → close (days)",
+      "reminderBeforeClose": "The reminder must come before the close."
     }
   }
 }

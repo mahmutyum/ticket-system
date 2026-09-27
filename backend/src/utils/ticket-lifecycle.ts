@@ -43,6 +43,8 @@ export interface LifecycleUpdate {
   slaPausedAt?: Date | null;
   slaPausedMinutes?: number;
   accessTokenExpiresAt?: Date | null;
+  statusChangedAt?: Date;
+  autoCloseReminderAt?: Date | null;
 }
 
 export interface LifecycleHistory {
@@ -91,7 +93,9 @@ export function planStatusTransition(
   if (to === from) return { data: {}, history: [] };
 
   const who = { createdById: actor.id ?? null, createdByEmail: actor.email ?? null };
-  const data: LifecycleUpdate = { status: to };
+  // Otomatik kapatma süreleri son durum değişikliğinden sayılır; önceki durumun
+  // hatırlatması yeni durumda geçersizdir.
+  const data: LifecycleUpdate = { status: to, statusChangedAt: now, autoCloseReminderAt: null };
   const history: LifecycleHistory[] = [
     { action: 'status_changed', field: 'status', oldValue: from, newValue: to, ...who },
   ];

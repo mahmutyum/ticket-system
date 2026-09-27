@@ -1,7 +1,8 @@
 import type { PrismaClient } from '@prisma/client';
 
 /**
- * SLA uyarı/eskalasyon e-posta şablonlarını garanti eder (v1.1).
+ * v1.1 ile eklenen sistem e-posta şablonlarını garanti eder: SLA uyarı /
+ * eskalasyon ve otomatik kapatma (bekleme hatırlatması, kapatıldı bildirimi).
  *
  * Seed yalnızca ilk kurulumda çalışır; mevcut kurulumlara yeni şablonlar
  * açılışta eklenir. Var olan şablona dokunulmaz — yönetici şablon editöründen
@@ -82,8 +83,64 @@ ${button('View Request')}`,
   },
 ];
 
-export async function ensureSlaEmailTemplates(prisma: Pick<PrismaClient, 'emailTemplate'>) {
-  for (const tmpl of SLA_EMAIL_TEMPLATES) {
+const trackingButton = (label: string) =>
+  `<p><a href="{{trackingUrl}}" style="display:inline-block;padding:10px 16px;background:#2563eb;color:#fff;border-radius:6px;text-decoration:none;">${label}</a></p>`;
+
+export const AUTO_CLOSE_EMAIL_TEMPLATES = [
+  {
+    slug: 'ticket_waiting_reminder',
+    locale: 'tr',
+    subject: 'Yanıtınızı Bekliyoruz - {{ticketNumber}}',
+    bodyHtml: `<h2>Yanıtınızı Bekliyoruz</h2>
+<p>Sayın {{userName}},</p>
+<p><strong>{{ticketNumber}}</strong> numaralı talebiniz (<em>{{subject}}</em>) için IT ekibi sizden bilgi bekliyor.</p>
+<p>{{closeNote}}</p>
+${trackingButton('Talebe Yanıt Ver')}`,
+    bodyText: 'Yanıtınızı bekliyoruz: {{ticketNumber}} - {{subject}}. {{closeNote}} Yanıt vermek için: {{trackingUrl}}',
+    variables: ['userName', 'ticketNumber', 'subject', 'closeNote', 'trackingUrl'],
+  },
+  {
+    slug: 'ticket_waiting_reminder',
+    locale: 'en',
+    subject: 'We Are Waiting for Your Reply - {{ticketNumber}}',
+    bodyHtml: `<h2>We Are Waiting for Your Reply</h2>
+<p>Dear {{userName}},</p>
+<p>The IT team is waiting for information from you on request <strong>{{ticketNumber}}</strong> (<em>{{subject}}</em>).</p>
+<p>{{closeNote}}</p>
+${trackingButton('Reply to Request')}`,
+    bodyText: 'We are waiting for your reply: {{ticketNumber}} - {{subject}}. {{closeNote}} Reply here: {{trackingUrl}}',
+    variables: ['userName', 'ticketNumber', 'subject', 'closeNote', 'trackingUrl'],
+  },
+  {
+    slug: 'ticket_auto_closed',
+    locale: 'tr',
+    subject: 'Talebiniz Kapatıldı - {{ticketNumber}}',
+    bodyHtml: `<h2>Talebiniz Kapatıldı</h2>
+<p>Sayın {{userName}},</p>
+<p><strong>{{ticketNumber}}</strong> numaralı talebiniz (<em>{{subject}}</em>) otomatik olarak kapatıldı.</p>
+<p>{{reasonText}}</p>
+<p>Sorununuz devam ediyorsa yeni bir talep oluşturabilirsiniz.</p>
+${trackingButton('Talebi Görüntüle')}`,
+    bodyText: 'Talebiniz kapatıldı: {{ticketNumber}} - {{subject}}. {{reasonText}} Detay: {{trackingUrl}}',
+    variables: ['userName', 'ticketNumber', 'subject', 'reasonText', 'trackingUrl'],
+  },
+  {
+    slug: 'ticket_auto_closed',
+    locale: 'en',
+    subject: 'Your Request Was Closed - {{ticketNumber}}',
+    bodyHtml: `<h2>Your Request Was Closed</h2>
+<p>Dear {{userName}},</p>
+<p>Your request <strong>{{ticketNumber}}</strong> (<em>{{subject}}</em>) was closed automatically.</p>
+<p>{{reasonText}}</p>
+<p>If the issue persists, please open a new request.</p>
+${trackingButton('View Request')}`,
+    bodyText: 'Your request was closed: {{ticketNumber}} - {{subject}}. {{reasonText}} Details: {{trackingUrl}}',
+    variables: ['userName', 'ticketNumber', 'subject', 'reasonText', 'trackingUrl'],
+  },
+];
+
+export async function ensureSystemEmailTemplates(prisma: Pick<PrismaClient, 'emailTemplate'>) {
+  for (const tmpl of [...SLA_EMAIL_TEMPLATES, ...AUTO_CLOSE_EMAIL_TEMPLATES]) {
     await prisma.emailTemplate.upsert({
       where: { slug_locale: { slug: tmpl.slug, locale: tmpl.locale } },
       update: {},

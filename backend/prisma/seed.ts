@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { strongPassword } from '../src/utils/validation.js';
-import { ensureSlaEmailTemplates } from '../src/jobs/sla-templates.js';
+import { ensureSystemEmailTemplates } from '../src/jobs/notification-templates.js';
 
 const prisma = new PrismaClient();
 
@@ -437,7 +437,7 @@ async function main() {
       create: tmpl,
     });
   }
-  await ensureSlaEmailTemplates(prisma);
+  await ensureSystemEmailTemplates(prisma);
   console.log('Email templates created (tr + en)');
 
   // Create SMS templates

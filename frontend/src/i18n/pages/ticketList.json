@@ -45,7 +45,10 @@
       "slaKind": {
         "response": "yanıt süresi",
         "resolution": "çözüm süresi"
-      }
+      },
+      "autoClosedResolved": "Otomatik kapatıldı (çözüldükten sonra yeniden açılmadı)",
+      "autoClosedNoResponse": "Otomatik kapatıldı (kullanıcı yanıt vermedi)",
+      "autoCloseReminder": "Talep sahibine yanıt hatırlatması gönderildi"
     }
   },
   "en": {
@@ -94,7 +97,10 @@
       "slaKind": {
         "response": "response time",
         "resolution": "resolution time"
-      }
+      },
+      "autoClosedResolved": "Closed automatically (not reopened after resolution)",
+      "autoClosedNoResponse": "Closed automatically (no reply from the requester)",
+      "autoCloseReminder": "Reply reminder sent to the requester"
     }
   }
 }

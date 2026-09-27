@@ -327,6 +327,10 @@ model Ticket {
   slaPausedAt          DateTime?    @map("sla_paused_at")
   /// Toplam duraklatılmış SLA dakikası (raporlama için).
   slaPausedMinutes     Int          @default(0) @map("sla_paused_minutes")
+  /// Son durum değişikliği anı — otomatik kapatma süreleri buradan sayılır.
+  statusChangedAt      DateTime?    @map("status_changed_at")
+  /// "Kullanıcı yanıtı bekleniyor" hatırlatmasının gönderildiği an (durum değişince sıfırlanır).
+  autoCloseReminderAt  DateTime?    @map("auto_close_reminder_at")
   firstRespondedAt     DateTime?    @map("first_responded_at")
   resolvedAt           DateTime?    @map("resolved_at")
   closedAt             DateTime?    @map("closed_at")
@@ -346,6 +350,7 @@ model Ticket {
   notifications Notification[]
 
   @@index([status])
+  @@index([status, statusChangedAt])
   @@index([companyId])
   @@index([assignedToId])
   @@index([createdByEmail])

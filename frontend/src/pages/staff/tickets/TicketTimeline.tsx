@@ -45,6 +45,10 @@ function historyText(
     case 'sla_warning': return t('ticketList.timeline.slaWarning', { kind: slaKind(item, t) });
     case 'sla_escalated': return t('ticketList.timeline.slaEscalated', { kind: slaKind(item, t) });
     case 'sla_paused': return t('ticketList.timeline.slaPaused');
+    case 'auto_closed': return item.newValue === 'no_response'
+      ? t('ticketList.timeline.autoClosedNoResponse')
+      : t('ticketList.timeline.autoClosedResolved');
+    case 'auto_close_reminder': return t('ticketList.timeline.autoCloseReminder');
     case 'sla_resumed': return t('ticketList.timeline.slaResumed', { minutes: item.newValue ?? '0' });
     default: return item.action;
   }

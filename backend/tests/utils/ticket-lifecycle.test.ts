@@ -135,3 +135,11 @@ describe('mesai takvimiyle duraklatma', () => {
     expect(calculateSlaDueDates({ slaResponseMinutes: 100, slaResolutionMinutes: null }, T0, { warningPercent: 0 }).slaResponseWarnAt).toBeUndefined();
   });
 });
+
+describe('planStatusTransition — otomatik kapatma alanları', () => {
+  it('her geçişte durum değişim anı yazılır ve bekleyen hatırlatma sıfırlanır', () => {
+    const plan = planStatusTransition(ticket({ status: TicketStatus.waiting_user_response, slaPausedAt: at(1), firstRespondedAt: at(1) }), TicketStatus.open, at(30), null);
+    expect(plan.data.statusChangedAt).toEqual(at(30));
+    expect(plan.data.autoCloseReminderAt).toBeNull();
+  });
+});

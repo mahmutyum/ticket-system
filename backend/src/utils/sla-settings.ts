@@ -5,11 +5,12 @@ import { WEEKDAYS, isValidTimezone, parseTime, type BusinessCalendar } from './b
 /**
  * Şirket bazlı SLA ayarları (`companies.sla_settings` JSON kolonu).
  *
- * Kolon boşsa ya da alan eksikse `DEFAULT_SLA_SETTINGS` geçerlidir — yani mevcut
- * kurulumlar migration sonrası bugünkü davranışı (7/24 SLA, uyarı yalnızca
- * ihlalde değil %80'de) alır. Okurken daima `parseSlaSettings` kullanılır: JSON
- * kolonu elle düzenlenmiş ya da eski biçimde olabilir, bozuk veri SLA işçisini
- * düşürmemeli.
+ * Kolon boşsa ya da alan eksikse `DEFAULT_SLA_SETTINGS` geçerlidir: 7/24 SLA,
+ * %80'de ihlal öncesi uyarı, ihlalde yöneticiye bildirim, çözülen ticket'ın 7 gün
+ * sonra otomatik kapanması (bekleme hatırlatması/kapatması varsayılan kapalı).
+ *
+ * Okurken daima `parseSlaSettings` kullanılır: JSON kolonu elle düzenlenmiş ya da
+ * eski biçimde olabilir, bozuk veri SLA işçisini düşürmemeli.
  */
 
 const timeString = z.string().refine(v => Number.isFinite(parseTime(v)), { message: 'HH:MM' });
@@ -46,6 +47,21 @@ export const slaSettingsSchema = z.object({
       bumpPriority: z.boolean().default(false),
     })
     .default({}),
+  /** Otomatik kapatma (gün). 0 → kapalı. */
+  autoClose: z
+    .object({
+      /** `resolved` durumunda bu kadar gün yeniden açılmayan ticket kapatılır. */
+      resolvedAfterDays: z.number().int().min(0).max(365).default(7),
+      /** `waiting_user_response`ta bu kadar gün yanıt gelmezse talep sahibine hatırlatma. */
+      waitingReminderAfterDays: z.number().int().min(0).max(365).default(0),
+      /** `waiting_user_response`ta bu kadar gün yanıt gelmezse ticket kapatılır. */
+      waitingCloseAfterDays: z.number().int().min(0).max(365).default(0),
+    })
+    .default({})
+    .refine(
+      a => a.waitingCloseAfterDays === 0 || a.waitingReminderAfterDays === 0 || a.waitingReminderAfterDays < a.waitingCloseAfterDays,
+      { message: 'reminder < close', path: ['waitingReminderAfterDays'] },
+    ),
 });
 
 export type SlaSettings = z.infer<typeof slaSettingsSchema>;

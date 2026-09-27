@@ -17,4 +17,5 @@ export type SlaSettings = {
   alwaysOnPriorities: PriorityValue[];
   warningPercent: number;
   escalation: { notifyManagers: boolean; bumpPriority: boolean };
+  autoClose: { resolvedAfterDays: number; waitingReminderAfterDays: number; waitingCloseAfterDays: number };
 };

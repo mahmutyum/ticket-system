@@ -25,7 +25,9 @@
     "addFile": "Dosya Ekle",
     "replySent": "Yanıtınız gönderildi",
     "fileUploaded": "Dosya yüklendi",
-    "fileUploadError": "Dosya yüklenemedi"
+    "fileUploadError": "Dosya yüklenemedi",
+    "autoClosed": "Talep otomatik olarak kapatıldı",
+    "autoCloseReminder": "Yanıt hatırlatması gönderildi"
   },
   "en": {
     "notFoundTitle": "Ticket not found",
@@ -53,6 +55,8 @@
     "addFile": "Add File",
     "replySent": "Your reply has been sent",
     "fileUploaded": "File uploaded",
-    "fileUploadError": "File upload failed"
+    "fileUploadError": "File upload failed",
+    "autoClosed": "Request was closed automatically",
+    "autoCloseReminder": "Reply reminder sent"
   }
 }

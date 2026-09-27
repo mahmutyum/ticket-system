@@ -277,6 +277,7 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
         slaResolveDue,
         slaResponseWarnAt,
         slaResolveWarnAt,
+        statusChangedAt: new Date(),
         // Auto-assign if category has it set
         assignedToId: category?.autoAssignTo || undefined,
         customValues: body.customFields

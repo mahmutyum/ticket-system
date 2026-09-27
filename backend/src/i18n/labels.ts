@@ -79,3 +79,22 @@ export const slaTypeLabel = (locale: string, kind: SlaKind): string => {
   if (norm(locale) === 'en') return kind === 'response' ? 'Response Time' : 'Resolution Time';
   return kind === 'response' ? 'Yanıt Süresi' : 'Çözüm Süresi';
 };
+
+/** Otomatik kapatma bildirimlerindeki açıklama metinleri. */
+export function autoCloseReasonText(locale: string, reason: 'resolved' | 'no_response', days: number): string {
+  if (norm(locale) === 'en') {
+    return reason === 'resolved'
+      ? `It was marked as resolved and was not reopened within ${days} days.`
+      : `We did not receive a reply within ${days} days.`;
+  }
+  return reason === 'resolved'
+    ? `Çözüldü olarak işaretlendikten sonra ${days} gün içinde yeniden açılmadı.`
+    : `${days} gün içinde yanıtınız alınamadı.`;
+}
+
+export function waitingCloseNote(locale: string, days: number | null): string {
+  if (days === null) return '';
+  return norm(locale) === 'en'
+    ? `If we do not hear from you within ${days} days, the request will be closed automatically.`
+    : `${days} gün içinde yanıt alamazsak talep otomatik olarak kapatılacaktır.`;
+}

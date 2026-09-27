@@ -15,6 +15,9 @@ _Planned work is tracked in [docs/yol-haritasi.md](docs/yol-haritasi.md)._
   selected priorities can stay 24/7.
 - **Pre-breach warnings** at a configurable threshold (default 80%) and **escalation** of
   breaches to the company's IT managers, with optional automatic priority bump.
+- **Auto-close** per company: resolved tickets close after N days (default 7); tickets
+  awaiting the requester can get a reminder and then close (off by default). Bilingual
+  requester notifications (`ticket_waiting_reminder`, `ticket_auto_closed`).
 - Live `sla_alert` panel notifications; SLA events in the ticket timeline; paused-time
   metrics in the SLA report.
 
