@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Planned work is tracked in [docs/yol-haritasi.md](docs/yol-haritasi.md)._
 
+## [1.1.0] - 2026-09-27
+
+SLA accuracy, ticket lifecycle, enterprise integrations, knowledge base, assets, CSAT and
+observability.
+
+### Upgrade notes
+- Run migrations (`prisma migrate deploy`, automatic on container start). Auto-close
+  (resolved → closed after 7 days) is on by default; for tickets already resolved or
+  awaiting the requester at upgrade time the countdown starts at the upgrade, so there is no
+  mass closure/email burst on the first run. Set `autoClose.resolvedAfterDays` to 0 per
+  company (SLA & Hours screen) to disable. No retroactive satisfaction surveys are sent.
+- `TRUST_PROXY` keeps its meaning; each trusted hop must now be an internal/loopback
+  address (or give an IP/CIDR list). Verify client IPs in the audit log after upgrading.
+- New optional env: `ALLOW_PRIVATE_INTEGRATION_HOSTS`, `METRICS_TOKEN`.
+
 ### Added
 - **SLA pausing**: the SLA clock stops while a ticket waits on the requester, another
   department, an outside process or is on hold; due dates shift by the paused time on resume.
@@ -115,5 +130,6 @@ First tagged release. A production-ready, multi-tenant internal IT helpdesk.
 - Dockerized (Compose), versioned Prisma migrations, real PostgreSQL + Redis integration
   tests, backend + frontend test suites, and OpenAPI request/response contracts.
 
-[Unreleased]: https://github.com/mahmutyum/ticket-system/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/mahmutyum/ticket-system/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/mahmutyum/ticket-system/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/mahmutyum/ticket-system/releases/tag/v1.0.0

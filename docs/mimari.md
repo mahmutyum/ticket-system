@@ -37,19 +37,19 @@ ticket-system/
 ├── nginx/                      # Opsiyonel dahili proxy (--profile proxy)
 ├── backend/
 │   ├── prisma/
-│   │   ├── schema.prisma       # 24 model
+│   │   ├── schema.prisma       # 34 model
 │   │   ├── migrations/         # Versiyonlanmış migration'lar
 │   │   └── seed.ts             # Demo veri
 │   └── src/
 │       ├── app.ts              # Fastify instance, plugin ve route registration
-│       ├── server.ts           # Entry point, worker başlatma, SLA scheduler
+│       ├── server.ts           # Entry point, worker'lar, periyodik işler
 │       ├── config/             # Zod env validation, sabitler
 │       ├── plugins/            # prisma, redis, auth
 │       ├── modules/<ad>/       # <ad>.routes.ts — her modül kendi dosyasında
-│       ├── services/           # email, sms, sse, storage
+│       ├── services/           # email, sms, sse, storage, mail/ (gelen kutusu), sso/, webhooks/, metrics, ticket-intake, sla-context
 │       ├── jobs/               # BullMQ queue + worker'lar
 │       ├── middleware/         # audit log
-│       └── utils/              # crypto, staff-scope, ticket-number, pagination, format
+│       └── utils/              # crypto, staff-scope, ticket-number, sla, business-hours, ticket-lifecycle, net-guard, trust-proxy, csv-parse
 └── frontend/
     └── src/
         ├── api/client.ts       # Axios + JWT interceptor + auto-refresh
@@ -70,16 +70,19 @@ ticket-system/
 `server.ts`:
 1. `buildApp()` → Fastify instance (`app.ts`).
 2. Ticket sayacını ısıtır (`utils/ticket-number.ts`).
-3. Görev e-posta şablonlarını idempotent olarak seed'ler.
-4. BullMQ scheduler: SLA kontrolü her 5 dakikada bir.
-5. Worker'lar side-effect import ile başlar (`email.worker`, `sms.worker`, `sla-check.worker`).
+3. Görev ve sistem (SLA, otomatik kapatma, birleştirme, anket) e-posta şablonlarını
+   idempotent olarak ekler.
+4. BullMQ scheduler: SLA kontrolü 5 dk, otomatik kapatma 15 dk, gelen posta 2 dk.
+5. Worker'lar side-effect import ile başlar (`email`, `sms`, `sla-check` (+auto-close),
+   `mail-fetch`, `webhook`).
 6. `0.0.0.0:${PORT}` üzerinde dinler.
 
 Container'da bundan önce `prisma migrate deploy` çalışır (bkz. `backend/Dockerfile` CMD).
 
 ### `app.ts` sırası
 
-`trustProxy: true` → rate limit (global 100/dk) → CORS (`config.APP_ORIGINS`) → helmet
+`trustProxy` (`TRUST_PROXY`: hop sayısı + her hop iç ağ adresi olmalı, ya da IP/CIDR
+listesi — `utils/trust-proxy.ts`) → rate limit (global 100/dk) → CORS (`config.APP_ORIGINS`) → helmet
 (CSP dahil) → cookie (`JWT_SECRET` ile imzalı) → multipart → prisma/redis/auth
 plugin'leri → static `/uploads/` → **swagger `/docs`** → `/health` → modül route'ları →
 global error handler (Türkçe; production'da 500 detaylarını gizler).
@@ -108,14 +111,22 @@ içindedir (`script-src 'self'`, unsafe-inline/eval yok — Vite build'i inline 
 | `/reports` | Ticket, personel performansı, kategori, SLA trendi, CSV export |
 | `/tasks` | Görev CRUD + yorumlar |
 | `/credentials` | Şifre kasası — `admin` + `it_manager` (şirket kapsamlı; global kayıtlar yalnızca admin) |
+| `/companies/:id/sla`, `/holidays` | Şirket SLA ayarları, mesai takvimi, tatiller, otomatik kapatma, anket |
+| `/companies/:id/mailbox` | Gelen posta kutusu (IMAP / M365 / Gmail OAuth) — yalnızca admin |
+| `/tickets/:id/merge` `/parent` `/watchers` `/asset` | Birleştirme, üst/alt, izleyiciler (CC), varlık bağı |
+| `/auth/sso` | OIDC / SAML / LDAP girişleri; `/auth/sso/admin/*` sağlayıcı yönetimi |
+| `/webhooks` | Giden webhook + Teams/Slack — yalnızca admin |
+| `/kb`, `/public/kb` | Bilgi bankası (personel CRUD, public arama/okuma/geri bildirim) |
+| `/assets` | Varlık envanteri + CSV içe aktarma |
+| `/metrics` | Prometheus (yalnızca `METRICS_TOKEN` ile) |
 
 ### API sözleşmesi
 
 Tüm yanıtlar: `{ success: boolean, data?: T, error?: string }`
 
-Input validation **handler içinde** Zod ile yapılır (`schema.parse(request.body)`), fastify'ın
-`schema:` alanı kullanılmaz. Bunun bedeli: `/docs` request/response gövdelerini belgeleyemez.
-Bkz. [yol-haritasi.md](yol-haritasi.md#51-api-şemaları-ve-dokümantasyon).
+Girdi ve yanıt sözleşmeleri route `schema:` alanında Zod ile tanımlanır
+(`fastify-type-provider-zod`): doğrulama Fastify sınırında yapılır, yanıt şemadan geçmeyen
+alanları dışarı sızdırmaz ve `/docs` (OpenAPI) aynı şemalardan üretilir.
 
 ---
 
@@ -123,8 +134,8 @@ Bkz. [yol-haritasi.md](yol-haritasi.md#51-api-şemaları-ve-dokümantasyon).
 
 **Staff — çift token:**
 
-- **Access token:** 15 dk. `Authorization: Bearer` header'ı **veya** `access_token` cookie'si
-  ile kabul edilir.
+- **Access token:** 15 dk. Yalnızca `Authorization: Bearer` header'ı ile kabul edilir
+  (cookie fallback yok — CSRF yüzeyi açmamak için).
 - **Refresh token:** 7 gün, httpOnly cookie. Ayrıca Redis'te `refresh:<staffId>` altında
   tutulur ve yenilemede **karşılaştırılır** — bu sayede çıkış sunucu tarafında gerçekten
   iptal eder.
@@ -133,6 +144,12 @@ Frontend access token'ı **bellekte** tutar (Zustand `partialize` yalnızca `use
 kalıcılaştırır). Açılışta `initializeAuth()` refresh cookie'sinden oturumu geri kurar.
 Axios interceptor 401'de bir kez otomatik yeniler (`_retry` guard), başarısızsa
 `/staff/login`'e yönlendirir.
+
+**SSO (personel):** OIDC, SAML 2.0, LDAP/AD (`services/sso/`). Kimlik → personel eşlemesi,
+grup → rol/şirket senkronu ve JIT kuralları `services/sso/resolve.ts`'tedir. Tarayıcı
+akışları refresh cookie'sini set edip `/staff/login?sso=ok`'a döner; frontend oturumu
+refresh ile alır (access token URL'e yazılmaz). Yerel parola girişi `system_settings.auth`
+ile kapatılabilir; admin'ler acil durum için yerel girişi korur.
 
 **Public — şifresiz:** Talep eden e-posta verir; ticket bir nanoid `accessToken` alır.
 Link'i olan erişir.
@@ -177,16 +194,16 @@ kararıdır: `it_manager`'a açılırsa kendine tüm şirketleri atayıp kapsam�
 
 ## Veri modeli
 
-24 model, 9 enum. Durum, öncelik, rol ve tip alanları **Prisma enum'udur** — geçerli küme
+34 model, 13 enum. Durum, öncelik, rol ve tip alanları **Prisma enum'udur** — geçerli küme
 veritabanı seviyesinde zorlanır (önceden düz `String`'di ve yalnızca Zod koruyordu).
 
 `config/constants.ts` bu enum'lardan **türetilir**; elle liste tutulmaz. Etiket sözlükleri
 `Record<Enum, string>` tipindedir, yani şemaya değer ekleyip etiket yazmayı unutursan `tsc`
 hata verir. Zod şemaları `z.nativeEnum(...)` ile bağlıdır.
 
-İki alan bilinçli olarak `String`: `Company.groupType` (mevcut verilerde beklenmedik
-değerler olabilir) ve `Notification.channel` (şablon slug'larıyla eşleşir, DB'den yönetilir).
-Bkz. [yol-haritasi.md](yol-haritasi.md#52-enuma-çevrilmeyen-iki-alan).
+`Notification.channel` bilinçli olarak `String`'dir (şablon slug'larıyla eşleşir, şablonlar
+DB'den yönetilir). Durum/öncelik/şirket türü gibi listelerin panelden yönetilebilir hâle
+gelmesi v1.3 planındadır ([yol-haritasi.md](yol-haritasi.md)).
 
 **Çok şirketlilik:** `Company` → `Location`, `Category` (self-referencing hiyerarşi +
 kategori bazlı SLA dakikaları + otomatik atama), `CustomField`, `CompanySmtp` (1:1),
@@ -198,7 +215,14 @@ modellerdir.
 **Çekirdek:** `Ticket` — unique `ticketNumber`, unique `accessToken` (public erişim), SLA
 alanları; `status`/`companyId`/`assignedToId`/`createdByEmail`/`createdAt` üzerinde index.
 Bağlı: `TicketCustomValue`, `TicketNote` (`isInternal`), `TicketHistory`, `Attachment`,
-`OnsiteSupport`, `Notification`.
+`OnsiteSupport`, `Notification`, `TicketWatcher` (CC / personel izleyici); ticket'ta
+`parentId` (tek seviye), `mergedIntoId`, `assetId`, SLA duraklatma/uyarı alanları,
+`statusChangedAt`, memnuniyet anketi alanları.
+
+**v1.1 ile gelenler:** `CompanyHoliday`, `CompanyMailbox` + `InboundMessage`,
+`IdentityProvider` + `SystemSetting`, `Webhook` + `WebhookDelivery`, `KbArticle`, `Asset`.
+Şirket SLA/mesai/otomatik kapatma/anket ayarları `Company.slaSettings` JSON'undadır
+(biçim: `utils/sla-settings.ts`).
 
 **Şablonlar:** `TicketTemplate`, `CannedResponse`, `EmailTemplate`, `SmsTemplate`.
 
@@ -228,7 +252,11 @@ Başarısız denemeler `Notification` tablosuna yazılır ve panelden retry edil
   (`slaPausedAt` dolu) ticket'lar atlanır. Son tarihler ticket açılışında şirketin mesai
   takvimine göre hesaplanır (`utils/business-hours.ts`); durum geçişlerinin SLA etkileri
   tek yerde, `utils/ticket-lifecycle.ts` planlayıcısındadır (tekil/toplu güncelleme ve
-  public kullanıcı yanıtı aynı yoldan geçer).
+  public kullanıcı yanıtı aynı yoldan geçer). Aynı kuyrukta `auto-close` (15 dk):
+  `jobs/auto-close.ts` — çözülmüş/yanıt bekleyen ticket'ların kapatılması ve hatırlatma.
+- `webhook.worker` — `webhook_deliveries` kayıtlarını teslim eder (5 deneme, üstel bekleme,
+  her teslimatta SSRF denetimi, yönlendirme izlenmez). Olaylar `services/webhooks/emit.ts`
+  ile üretilir; üretim hata yutar, ticket işlemini bozmaz.
 
 ---
 
@@ -239,9 +267,10 @@ Tek yönlü Server-Sent Events. `hooks/useSSE.ts` exponential backoff ile yenide
 Kanallar: `/events/staff` (panel), `/events/ticket/:accessToken` (talep edenin durum sayfası),
 `/events/stats`.
 
-⚠️ Tarayıcının `EventSource` API'si özel header gönderemediği için staff kanalı JWT'yi
-**query parametresinde** alır (`?token=`). Bu token'ı proxy log'larına düşürür — bkz.
-[SECURITY.md](../SECURITY.md).
+⚠️ Tarayıcının `EventSource` API'si özel header gönderemediği için staff kanalı kimliği
+**query parametresinde** alır: JWT değil, `/events/ticket-grant` ile alınan 30 sn'lik tek
+kullanımlık bilet (`?ticket=`). Olaylar: `ticket_created`, `ticket_updated`, `note_added`,
+`user_reply`, `sla_alert`.
 
 **NPM kullanıyorsan proxy host'ta Websockets Support açık olmalı**, yoksa SSE çalışmaz.
 

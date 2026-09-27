@@ -10,12 +10,14 @@ Projenin güncel olgunluğu ve planlanan işler. Durum: 2026-09-27.
 | Çok dillilik | 🟢 TR/EN (arayüz + API mesajları + e-posta/SMS şablonları) |
 | Kurulum / deploy | 🟢 Docker Compose, Coolify ve Nginx belgeli |
 | Migration | 🟢 Versiyonlu; gerçek PostgreSQL üzerinde doğrulanabilir |
-| Backend testleri | 🟢 235 birim/route/worker testi |
+| Backend testleri | 🟢 408 birim/route/worker testi |
 | Frontend testleri | 🟢 26 birim testi + 6 Playwright smoke/axe senaryosu |
-| Entegrasyon | 🟢 Gerçek PostgreSQL + Redis testi |
+| Entegrasyon | 🟢 37 test — gerçek PostgreSQL + Redis; sahte OIDC sağlayıcısı, imzalı SAML yanıtı ve yerel webhook alıcısıyla uçtan uca |
 | API dokümantasyonu | 🟢 Kritik route'larda request/response sözleşmeleri (OpenAPI) |
 | Kod kalitesi | 🟢 Backend + frontend lint temiz, tipli |
-| SLA doğruluğu | 🟡 Bekleme durumlarında ve mesai dışında süre işliyor (v1.1) |
+| SLA doğruluğu | 🟢 Duraklatma, mesai takvimi/tatiller, ihlal öncesi uyarı, eskalasyon (v1.1) |
+| Kanallar ve entegrasyon | 🟢 E-postayla yanıt (IMAP/M365/Gmail), SSO (OIDC/SAML/LDAP), webhook + Teams/Slack (v1.1) |
+| Gözlemlenebilirlik | 🟢 Prometheus `/metrics` + örnek alarm kuralları (v1.1) |
 | Yedekleme | 🟡 Elle çalıştırılan script; zamanlama ve uzak hedef yok (v1.2) |
 | Yönetilebilirlik | 🟡 Durum, öncelik, şirket türü vb. kodda sabit enum; panelden eklenemiyor (v1.3) |
 
@@ -23,13 +25,32 @@ Projenin güncel olgunluğu ve planlanan işler. Durum: 2026-09-27.
 
 | Sürüm | Tema |
 |---|---|
-| **v1.1** | SLA doğruluğu, talep yaşam döngüsü, kurumsal entegrasyon, ürün olgunluğu, gözlemlenebilirlik |
+| **v1.1** ✅ | SLA doğruluğu, talep yaşam döngüsü, kurumsal entegrasyon, ürün olgunluğu, gözlemlenebilirlik |
 | **v1.2** | Otomatik yedekleme, merkezi zamanlanmış görev (cron) altyapısı, uzak yedek hedefleri |
 | **v1.3** | DB'den yönetilen sözlükler (şirket türü, durum, öncelik…), "Taleplerim", S3 depolama, Docker Hub imajları, sürüm otomasyonu |
 
 ---
 
-## v1.1
+## v1.1 — ✅ tamamlandı
+
+Aşağıdaki maddelerin tamamı uygulandı (ayrıntı: [CHANGELOG](../CHANGELOG.md)). Uygulamada
+alınan ve plandan ayrılan kararlar:
+
+- **SLA duraklatan durumlar:** `waiting_user_response`, `waiting_other_department`,
+  `process_outside_it`, `on_hold` (`config/constants.ts`, v1.3'te durum sınıfına taşınacak).
+  Şirket SLA ayarları, otomatik kapatma ve anket ayarı tek JSON'da (`companies.sla_settings`).
+- **Otomatik kapatma varsayılanları:** çözüldü → 7 gün sonra kapat açık; yanıt bekleme
+  hatırlatması/kapatması kapalı.
+- **E-postayla yanıt:** hatalı işlenen ileti yeniden denenmez (kaydedilir, okundu işaretlenir);
+  kapanmış talebe gelen yanıt önceki numaraya atıflı yeni talep olur.
+- **SSO:** SAML'da IdP-initiated giriş desteklenmez (InResponseTo zorunlu); OIDC issuer
+  production'da HTTPS olmalı. Rol eşlemesi tanımlıysa eşleşmeyen kullanıcı giremez.
+- **İç ağ entegrasyonları:** `ALLOW_PRIVATE_INTEGRATION_HOSTS=true` ile kurum içi SMTP/IMAP/
+  LDAP/OIDC/webhook hedeflerine izin verilir (loopback ve bulut metadata her durumda engelli).
+- **Memnuniyet anketi:** e-postadaki yıldızlar yalnızca puanı önceden seçer, kayıt sayfada
+  onayla yapılır (bağlantı tarayıcıları oy veremez).
+- **Kapsam dışı bırakılan:** react-router 6 → 7 (orta önemli güvenlik bulgusu, büyük sürüm
+  geçişi) ayrı bir işe bırakıldı.
 
 ### 1. SLA doğruluğu
 

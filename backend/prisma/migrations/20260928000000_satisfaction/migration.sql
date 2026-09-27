@@ -9,3 +9,6 @@ ADD COLUMN     "survey_sent_at" TIMESTAMP(3);
 
 -- Puan aralığı veritabanında da korunur.
 ALTER TABLE "tickets" ADD CONSTRAINT "tickets_satisfaction_rating_range" CHECK ("satisfaction_rating" IS NULL OR "satisfaction_rating" BETWEEN 1 AND 5);
+
+-- Yükseltmeden önce çözülmüş/kapanmış ticket'lara geriye dönük anket gönderilmez.
+UPDATE "tickets" SET "survey_sent_at" = CURRENT_TIMESTAMP WHERE "status" IN ('resolved', 'closed');
