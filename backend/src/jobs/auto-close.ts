@@ -4,6 +4,7 @@ import { autoCloseReasonText, waitingCloseNote } from '../i18n/labels.js';
 import { calendarFor, createSlaContextCache } from '../services/sla-context.js';
 import { parseSlaSettings } from '../utils/sla-settings.js';
 import { planStatusTransition } from '../utils/ticket-lifecycle.js';
+import { requesterSideRecipients } from '../services/ticket-relations.js';
 import type { EmailJobData } from './queue.js';
 
 /**
@@ -86,19 +87,21 @@ export async function runAutoClose(prisma: PrismaClient, now: Date, deps: AutoCl
     });
     result.closed++;
 
-    await deps.queueEmail({
-      to: ticket.createdByEmail,
-      templateSlug: 'ticket_auto_closed',
-      variables: {
-        userName: ticket.createdBy?.fullName ?? ticket.createdByEmail,
-        ticketNumber: ticket.ticketNumber,
-        subject: ticket.subject,
-        reasonText: autoCloseReasonText(ticket.locale, reason, days),
-        trackingUrl: trackingUrl(ticket.accessToken),
-      },
-      ticketId: ticket.id,
-      companyId: ticket.companyId,
-    });
+    for (const to of await requesterSideRecipients(prisma, ticket)) {
+      await deps.queueEmail({
+        to,
+        templateSlug: 'ticket_auto_closed',
+        variables: {
+          userName: to === ticket.createdByEmail.toLowerCase() ? (ticket.createdBy?.fullName ?? to) : to,
+          ticketNumber: ticket.ticketNumber,
+          subject: ticket.subject,
+          reasonText: autoCloseReasonText(ticket.locale, reason, days),
+          trackingUrl: trackingUrl(ticket.accessToken),
+        },
+        ticketId: ticket.id,
+        companyId: ticket.companyId,
+      });
+    }
     deps.broadcastStaff('ticket_updated', { id: ticket.id, ticketNumber: ticket.ticketNumber, status: TicketStatus.closed }, ticket.companyId);
     deps.broadcastTicket(ticket.accessToken, 'ticket_updated', { status: TicketStatus.closed, priority: ticket.priority });
   };

@@ -139,8 +139,33 @@ ${trackingButton('View Request')}`,
   },
 ];
 
+export const MERGE_EMAIL_TEMPLATES = [
+  {
+    slug: 'ticket_merged',
+    locale: 'tr',
+    subject: 'Talebiniz Birleştirildi - {{ticketNumber}}',
+    bodyHtml: `<h2>Talebiniz Birleştirildi</h2>
+<p>Sayın {{userName}},</p>
+<p><strong>{{ticketNumber}}</strong> numaralı talebiniz aynı konudaki <strong>{{targetTicketNumber}}</strong> numaralı talep ile birleştirildi.</p>
+<p>Bundan sonraki gelişmeler hakkında <strong>{{targetTicketNumber}}</strong> üzerinden bilgilendirileceksiniz.</p>`,
+    bodyText: 'Talebiniz {{ticketNumber}}, {{targetTicketNumber}} ile birleştirildi. Gelişmeler {{targetTicketNumber}} üzerinden bildirilecek.',
+    variables: ['userName', 'ticketNumber', 'targetTicketNumber'],
+  },
+  {
+    slug: 'ticket_merged',
+    locale: 'en',
+    subject: 'Your Request Was Merged - {{ticketNumber}}',
+    bodyHtml: `<h2>Your Request Was Merged</h2>
+<p>Dear {{userName}},</p>
+<p>Your request <strong>{{ticketNumber}}</strong> was merged into request <strong>{{targetTicketNumber}}</strong> about the same issue.</p>
+<p>You will receive further updates through <strong>{{targetTicketNumber}}</strong>.</p>`,
+    bodyText: 'Your request {{ticketNumber}} was merged into {{targetTicketNumber}}. Updates will follow via {{targetTicketNumber}}.',
+    variables: ['userName', 'ticketNumber', 'targetTicketNumber'],
+  },
+];
+
 export async function ensureSystemEmailTemplates(prisma: Pick<PrismaClient, 'emailTemplate'>) {
-  for (const tmpl of [...SLA_EMAIL_TEMPLATES, ...AUTO_CLOSE_EMAIL_TEMPLATES]) {
+  for (const tmpl of [...SLA_EMAIL_TEMPLATES, ...AUTO_CLOSE_EMAIL_TEMPLATES, ...MERGE_EMAIL_TEMPLATES]) {
     await prisma.emailTemplate.upsert({
       where: { slug_locale: { slug: tmpl.slug, locale: tmpl.locale } },
       update: {},

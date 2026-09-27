@@ -51,6 +51,14 @@ function historyText(
       ? t('ticketList.timeline.autoClosedNoResponse')
       : t('ticketList.timeline.autoClosedResolved');
     case 'auto_close_reminder': return t('ticketList.timeline.autoCloseReminder');
+    case 'merged_into': return t('ticketList.timeline.mergedInto', { value: item.newValue });
+    case 'merged_from': return t('ticketList.timeline.mergedFrom', { value: item.newValue });
+    case 'parent_set': return t('ticketList.timeline.parentSet', { value: item.newValue });
+    case 'parent_removed': return t('ticketList.timeline.parentRemoved');
+    case 'child_added': return t('ticketList.timeline.childAdded', { value: item.newValue });
+    case 'status_from_parent': return t('ticketList.timeline.statusFromParent', { value: item.newValue });
+    case 'watcher_added': return t('ticketList.timeline.watcherAdded', { value: item.newValue });
+    case 'watcher_removed': return t('ticketList.timeline.watcherRemoved', { value: item.newValue });
     case 'sla_resumed': return t('ticketList.timeline.slaResumed', { minutes: item.newValue ?? '0' });
     default: return item.action;
   }

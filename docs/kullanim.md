@@ -128,6 +128,17 @@ ticket'lar.
   - **Public yanıt** — talep eden görür, e-posta bildirimi gider.
   - **İç not** — yalnızca staff görür, talep edene **asla** gösterilmez.
   - Dosya ekleme, ticket geçmişi (kim neyi ne zaman değiştirdi), SLA sayacı.
+  - **İlişkiler ve izleyiciler:**
+    - **Birleştir** (`admin`, `it_manager`) — aynı konudaki mükerrer talebi başka bir talebe
+      birleştirir: notlar ve dosyalar hedefe taşınır, kaynak kapanır, kaynağın talep sahibi
+      hedefe CC eklenir ve bilgilendirilir. Kaynağa e-postayla gelen yanıtlar hedefe düşer.
+    - **Üst/alt talep** — yaygın arızada etkilenen talepler tek bir üst talebe bağlanır
+      (tek seviye). Üst talebin durumu değiştirilirken "alt taleplere de uygula" ile hepsi
+      birlikte çözülür/kapatılır.
+    - **İzleyiciler** — CC (talep sahibi tarafı: talep sahibine giden bildirimleri alır,
+      e-postayla yanıt verebilir; şirketin izinli domain kuralına tabidir) ve personel
+      izleyici ("İzle": kullanıcı yanıtlarından haberdar olur). Portalda talep açarken ve
+      e-postayla gelen yeni taleplerde To/Cc'deki kişiler otomatik CC olur.
   - Buradan **yerinde destek randevusu** oluşturulabilir.
 
 ### Yerinde destek takvimi — `/staff/onsite`

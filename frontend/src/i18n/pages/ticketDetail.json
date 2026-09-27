@@ -51,7 +51,31 @@
     "slaPausedSince": "{{time}} tarihinden beri bekleme durumunda — süre işlemiyor.",
     "slaPausedTotal": "Toplam duraklatma",
     "minutesShort": "{{count}} dk",
-    "viaEmail": "e-postayla geldi"
+    "viaEmail": "e-postayla geldi",
+    "relations": {
+      "title": "İlişkiler ve izleyiciler",
+      "failed": "İşlem başarısız",
+      "merged": "Talep {{number}} ile birleştirildi",
+      "parentUpdated": "Üst talep güncellendi",
+      "watcherAdded": "İzleyici eklendi",
+      "watcherRemoved": "İzleyici kaldırıldı",
+      "mergedInto": "Bu talep şuna birleştirildi:",
+      "parent": "Üst talep",
+      "unlink": "Bağı kaldır",
+      "children": "Alt talepler ({{count}})",
+      "mergedFrom": "Bu talebe birleştirilenler",
+      "linkParent": "Üst talebe bağla",
+      "merge": "Birleştir",
+      "mergeHint": "Bu talep kapatılır; notlar ve dosyalar seçilen talebe taşınır, talep sahibi oraya CC eklenir.",
+      "searchPlaceholder": "Talep no veya konu ara...",
+      "watchers": "İzleyiciler",
+      "watchMe": "İzle",
+      "noWatchers": "İzleyici yok",
+      "staffWatcher": "personel",
+      "ccPlaceholder": "CC e-posta ekle",
+      "addCc": "CC ekle"
+    },
+    "applyToChildren": "Alt taleplere de uygula ({{count}})"
   },
   "en": {
     "statusUpdated": "Status updated",
@@ -105,6 +129,30 @@
     "slaPausedSince": "Waiting since {{time}} — the clock is stopped.",
     "slaPausedTotal": "Total paused",
     "minutesShort": "{{count}} min",
-    "viaEmail": "via email"
+    "viaEmail": "via email",
+    "relations": {
+      "title": "Relations and watchers",
+      "failed": "Operation failed",
+      "merged": "Request merged into {{number}}",
+      "parentUpdated": "Parent request updated",
+      "watcherAdded": "Watcher added",
+      "watcherRemoved": "Watcher removed",
+      "mergedInto": "This request was merged into:",
+      "parent": "Parent request",
+      "unlink": "Unlink",
+      "children": "Child requests ({{count}})",
+      "mergedFrom": "Merged into this request",
+      "linkParent": "Link to parent",
+      "merge": "Merge",
+      "mergeHint": "This request will be closed; notes and files move to the selected request and the requester is added there as CC.",
+      "searchPlaceholder": "Search request no or subject...",
+      "watchers": "Watchers",
+      "watchMe": "Watch",
+      "noWatchers": "No watchers",
+      "staffWatcher": "staff",
+      "ccPlaceholder": "Add CC email",
+      "addCc": "Add CC"
+    },
+    "applyToChildren": "Apply to child requests ({{count}})"
   }
 }

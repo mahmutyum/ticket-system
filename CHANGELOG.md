@@ -23,6 +23,9 @@ _Planned work is tracked in [docs/yol-haritasi.md](docs/yol-haritasi.md)._
   ticket number + requester address, quoted text is stripped, attachments follow the upload
   rules; unmatched mail can open tickets (`source: email`). Auto-replies, own address and
   per-sender floods are ignored; every message is processed once and logged.
+- **Ticket relations**: merge duplicates (notes/files move, source closes, requester becomes
+  CC), single-level parent/child with "apply to children" status changes, and watchers —
+  requester-side CC (portal field, email To/Cc, can reply by email) and staff watchers.
 - Live `sla_alert` panel notifications; SLA events in the ticket timeline; paused-time
   metrics in the SLA report.
 

@@ -27,7 +27,9 @@
     "fileUploaded": "Dosya yüklendi",
     "fileUploadError": "Dosya yüklenemedi",
     "autoClosed": "Talep otomatik olarak kapatıldı",
-    "autoCloseReminder": "Yanıt hatırlatması gönderildi"
+    "autoCloseReminder": "Yanıt hatırlatması gönderildi",
+    "mergedBanner": "Bu talep aynı konudaki {{number}} numaralı talep ile birleştirildi. Gelişmeler {{number}} üzerinden bildirilecek.",
+    "mergedInto": "{{number}} ile birleştirildi"
   },
   "en": {
     "notFoundTitle": "Ticket not found",
@@ -57,6 +59,8 @@
     "fileUploaded": "File uploaded",
     "fileUploadError": "File upload failed",
     "autoClosed": "Request was closed automatically",
-    "autoCloseReminder": "Reply reminder sent"
+    "autoCloseReminder": "Reply reminder sent",
+    "mergedBanner": "This request was merged into request {{number}} about the same issue. Updates will follow via {{number}}.",
+    "mergedInto": "Merged into {{number}}"
   }
 }

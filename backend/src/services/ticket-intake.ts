@@ -7,6 +7,7 @@ import { calculateSlaDueDates } from '../utils/sla.js';
 import { generateTicketNumber } from '../utils/ticket-number.js';
 import { planStatusTransition } from '../utils/ticket-lifecycle.js';
 import { calendarFor, loadCompanySlaContext } from './sla-context.js';
+import { normalizeCc, staffWatchers } from './ticket-relations.js';
 
 /**
  * Talep sahibi tarafındaki ticket işlemleri — portal (HTTP) ve e-posta (gelen
@@ -37,6 +38,8 @@ export interface NewRequesterTicket {
   locale: 'tr' | 'en';
   customFields?: Array<{ fieldId: string; value: string }>;
   source?: 'portal' | 'email';
+  /** Talep sahibi tarafında bilgilendirilecek ek adresler (CC). Çağıran domain kuralını uygular. */
+  ccEmails?: string[];
 }
 
 export const trackingUrlFor = (accessToken: string) => `${config.CANONICAL_URL}/ticket/${accessToken}`;
@@ -114,6 +117,9 @@ export async function createRequesterTicket(prisma: PrismaClient, input: NewRequ
       history: {
         create: { action: 'ticket_created', newValue: 'open', createdByEmail: input.email },
       },
+      watchers: input.ccEmails?.length
+        ? { create: normalizeCc(input.ccEmails, [input.email]).map(email => ({ email, addedBy: input.email })) }
+        : undefined,
     },
     include: {
       company: { select: { name: true, notificationEmail: true } },
@@ -222,8 +228,10 @@ export async function addRequesterReply(
   ticket: ReplyTicket,
   content: string,
   deps: Pick<IntakeDeps, 'queueEmail' | 'broadcastStaff'>,
-  options: { via?: 'portal' | 'email'; reopenResolved?: boolean } = {},
+  options: { via?: 'portal' | 'email'; reopenResolved?: boolean; authorEmail?: string } = {},
 ): Promise<void> {
+  // Yanıtı yazan: talep sahibi ya da (e-postayla yanıt veren) bir CC izleyicisi.
+  const author = options.authorEmail ?? ticket.createdByEmail;
   const reopen =
     ticket.status === TicketStatus.waiting_user_response ||
     (options.reopenResolved === true && ticket.status === TicketStatus.resolved);
@@ -233,7 +241,7 @@ export async function addRequesterReply(
         TicketStatus.open,
         new Date(),
         calendarFor(await loadCompanySlaContext(prisma, ticket.companyId), ticket.priority),
-        { email: ticket.createdByEmail },
+        { email: author },
       )
     : null;
 
@@ -245,7 +253,7 @@ export async function addRequesterReply(
         action: 'user_reply',
         field: options.via === 'email' ? 'email' : null,
         newValue: content,
-        createdByEmail: ticket.createdByEmail,
+        createdByEmail: author,
       },
     });
     if (plan) {
@@ -259,18 +267,23 @@ export async function addRequesterReply(
   deps.broadcastStaff('user_reply', {
     ticketId: ticket.id,
     ticketNumber: ticket.ticketNumber,
-    email: ticket.createdByEmail,
+    email: author,
     content: content.substring(0, 100),
   }, ticket.companyId);
 
-  if (ticket.assignedTo?.email) {
+  // Atanan + personel izleyiciler (aynı kişiye iki kez gitmez).
+  const recipients = [
+    ...(ticket.assignedTo?.email ? [ticket.assignedTo] : []),
+    ...(await staffWatchers(prisma, ticket.id, ticket.assignedTo?.email ? [ticket.assignedTo.email] : [])),
+  ];
+  for (const staff of recipients) {
     await deps.queueEmail({
-      to: ticket.assignedTo.email,
+      to: staff.email,
       templateSlug: 'user_reply',
       variables: {
         ticketNumber: ticket.ticketNumber,
-        staffName: ticket.assignedTo.fullName,
-        userEmail: ticket.createdByEmail,
+        staffName: staff.fullName,
+        userEmail: author,
         replyContent: content.substring(0, 500),
       },
       ticketId: ticket.id,

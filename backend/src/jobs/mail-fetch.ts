@@ -11,6 +11,7 @@ import {
   replyTicketSelect,
   type IntakeDeps,
 } from '../services/ticket-intake.js';
+import { isRequesterSide } from '../services/ticket-relations.js';
 import { ATTACHMENT_LIMITS, LIMITS } from '../utils/validation.js';
 
 /**
@@ -104,19 +105,24 @@ export async function processInboundMail(
   let closedTicketNumber: string | null = null;
 
   if (ticketNumber) {
-    const ticket = await prisma.ticket.findUnique({ where: { ticketNumber }, select: replyTicketSelect });
+    let ticket = await prisma.ticket.findUnique({ where: { ticketNumber }, select: { ...replyTicketSelect, mergedIntoId: true } });
+    // Birleştirilmiş ticket'a gelen yanıt hedefe yönlenir (kaynağın talep sahibi orada CC'dir).
+    if (ticket?.mergedIntoId) {
+      ticket = await prisma.ticket.findUnique({ where: { id: ticket.mergedIntoId }, select: { ...replyTicketSelect, mergedIntoId: true } });
+    }
+    // Yanıt verebilenler: talep sahibi ve CC izleyicileri (personel izleyiciler değil).
     const matches =
-      ticket &&
+      !!ticket &&
       ticket.companyId === mailbox.companyId &&
-      ticket.createdByEmail.toLowerCase() === mail.fromEmail;
-    if (matches && ticket.status !== TicketStatus.closed) {
+      (await isRequesterSide(prisma, ticket, mail.fromEmail));
+    if (ticket && matches && ticket.status !== TicketStatus.closed) {
       if (!mail.body && mail.attachments.length === 0) return { action: 'ignored', reason: 'empty', ticketId: ticket.id };
       const skipped = await saveAttachments(prisma, ticket.id, mail);
       const content = truncate(mail.body || `(${mail.attachments.length - skipped} ek)`, LIMITS.noteContent.max);
-      await addRequesterReply(prisma, ticket, content, deps, { via: 'email', reopenResolved: true });
+      await addRequesterReply(prisma, ticket, content, deps, { via: 'email', reopenResolved: true, authorEmail: mail.fromEmail });
       return { action: 'reply', ticketId: ticket.id, reason: skipped ? `attachments_skipped:${skipped}` : undefined };
     }
-    if (matches) closedTicketNumber = ticket.ticketNumber;
+    if (ticket && matches) closedTicketNumber = ticket.ticketNumber;
   }
 
   // Eşleşmeyen (ya da kapanmış ticket'a gelen) e-posta → yeni ticket.
@@ -151,6 +157,8 @@ export async function processInboundMail(
     priority: Priority.medium,
     locale,
     source: 'email',
+    // E-postadaki diğer alıcılar CC olur (posta kutusu hariç, şirketin izinli domain'leri).
+    ccEmails: mail.cc.filter(a => a !== mailbox.address.toLowerCase() && isEmailDomainAllowed(company.allowedDomains, a)),
   }, deps);
   const skipped = await saveAttachments(prisma, ticket.id, mail);
   return { action: 'created', ticketId: ticket.id, reason: skipped ? `attachments_skipped:${skipped}` : undefined };

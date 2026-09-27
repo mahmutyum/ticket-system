@@ -80,6 +80,12 @@ export default function TicketStatusPage() {
           </div>
         </div>
 
+        {ticket.mergedInto && (
+          <div className="mb-4 rounded-inset border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-200">
+            {t('ticketStatus.mergedBanner', { number: ticket.mergedInto.ticketNumber })}
+          </div>
+        )}
+
         <div className="sub-surface grid grid-cols-2 gap-4 p-4 text-sm sm:grid-cols-4">
           <div className="flex items-center gap-2 text-muted">
             <Building2 className="w-4 h-4" />
@@ -171,6 +177,7 @@ export default function TicketStatusPage() {
                   {h.action === 'note_added' && t('ticketStatus.noteAdded')}
                   {h.action === 'onsite_scheduled' && t('ticketStatus.onsiteScheduled')}
                   {h.action === 'auto_closed' && t('ticketStatus.autoClosed')}
+                  {h.action === 'merged_into' && t('ticketStatus.mergedInto', { number: h.newValue })}
                   {h.action === 'auto_close_reminder' && t('ticketStatus.autoCloseReminder')}
                 </span>
               </div>

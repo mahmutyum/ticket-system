@@ -51,6 +51,7 @@ function makePrisma(opts: { slaSettings?: unknown; resolved?: Row[]; waiting?: R
       findUnique: async () => ({ slaSettings: opts.slaSettings ?? null }),
     },
     companyHoliday: { findMany: async () => [] },
+    ticketWatcher: { findMany: async () => [{ email: 'cc@acme.com' }] },
     ticket: { findMany, update },
   } as unknown as PrismaClient;
   return { prisma, update, findMany };
@@ -82,6 +83,8 @@ describe('runAutoClose', () => {
       templateSlug: 'ticket_auto_closed',
       variables: expect.objectContaining({ reasonText: expect.stringContaining('7 days'), trackingUrl: expect.stringContaining('/ticket/tok') }),
     }));
+    // CC izleyicisi de bilgilendirilir.
+    expect(d.queueEmail).toHaveBeenCalledWith(expect.objectContaining({ to: 'cc@acme.com', templateSlug: 'ticket_auto_closed' }));
     expect(d.broadcastTicket).toHaveBeenCalledWith('tok', 'ticket_updated', expect.objectContaining({ status: 'closed' }));
     expect(result.closed).toBe(1);
   });

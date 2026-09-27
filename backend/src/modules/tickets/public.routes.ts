@@ -45,6 +45,8 @@ const publicTicketSchema = z.object({
   location: z.object({ name: z.string() }),
   category: z.object({ name: z.string() }),
   assignedTo: z.object({ fullName: z.string() }).nullable(),
+  /** Birleştirildiyse hedef ticket numarası (erişim token'ı DEĞİL). */
+  mergedInto: z.object({ ticketNumber: z.string() }).nullable(),
   customValues: z.array(z.object({
     id: z.string(),
     value: z.string(),
@@ -123,6 +125,7 @@ export const publicRoutes: FastifyPluginAsyncZod = async (app) => {
         accessTokenExpiresAt: true,
         createdAt: true,
         updatedAt: true,
+        mergedInto: { select: { ticketNumber: true } },
         company: { select: { name: true } },
         location: { select: { name: true } },
         category: { select: { name: true } },
@@ -143,8 +146,16 @@ export const publicRoutes: FastifyPluginAsyncZod = async (app) => {
         //
         // SLA olayları (`sla_*`: duraklatma, uyarı, ihlal, eskalasyon) da iç
         // operasyon bilgisidir; talep sahibine gösterilmez.
+        //
+        // İlişki/izleyici kayıtları da iç operasyondur (diğer ticket numaraları,
+        // izleyici adresleri); yalnızca "başka talebe birleştirildi" gösterilir.
         history: {
-          where: { NOT: [{ action: 'internal_note_added' }, { action: { startsWith: 'sla_' } }] },
+          where: {
+            NOT: [
+              { action: { in: ['internal_note_added', 'watcher_added', 'watcher_removed', 'parent_set', 'parent_removed', 'child_added', 'merged_from', 'auto_close_reminder'] } },
+              { action: { startsWith: 'sla_' } },
+            ],
+          },
           orderBy: { createdAt: 'asc' },
           select: {
             id: true,

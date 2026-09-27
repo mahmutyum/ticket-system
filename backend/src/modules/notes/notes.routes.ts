@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requiredText, LIMITS } from '../../utils/validation.js';
 import { queueEmail } from '../../jobs/queue.js';
 import { isSlaMet } from '../../utils/sla.js';
+import { requesterSideRecipients } from '../../services/ticket-relations.js';
 import { config } from '../../config/index.js';
 import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.js';
 import { getStaffCompanyScope } from '../../utils/staff-scope.js';
@@ -116,18 +117,23 @@ export const noteRoutes: FastifyPluginAsyncZod = async (app) => {
         createdAt: note.createdAt,
       });
 
+      // Talep sahibi + CC izleyicileri. İzleyiciler de aynı takip bağlantısını alır:
+      // CC, talebin katılımcısıdır (personel ya da talep sahibi tarafından eklenir,
+      // şirketin izinli domain kuralına tabidir).
       const trackingUrl = `${config.CANONICAL_URL}/ticket/${ticket.accessToken}`;
-      await queueEmail({
-        to: ticket.createdByEmail,
-        templateSlug: 'note_added',
-        variables: {
-          ticketNumber: ticket.ticketNumber,
-          userName: ticket.createdByEmail,
-          trackingUrl,
-        },
-        ticketId: ticket.id,
-        companyId: ticket.companyId,
-      });
+      for (const to of await requesterSideRecipients(app.prisma, ticket)) {
+        await queueEmail({
+          to,
+          templateSlug: 'note_added',
+          variables: {
+            ticketNumber: ticket.ticketNumber,
+            userName: to,
+            trackingUrl,
+          },
+          ticketId: ticket.id,
+          companyId: ticket.companyId,
+        });
+      }
     }
 
     reply.status(201).send({ success: true, data: note });

@@ -55,7 +55,9 @@
       "filesLabel": "Dosyalar ({{count}}):"
     },
     "submitting": "Gönderiliyor...",
-    "submit": "Talebi Oluştur"
+    "submit": "Talebi Oluştur",
+    "ccLabel": "Bilgilendirilecek kişiler (CC, isteğe bağlı)",
+    "ccHint": "Virgülle ayırın. Bu kişiler talep güncellemelerini e-postayla alır; şirket e-posta adresi olmalı."
   },
   "en": {
     "steps": {
@@ -113,6 +115,8 @@
       "filesLabel": "Files ({{count}}):"
     },
     "submitting": "Submitting...",
-    "submit": "Create Request"
+    "submit": "Create Request",
+    "ccLabel": "People to keep informed (CC, optional)",
+    "ccHint": "Separate with commas. They receive request updates by email; must be company email addresses."
   }
 }

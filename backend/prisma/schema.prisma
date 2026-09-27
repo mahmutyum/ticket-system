@@ -342,6 +342,7 @@ model Staff {
   createdTasks      Task[]          @relation("TaskCreator")
   taskAssignments   TaskAssignee[]
   taskComments      TaskComment[]   @relation("TaskCommenter")
+  watching          TicketWatcher[]
 
   @@map("staff")
 }
@@ -396,6 +397,10 @@ model Ticket {
   statusChangedAt      DateTime?    @map("status_changed_at")
   /// Ticket'ın geldiği kanal: portal | email
   source               String       @default("portal")
+  /// Üst ticket (yaygın arıza). Tek seviye: üst ticket'ın kendi üstü olamaz.
+  parentId             String?      @map("parent_id")
+  /// Bu ticket başka bir ticket'a birleştirildiyse hedef.
+  mergedIntoId         String?      @map("merged_into_id")
   /// "Kullanıcı yanıtı bekleniyor" hatırlatmasının gönderildiği an (durum değişince sıfırlanır).
   autoCloseReminderAt  DateTime?    @map("auto_close_reminder_at")
   firstRespondedAt     DateTime?    @map("first_responded_at")
@@ -415,8 +420,14 @@ model Ticket {
   attachments   Attachment[]
   onsiteSupport OnsiteSupport[]
   notifications Notification[]
+  parent        Ticket?             @relation("TicketHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children      Ticket[]            @relation("TicketHierarchy")
+  mergedInto    Ticket?             @relation("TicketMerge", fields: [mergedIntoId], references: [id], onDelete: SetNull)
+  mergedFrom    Ticket[]            @relation("TicketMerge")
+  watchers      TicketWatcher[]
 
   @@index([status])
+  @@index([parentId])
   @@index([status, statusChangedAt])
   @@index([companyId])
   @@index([assignedToId])
@@ -450,6 +461,25 @@ model TicketNote {
   createdBy Staff  @relation(fields: [createdById], references: [id])
 
   @@map("ticket_notes")
+}
+
+/// Ticket izleyicileri (CC). `staffId` doluysa personel izleyicidir (kullanıcı
+/// yanıtlarından haberdar olur); boşsa talep sahibi tarafında CC'dir (talep sahibine
+/// giden bildirimleri alır, e-postayla yanıt verebilir).
+model TicketWatcher {
+  id        String   @id @default(cuid())
+  ticketId  String   @map("ticket_id")
+  email     String
+  staffId   String?  @map("staff_id")
+  addedBy   String?  @map("added_by")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  staff  Staff? @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([ticketId, email])
+  @@index([email])
+  @@map("ticket_watchers")
 }
 
 model TicketHistory {

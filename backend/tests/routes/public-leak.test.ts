@@ -39,6 +39,7 @@ const TICKET = {
   location: { name: 'Merkez' },
   category: { name: 'Donanım' },
   assignedTo: null,
+  mergedInto: null,
   notes: [],
   history: [],
   attachments: [],
@@ -73,9 +74,9 @@ describe('GET /public/ticket/:accessToken — iç veri sızıntısı', () => {
     expect(body.data).not.toHaveProperty('companyId');
 
     const select = findUnique.mock.calls[0][0].select ?? findUnique.mock.calls[0][0].include;
-    expect(select.history.where).toEqual({
-      NOT: [{ action: 'internal_note_added' }, { action: { startsWith: 'sla_' } }],
-    });
+    const hidden = select.history.where.NOT;
+    expect(hidden[0].action.in).toEqual(expect.arrayContaining(['internal_note_added', 'watcher_added', 'child_added']));
+    expect(hidden[1]).toEqual({ action: { startsWith: 'sla_' } });
   });
 
   it('notes sorgusu yalnızca public notları ister', async () => {
@@ -135,8 +136,14 @@ describe('POST /tickets/:ticketId/notes — iç not metni history\'ye yazılmaz'
         }),
         update: ticketUpdate,
       },
-      ticketNote: { create: async () => ({ id: 'n1', createdBy: { fullName: 'IT' } }) },
+      ticketNote: {
+        create: async () => ({
+          id: 'n1', ticketId: 't1', content: 'Cihazınız hazır', isInternal: false, createdById: 'staff-1',
+          createdAt: new Date(), createdBy: { fullName: 'IT', role: 'admin' },
+        }),
+      },
       ticketHistory: { create: historyCreate },
+      ticketWatcher: { findMany: async () => [] },
       staffCompany: { findMany: async () => [{ companyId: 'co-1' }] },
     };
     const app = buildTestApp(prisma);
@@ -147,11 +154,12 @@ describe('POST /tickets/:ticketId/notes — iç not metni history\'ye yazılmaz'
     const { StaffRole } = await import('@prisma/client');
     const { authHeader } = await import('../helpers/app.js');
 
-    await app.inject({
+    const res = await app.inject({
       method: 'POST', url: '/tickets/t1/notes',
       headers: authHeader(StaffRole.admin),
       payload: { content: 'Cihazınız hazır', isInternal: false },
     });
+    expect(res.statusCode, res.body).toBe(201);
 
     const data = historyCreate.mock.calls[0][0].data;
     expect(data.action).toBe('note_added');

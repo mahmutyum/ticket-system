@@ -88,6 +88,11 @@ export interface Ticket {
   slaPausedAt?: string | null;
   slaPausedMinutes?: number;
   source?: 'portal' | 'email' | string;
+  parent?: RelatedTicket | null;
+  children?: RelatedTicket[];
+  mergedInto?: RelatedTicket | null;
+  mergedFrom?: RelatedTicket[];
+  watchers?: TicketWatcher[];
   firstRespondedAt?: string;
   resolvedAt?: string;
   closedAt?: string;
@@ -120,6 +125,21 @@ export interface TicketNote {
   isInternal: boolean;
   createdAt: string;
   createdBy: { fullName: string; role: string };
+}
+
+export interface RelatedTicket {
+  id: string;
+  ticketNumber: string;
+  subject: string;
+  status: string;
+}
+
+export interface TicketWatcher {
+  id: string;
+  email: string;
+  staffId: string | null;
+  createdAt: string;
+  staff: { fullName: string } | null;
 }
 
 export interface TicketHistory {

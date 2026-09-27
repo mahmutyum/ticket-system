@@ -23,6 +23,7 @@ import { categoryRoutes } from './modules/categories/categories.routes.js';
 import { customFieldRoutes } from './modules/custom-fields/custom-fields.routes.js';
 import { ticketRoutes } from './modules/tickets/tickets.routes.js';
 import { noteRoutes } from './modules/notes/notes.routes.js';
+import { relationRoutes } from './modules/tickets/relations.routes.js';
 import { staffRoutes } from './modules/staff/staff.routes.js';
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes.js';
 import { publicRoutes } from './modules/tickets/public.routes.js';
@@ -239,6 +240,7 @@ export async function buildApp() {
   await app.register(customFieldRoutes, { prefix: '/custom-fields' });
   await app.register(ticketRoutes, { prefix: '/tickets' });
   await app.register(noteRoutes, { prefix: '/tickets' });
+  await app.register(relationRoutes, { prefix: '/tickets' });
   await app.register(staffRoutes, { prefix: '/staff' });
   await app.register(dashboardRoutes, { prefix: '/dashboard' });
   await app.register(publicRoutes, { prefix: '/public' });

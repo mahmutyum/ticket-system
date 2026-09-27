@@ -49,7 +49,15 @@
       "autoClosedResolved": "Otomatik kapatıldı (çözüldükten sonra yeniden açılmadı)",
       "autoClosedNoResponse": "Otomatik kapatıldı (kullanıcı yanıt vermedi)",
       "autoCloseReminder": "Talep sahibine yanıt hatırlatması gönderildi",
-      "userReplyEmail": "Kullanıcı yanıtı (e-posta): {{value}}"
+      "userReplyEmail": "Kullanıcı yanıtı (e-posta): {{value}}",
+      "mergedInto": "{{value}} ile birleştirildi",
+      "mergedFrom": "{{value}} bu talebe birleştirildi",
+      "parentSet": "Üst talep: {{value}}",
+      "parentRemoved": "Üst talep bağı kaldırıldı",
+      "childAdded": "Alt talep eklendi: {{value}}",
+      "statusFromParent": "Durum üst talepten ({{value}}) uygulandı",
+      "watcherAdded": "İzleyici eklendi: {{value}}",
+      "watcherRemoved": "İzleyici kaldırıldı: {{value}}"
     }
   },
   "en": {
@@ -102,7 +110,15 @@
       "autoClosedResolved": "Closed automatically (not reopened after resolution)",
       "autoClosedNoResponse": "Closed automatically (no reply from the requester)",
       "autoCloseReminder": "Reply reminder sent to the requester",
-      "userReplyEmail": "User reply (email): {{value}}"
+      "userReplyEmail": "User reply (email): {{value}}",
+      "mergedInto": "Merged into {{value}}",
+      "mergedFrom": "{{value}} was merged into this request",
+      "parentSet": "Parent request: {{value}}",
+      "parentRemoved": "Parent link removed",
+      "childAdded": "Child request added: {{value}}",
+      "statusFromParent": "Status applied from parent ({{value}})",
+      "watcherAdded": "Watcher added: {{value}}",
+      "watcherRemoved": "Watcher removed: {{value}}"
     }
   }
 }

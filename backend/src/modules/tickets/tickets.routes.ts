@@ -48,12 +48,16 @@ const ticketCreateSchema = z.object({
     // binlerce sahte alanla istek şişirmeyi engeller.
     .max(50, 'Çok fazla özel alan')
     .optional(),
+  /** Talep hakkında bilgilendirilecek ek kişiler (CC). Şirketin izinli domain kuralına tabidir. */
+  ccEmails: z.array(emailSchema).max(10, 'En fazla 10 CC').optional(),
 });
 
 const ticketUpdateSchema = z.object({
   status: z.nativeEnum(TicketStatus).optional(),
   priority: z.nativeEnum(Priority).optional(),
   assignedToId: z.string().cuid().nullable().optional(),
+  /** Durum değişikliğini alt ticket'lara da uygula (ör. yaygın arıza çözüldü). */
+  applyToChildren: z.boolean().optional(),
 });
 
 const ticketFilterSchema = paginationSchema.extend({
@@ -74,7 +78,11 @@ const ticketBulkUpdateSchema = z.object({
   assignedToId: z.string().cuid().nullable().optional(),
   priority: z.nativeEnum(Priority).optional(),
 });
-const ticketSearchSchema = z.object({ q: z.string().trim().max(200).optional() });
+const ticketSearchSchema = z.object({
+  q: z.string().trim().max(200).optional(),
+  /** İlişki seçicileri (birleştir / üst talep) yalnızca aynı şirketin ticket'larını ister. */
+  companyId: z.string().max(128).optional(),
+});
 
 const ticketCreateResponseSchema = z.object({
   success: z.literal(true),
@@ -130,10 +138,20 @@ const ticketListItemSchema = staffTicketBaseSchema.pick({
   assignedTo: z.object({ id: z.string(), fullName: z.string() }).nullable(),
   createdBy: z.object({ fullName: z.string(), phone: z.string().nullable() }).nullable(),
 });
+const relatedTicketSelect = { id: true, ticketNumber: true, subject: true, status: true } as const;
+const relatedTicketSchema = z.object({ id: z.string(), ticketNumber: z.string(), subject: z.string(), status: z.nativeEnum(TicketStatus) });
 const staffTicketDetailSchema = staffTicketBaseSchema.extend({
   company: z.unknown(), location: z.unknown(), category: z.unknown(),
   assignedTo: z.unknown(), createdBy: z.unknown(), customValues: z.unknown(),
   notes: z.unknown(), history: z.unknown(), attachments: z.unknown(), onsiteSupport: z.unknown(),
+  parent: relatedTicketSchema.nullable(),
+  children: z.array(relatedTicketSchema),
+  mergedInto: relatedTicketSchema.nullable(),
+  mergedFrom: z.array(relatedTicketSchema),
+  watchers: z.array(z.object({
+    id: z.string(), email: z.string(), staffId: z.string().nullable(), createdAt: z.date(),
+    staff: z.object({ fullName: z.string() }).nullable(),
+  })),
 });
 const staffTicketUpdateResponseSchema = staffTicketBaseSchema.extend({
   company: z.object({ name: z.string() }),
@@ -196,8 +214,8 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
       }
     }
 
-    // Email domain restriction
-    if (!isEmailDomainAllowed(company.allowedDomains, body.email)) {
+    // Email domain restriction (talep sahibi + CC)
+    if (![body.email, ...(body.ccEmails ?? [])].every(email => isEmailDomainAllowed(company.allowedDomains, email))) {
       return reply.status(400).send({
         success: false,
         error: t(request, 'tickets.email_domain_not_allowed'),
@@ -342,6 +360,14 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
         },
         attachments: true,
         onsiteSupport: { include: { location: true } },
+        parent: { select: relatedTicketSelect },
+        children: { select: relatedTicketSelect, orderBy: { createdAt: 'asc' } },
+        mergedInto: { select: relatedTicketSelect },
+        mergedFrom: { select: relatedTicketSelect, orderBy: { createdAt: 'asc' } },
+        watchers: {
+          select: { id: true, email: true, staffId: true, createdAt: true, staff: { select: { fullName: true } } },
+          orderBy: { createdAt: 'asc' },
+        },
       },
     });
 
@@ -458,6 +484,28 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
         assignedTo: { select: { id: true, fullName: true } },
       },
     });
+
+    // Yaygın arıza: üst ticket'ın durumu alt ticket'lara da uygulanır (her biri
+    // kendi SLA/yaşam döngüsü kurallarıyla). Kapalı/birleştirilmiş alt ticket'lara dokunulmaz.
+    if (body.applyToChildren && body.status && body.status !== currentTicket.status) {
+      const children = await app.prisma.ticket.findMany({
+        where: { parentId: id, mergedIntoId: null, status: { notIn: [TicketStatus.closed, body.status] } },
+      });
+      const now = new Date();
+      const slaContext = await loadCompanySlaContext(app.prisma, currentTicket.companyId);
+      for (const child of children) {
+        const plan = planStatusTransition(child, body.status, now, calendarFor(slaContext, child.priority), { id: staffUser.id });
+        await app.prisma.ticket.update({
+          where: { id: child.id },
+          data: {
+            ...plan.data,
+            history: { create: [...plan.history, { action: 'status_from_parent', field: 'status', newValue: currentTicket.ticketNumber, createdById: staffUser.id }] },
+          },
+        });
+        broadcastToStaff('ticket_updated', { id: child.id, ticketNumber: child.ticketNumber, status: body.status }, child.companyId);
+        broadcastToTicket(child.accessToken, 'ticket_updated', { status: body.status, priority: child.priority });
+      }
+    }
 
     // SSE broadcast
     broadcastToStaff('ticket_updated', {
@@ -657,14 +705,20 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
       response: { 200: ticketSearchResponseSchema, ...commonErrorResponses },
     },
   }, async (request, reply) => {
-    const { q } = request.query;
+    const { q, companyId } = request.query;
     if (!q || q.length < 2) {
       return reply.send({ success: true, data: [] });
     }
 
     const staffUser = request.staffUser!;
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
-    const scopeWhere = scopeCompanyIds ? { companyId: { in: scopeCompanyIds } } : {};
+    // companyId filtresi kapsamla KESİŞTİRİLİR (üzerine yazmak yetki aşımı olurdu).
+    if (companyId && !isCompanyInScope(scopeCompanyIds, companyId)) {
+      return reply.send({ success: true, data: [] });
+    }
+    const scopeWhere = companyId
+      ? { companyId }
+      : scopeCompanyIds ? { companyId: { in: scopeCompanyIds } } : {};
 
     const tickets = await app.prisma.ticket.findMany({
       where: {

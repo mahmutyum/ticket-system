@@ -15,6 +15,8 @@ interface FormData {
   fullName: string;
   phone: string;
   department: string;
+  /** Virgül/boşlukla ayrılmış CC adresleri. */
+  cc: string;
   companyId: string;
   locationId: string;
   categoryId: string;
@@ -45,7 +47,7 @@ export default function CreateTicketPage() {
   const [result, setResult] = useState<TicketCreationResult | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [form, setForm] = useState<FormData>({
-    email: '', fullName: '', phone: '', department: '',
+    email: '', fullName: '', phone: '', department: '', cc: '',
     companyId: '', locationId: '', categoryId: '',
     subject: '', description: '', priority: 'medium',
     customFields: {},
@@ -203,8 +205,11 @@ export default function CreateTicketPage() {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
+      const { cc, ...rest } = form;
+      const ccEmails = cc.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
       const payload = {
-        ...form,
+        ...rest,
+        ...(ccEmails.length ? { ccEmails } : {}),
         // Bildirim dili — talep sahibi e-posta/SMS'lerini portal diliyle alsın.
         locale: i18n.language?.startsWith('tr') ? 'tr' : 'en',
         customFields: Object.entries(form.customFields)
@@ -357,6 +362,18 @@ export default function CreateTicketPage() {
                   value={form.department}
                   onChange={e => update({ department: e.target.value })}
                 />
+              </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="requester-cc" className="block text-sm font-medium mb-1">{t('createTicket.ccLabel')}</label>
+                <input
+                  id="requester-cc"
+                  type="text"
+                  className="input-field"
+                  value={form.cc}
+                  onChange={e => update({ cc: e.target.value })}
+                  placeholder="mudur@firma.com, ekip@firma.com"
+                />
+                <p className="mt-1 text-xs text-muted">{t('createTicket.ccHint')}</p>
               </div>
             </div>
           </div>

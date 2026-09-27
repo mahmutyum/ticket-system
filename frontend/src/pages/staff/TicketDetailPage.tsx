@@ -13,6 +13,7 @@ import { useEnumLabels } from '../../i18n/labels';
 import type { CannedResponse, Staff, Ticket } from '../../types';
 import { downloadAttachment } from '../../utils/download';
 import TicketTimeline from './tickets/TicketTimeline';
+import TicketRelations from './tickets/TicketRelations';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { SkeletonRows } from '../../components/ui/AsyncState';
 import { PriorityBadge, StatusBadge } from '../../components/ui/Badge';
@@ -28,6 +29,7 @@ export default function TicketDetailPage() {
   const [uploading, setUploading] = useState(false);
   const [showCanned, setShowCanned] = useState(false);
   const [showOnsiteForm, setShowOnsiteForm] = useState(false);
+  const [applyToChildren, setApplyToChildren] = useState(true);
   const [onsiteForm, setOnsiteForm] = useState({ type: 'come_to_it_room', scheduledAt: '', durationMin: 15, roomInfo: '', notes: '' });
 
   const { data: ticket, isLoading } = useQuery<Ticket>({
@@ -53,7 +55,8 @@ export default function TicketDetailPage() {
 
   const handleStatusChange = async (status: string) => {
     try {
-      await api.put(`/tickets/${id}`, { status });
+      const childCount = ticket?.children?.length ?? 0;
+      await api.put(`/tickets/${id}`, { status, ...(childCount > 0 && applyToChildren ? { applyToChildren: true } : {}) });
       queryClient.invalidateQueries({ queryKey: ['ticket', id] });
       toast.success(t('ticketDetail.statusUpdated'));
     } catch {
@@ -329,6 +332,12 @@ export default function TicketDetailPage() {
                   <option key={k} value={k}>{labels.status(k)}</option>
                 ))}
               </select>
+              {(ticket.children?.length ?? 0) > 0 && (
+                <label className="mt-1 flex items-center gap-1.5 text-xs text-muted">
+                  <input type="checkbox" checked={applyToChildren} onChange={e => setApplyToChildren(e.target.checked)} />
+                  {t('ticketDetail.applyToChildren', { count: ticket.children!.length })}
+                </label>
+              )}
             </div>
 
             <div>
@@ -358,6 +367,8 @@ export default function TicketDetailPage() {
               </select>
             </div>
           </div>
+
+          <TicketRelations ticket={ticket} />
 
           {/* Onsite support */}
           <div className="card space-y-3">
