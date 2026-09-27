@@ -51,6 +51,8 @@ function historyText(
       ? t('ticketList.timeline.autoClosedNoResponse')
       : t('ticketList.timeline.autoClosedResolved');
     case 'auto_close_reminder': return t('ticketList.timeline.autoCloseReminder');
+    case 'asset_linked': return t('ticketList.timeline.assetLinked', { value: item.newValue });
+    case 'asset_unlinked': return t('ticketList.timeline.assetUnlinked');
     case 'satisfaction_rated': return t('ticketList.timeline.satisfactionRated', { value: item.newValue });
     case 'merged_into': return t('ticketList.timeline.mergedInto', { value: item.newValue });
     case 'merged_from': return t('ticketList.timeline.mergedFrom', { value: item.newValue });

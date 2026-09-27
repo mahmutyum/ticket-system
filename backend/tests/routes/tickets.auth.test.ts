@@ -136,6 +136,7 @@ function makeApp(ticketCompanyId: string) {
         children: [],
         mergedInto: null,
         mergedFrom: [],
+        asset: null,
         watchers: [],
       })),
       update: ticketUpdate,

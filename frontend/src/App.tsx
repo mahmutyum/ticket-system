@@ -28,6 +28,7 @@ const AccountPage = lazy(() => import('./pages/staff/AccountPage'));
 const IntegrationsPage = lazy(() => import('./pages/staff/IntegrationsPage'));
 const KbPage = lazy(() => import('./pages/public/kb/KbPage'));
 const KbManagementPage = lazy(() => import('./pages/staff/KbManagementPage'));
+const AssetsPage = lazy(() => import('./pages/staff/AssetsPage'));
 
 function PageLoader() {
   const { t } = useTranslation();
@@ -147,6 +148,7 @@ export default function App() {
             }
           />
           <Route path="kb" element={<KbManagementPage />} />
+          <Route path="assets" element={<AssetsPage />} />
           <Route
             path="integrations"
             element={

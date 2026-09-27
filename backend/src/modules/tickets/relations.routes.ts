@@ -187,6 +187,39 @@ export const relationRoutes: FastifyPluginAsyncZod = async (app) => {
     reply.send({ success: true });
   });
 
+  // ==================== VARLIK ====================
+  app.put('/:id/asset', {
+    preValidation: [app.authenticate],
+    schema: {
+      tags: ['Tickets'],
+      summary: 'Ticket\'ı bir varlığa bağlar veya bağı kaldırır',
+      params: idParams,
+      body: z.object({ assetId: z.string().min(1).max(128).nullable() }),
+      response: { 200: successResponseSchema, ...commonErrorResponses },
+    },
+  }, async (request, reply) => {
+    const ticket = await loadInScope(request, reply, request.params.id);
+    if (!ticket) return;
+    const { assetId } = request.body;
+    let tag: string | null = null;
+    if (assetId) {
+      const asset = await app.prisma.asset.findUnique({ where: { id: assetId }, select: { companyId: true, tag: true } });
+      // Varlık, ticket ile AYNI şirkete ait olmalı (kapsam dışı envanter bilgisi bağlanamaz).
+      if (!asset || asset.companyId !== ticket.companyId) {
+        return reply.status(400).send({ success: false, error: t(request, 'assets.other_company') });
+      }
+      tag = asset.tag;
+    }
+    await app.prisma.ticket.update({
+      where: { id: ticket.id },
+      data: {
+        assetId,
+        history: { create: { action: assetId ? 'asset_linked' : 'asset_unlinked', field: 'asset', newValue: tag, createdById: request.staffUser!.id } },
+      },
+    });
+    reply.send({ success: true });
+  });
+
   // ==================== İZLEYİCİLER ====================
   app.post('/:id/watchers', {
     preValidation: [app.authenticate],

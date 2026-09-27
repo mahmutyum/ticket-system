@@ -96,6 +96,7 @@ export interface Ticket {
   mergedInto?: RelatedTicket | null;
   mergedFrom?: RelatedTicket[];
   watchers?: TicketWatcher[];
+  asset?: { id: string; tag: string; name: string; assetType: string } | null;
   firstRespondedAt?: string;
   resolvedAt?: string;
   closedAt?: string;

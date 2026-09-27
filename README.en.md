@@ -39,6 +39,7 @@ Passwordless public portal for requesters · role-based admin panel for the IT t
 
 **⚙️ Behind the scenes**
 - Email / SMS notifications async via BullMQ (3 retries, exponential backoff).
+- **Assets**: lightweight inventory (tag, type, serial, assignee), CSV import, request–device linking and per-device request history.
 - **Knowledge base**: Markdown articles (TR/EN), portal search, category-based suggestions in the request wizard and a "solved without a ticket" metric.
 - **Satisfaction survey (CSAT)**: one-time 1–5 rating + comment on resolution; averages, response rate and breakdowns in reports.
 - **Integrations**: Microsoft Teams, Slack and HMAC-signed generic webhooks (ticket and SLA events).

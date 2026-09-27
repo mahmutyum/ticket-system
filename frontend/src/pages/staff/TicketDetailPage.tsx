@@ -15,6 +15,7 @@ import { downloadAttachment } from '../../utils/download';
 import TicketTimeline from './tickets/TicketTimeline';
 import TicketRelations from './tickets/TicketRelations';
 import KbInsert from './tickets/KbInsert';
+import TicketAsset from './tickets/TicketAsset';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { SkeletonRows } from '../../components/ui/AsyncState';
 import { PriorityBadge, StatusBadge } from '../../components/ui/Badge';
@@ -378,6 +379,8 @@ export default function TicketDetailPage() {
               {ticket.satisfactionComment && <p className="mt-2 whitespace-pre-wrap text-gray-700 dark:text-slate-200">“{ticket.satisfactionComment}”</p>}
             </div>
           )}
+
+          <TicketAsset ticket={ticket} />
 
           <TicketRelations ticket={ticket} />
 

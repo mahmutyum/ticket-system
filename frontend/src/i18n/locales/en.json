@@ -140,7 +140,8 @@
     "passwords": "Passwords",
     "account": "Account & Security",
     "integrations": "Integrations",
-    "kb": "Knowledge Base"
+    "kb": "Knowledge Base",
+    "assets": "Assets"
   },
   "layout": {
     "appName": "IT Support",

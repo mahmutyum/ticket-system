@@ -151,6 +151,7 @@ const staffTicketDetailSchema = staffTicketBaseSchema.extend({
   children: z.array(relatedTicketSchema),
   mergedInto: relatedTicketSchema.nullable(),
   mergedFrom: z.array(relatedTicketSchema),
+  asset: z.object({ id: z.string(), tag: z.string(), name: z.string(), assetType: z.string() }).nullable(),
   watchers: z.array(z.object({
     id: z.string(), email: z.string(), staffId: z.string().nullable(), createdAt: z.date(),
     staff: z.object({ fullName: z.string() }).nullable(),
@@ -367,6 +368,7 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
         children: { select: relatedTicketSelect, orderBy: { createdAt: 'asc' } },
         mergedInto: { select: relatedTicketSelect },
         mergedFrom: { select: relatedTicketSelect, orderBy: { createdAt: 'asc' } },
+        asset: { select: { id: true, tag: true, name: true, assetType: true } },
         watchers: {
           select: { id: true, email: true, staffId: true, createdAt: true, staff: { select: { fullName: true } } },
           orderBy: { createdAt: 'asc' },

@@ -58,7 +58,9 @@
       "statusFromParent": "Durum üst talepten ({{value}}) uygulandı",
       "watcherAdded": "İzleyici eklendi: {{value}}",
       "watcherRemoved": "İzleyici kaldırıldı: {{value}}",
-      "satisfactionRated": "Talep sahibi puan verdi: {{value}}/5"
+      "satisfactionRated": "Talep sahibi puan verdi: {{value}}/5",
+      "assetLinked": "Varlık bağlandı: {{value}}",
+      "assetUnlinked": "Varlık bağı kaldırıldı"
     }
   },
   "en": {
@@ -120,7 +122,9 @@
       "statusFromParent": "Status applied from parent ({{value}})",
       "watcherAdded": "Watcher added: {{value}}",
       "watcherRemoved": "Watcher removed: {{value}}",
-      "satisfactionRated": "Requester rated: {{value}}/5"
+      "satisfactionRated": "Requester rated: {{value}}/5",
+      "assetLinked": "Asset linked: {{value}}",
+      "assetUnlinked": "Asset unlinked"
     }
   }
 }

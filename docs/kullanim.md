@@ -163,6 +163,16 @@ ticket'lar.
       e-postayla gelen yeni taleplerde To/Cc'deki kişiler otomatik CC olur.
   - Buradan **yerinde destek randevusu** oluşturulabilir.
 
+### Varlıklar — `/staff/assets`
+
+Hafif envanter: etiket (şirket içinde tekil), ad, tür, seri no, lokasyon, zimmetli kişi
+e-postası, not. Tüm personel görür; `admin` ve kapsamındaki `it_manager` düzenler. **CSV
+içe aktarma** etiketle eşleştirir (varsa günceller, yoksa ekler); sütunlar `tag, name, type,
+serial, location, assigned_to, notes` (`;` ya da `,` ayraçlı, lokasyon adıyla). Hatalı
+satırlar satır numarasıyla raporlanır. Ticket detayındaki **İlgili cihaz** kartından talep
+bir varlığa bağlanır (talep sahibine zimmetli cihazlar önce önerilir); varlığın sayfasında
+talep geçmişi görünür.
+
 ### Yerinde destek takvimi — `/staff/onsite`
 
 Randevu tipleri: **IT Odasına Gelin**, **Toplantı Odası**, **Yerinde Müdahale**.

@@ -38,6 +38,7 @@ import { credentialRoutes } from './modules/credentials/credentials.routes.js';
 import { attachmentRoutes, brandingRoutes } from './modules/attachments/attachments.routes.js';
 import { webhookRoutes } from './modules/webhooks/webhooks.routes.js';
 import { kbRoutes, kbPublicRoutes } from './modules/kb/kb.routes.js';
+import { assetRoutes } from './modules/assets/assets.routes.js';
 import { registerMutationAuditHook } from './middleware/audit.js';
 import { t } from './i18n/index.js';
 
@@ -260,6 +261,7 @@ export async function buildApp() {
   await app.register(webhookRoutes, { prefix: '/webhooks' });
   await app.register(kbRoutes, { prefix: '/kb' });
   await app.register(kbPublicRoutes, { prefix: '/public/kb' });
+  await app.register(assetRoutes, { prefix: '/assets' });
 
 
   return app;

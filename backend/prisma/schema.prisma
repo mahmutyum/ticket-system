@@ -139,6 +139,7 @@ model Company {
   mailbox           CompanyMailbox?
   webhooks          Webhook[]
   kbArticles        KbArticle[]
+  assets            Asset[]
   locations         Location[]
   categories        Category[]
   customFields      CustomField[]
@@ -257,6 +258,7 @@ model Location {
   createdAt DateTime @default(now()) @map("created_at")
 
   company        Company         @relation(fields: [companyId], references: [id])
+  assets         Asset[]
   tickets        Ticket[]
   users          User[]
   onsiteSupports OnsiteSupport[]
@@ -423,6 +425,8 @@ model Ticket {
   satisfactionAt       DateTime?    @map("satisfaction_at")
   /// Anket e-postası gönderildi mi (ticket başına bir kez).
   surveySentAt         DateTime?    @map("survey_sent_at")
+  /// İlgili varlık (cihaz).
+  assetId              String?      @map("asset_id")
   /// Üst ticket (yaygın arıza). Tek seviye: üst ticket'ın kendi üstü olamaz.
   parentId             String?      @map("parent_id")
   /// Bu ticket başka bir ticket'a birleştirildiyse hedef.
@@ -451,9 +455,11 @@ model Ticket {
   mergedInto    Ticket?             @relation("TicketMerge", fields: [mergedIntoId], references: [id], onDelete: SetNull)
   mergedFrom    Ticket[]            @relation("TicketMerge")
   watchers      TicketWatcher[]
+  asset         Asset?              @relation(fields: [assetId], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([parentId])
+  @@index([assetId])
   @@index([status, statusChangedAt])
   @@index([companyId])
   @@index([assignedToId])
@@ -587,6 +593,33 @@ model KbArticle {
   @@index([companyId, isPublished])
   @@index([categoryId])
   @@map("kb_articles")
+}
+
+/// Hafif varlık (envanter) kaydı — tam CMDB değil. Etiket şirket içinde tekildir.
+model Asset {
+  id              String    @id @default(cuid())
+  companyId       String    @map("company_id")
+  /// Envanter etiketi / demirbaş no (ör. "LT-0042").
+  tag             String
+  name            String
+  /// Serbest tür: Laptop, Yazıcı, Telefon…
+  assetType       String    @map("asset_type")
+  serialNumber    String?   @map("serial_number")
+  locationId      String?   @map("location_id")
+  /// Zimmetli kişi (talep sahibi e-postasıyla eşleşir).
+  assignedToEmail String?   @map("assigned_to_email")
+  notes           String?
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  location Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  tickets  Ticket[]
+
+  @@unique([companyId, tag])
+  @@index([companyId, assignedToEmail])
+  @@map("assets")
 }
 
 /// Sistem geneli ayarlar (anahtar → JSON). Ör. `auth`: yerel giriş kapalı mı.
