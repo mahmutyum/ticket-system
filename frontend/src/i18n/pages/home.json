@@ -22,7 +22,8 @@
     "feature2Title": "Kolay takip",
     "feature2Text": "Talep numaran ve e-posta eşleşmesiyle ilgili kayda güvenli erişim.",
     "feature3Title": "Kontrollü erişim",
-    "feature3Text": "Talep bağlantısı ve şirket ağı politikalarıyla sınırlandırılmış erişim."
+    "feature3Text": "Talep bağlantısı ve şirket ağı politikalarıyla sınırlandırılmış erişim.",
+    "ctaKb": "Bilgi bankası"
   },
   "en": {
     "badge": "Internal technical support center",
@@ -47,6 +48,7 @@
     "feature2Title": "Easy tracking",
     "feature2Text": "Secure access to the relevant record via your request number and email match.",
     "feature3Title": "Controlled access",
-    "feature3Text": "Access limited by the request link and company network policies."
+    "feature3Text": "Access limited by the request link and company network policies.",
+    "ctaKb": "Knowledge base"
   }
 }

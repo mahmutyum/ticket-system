@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, CheckCircle2, Clock3, PlusCircle, Search, ShieldCheck } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Clock3, PlusCircle, Search, ShieldCheck, BookOpen } from 'lucide-react';
 
 export default function HomePage() {
   const { t } = useTranslation();
@@ -21,6 +21,7 @@ export default function HomePage() {
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link to="/create" className="btn-primary inline-flex items-center justify-center gap-2 px-5 py-3">{t('home.ctaCreate')} <ArrowRight className="h-4 w-4" /></Link>
             <Link to="/track" className="btn-secondary inline-flex items-center justify-center gap-2 px-5 py-3"><Search className="h-4 w-4" /> {t('home.ctaTrack')}</Link>
+            <Link to="/kb" className="btn-secondary inline-flex items-center justify-center gap-2 px-5 py-3"><BookOpen className="h-4 w-4" /> {t('home.ctaKb')}</Link>
           </div>
         </div>
         <div className="card relative overflow-hidden border-primary-100 bg-white/80 p-6 dark:border-primary-500/20 dark:bg-slate-900/80 sm:p-8">

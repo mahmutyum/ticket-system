@@ -139,7 +139,8 @@
     "templates": "Şablonlar",
     "passwords": "Şifreler",
     "account": "Hesap ve Güvenlik",
-    "integrations": "Entegrasyonlar"
+    "integrations": "Entegrasyonlar",
+    "kb": "Bilgi Bankası"
   },
   "layout": {
     "appName": "IT Destek",

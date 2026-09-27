@@ -139,7 +139,8 @@
     "templates": "Templates",
     "passwords": "Passwords",
     "account": "Account & Security",
-    "integrations": "Integrations"
+    "integrations": "Integrations",
+    "kb": "Knowledge Base"
   },
   "layout": {
     "appName": "IT Support",

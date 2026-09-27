@@ -14,6 +14,7 @@ import type { CannedResponse, Staff, Ticket } from '../../types';
 import { downloadAttachment } from '../../utils/download';
 import TicketTimeline from './tickets/TicketTimeline';
 import TicketRelations from './tickets/TicketRelations';
+import KbInsert from './tickets/KbInsert';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { SkeletonRows } from '../../components/ui/AsyncState';
 import { PriorityBadge, StatusBadge } from '../../components/ui/Badge';
@@ -205,6 +206,8 @@ export default function TicketDetailPage() {
 
             {/* Add note form */}
             <form onSubmit={handleAddNote} className="mt-6 pt-4 border-t space-y-3">
+              <KbInsert companyId={ticket.companyId} onInsert={(text) => setNoteContent(prev => (prev ? `${prev}\n${text}` : text))} />
+
               {/* Canned response picker */}
               <div className="relative">
                 <button

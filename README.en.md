@@ -39,6 +39,7 @@ Passwordless public portal for requesters · role-based admin panel for the IT t
 
 **⚙️ Behind the scenes**
 - Email / SMS notifications async via BullMQ (3 retries, exponential backoff).
+- **Knowledge base**: Markdown articles (TR/EN), portal search, category-based suggestions in the request wizard and a "solved without a ticket" metric.
 - **Satisfaction survey (CSAT)**: one-time 1–5 rating + comment on resolution; averages, response rate and breakdowns in reports.
 - **Integrations**: Microsoft Teams, Slack and HMAC-signed generic webhooks (ticket and SLA events).
 - **SSO**: OpenID Connect, SAML 2.0 and LDAP/Active Directory for staff sign-in; group → role/company mapping, JIT, optional local-login shutdown.

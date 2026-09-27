@@ -138,6 +138,7 @@ model Company {
   holidays          CompanyHoliday[]
   mailbox           CompanyMailbox?
   webhooks          Webhook[]
+  kbArticles        KbArticle[]
   locations         Location[]
   categories        Category[]
   customFields      CustomField[]
@@ -285,6 +286,7 @@ model Category {
   children        Category[]       @relation("CategoryHierarchy")
   tickets         Ticket[]
   ticketTemplates TicketTemplate[]
+  kbArticles      KbArticle[]
 
   @@map("categories")
 }
@@ -557,6 +559,34 @@ model WebhookDelivery {
 
   @@index([webhookId, createdAt])
   @@map("webhook_deliveries")
+}
+
+/// Bilgi bankası makalesi. `companyId` boşsa tüm şirketlerde görünür (yalnızca admin).
+/// Gövde Markdown'dur; HTML render edilmez. EN alanları boşsa TR gösterilir.
+model KbArticle {
+  id           String    @id @default(cuid())
+  companyId    String?   @map("company_id")
+  categoryId   String?   @map("category_id")
+  titleTr      String    @map("title_tr")
+  bodyTr       String    @map("body_tr")
+  titleEn      String?   @map("title_en")
+  bodyEn       String?   @map("body_en")
+  isPublished  Boolean   @default(false) @map("is_published")
+  viewCount    Int       @default(0) @map("view_count")
+  helpfulYes   Int       @default(0) @map("helpful_yes")
+  helpfulNo    Int       @default(0) @map("helpful_no")
+  /// Talep sihirbazında "sorunum çözüldü" deyip talep açmadan çıkanlar.
+  deflections  Int       @default(0)
+  createdBy    String?   @map("created_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  company  Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, isPublished])
+  @@index([categoryId])
+  @@map("kb_articles")
 }
 
 /// Sistem geneli ayarlar (anahtar → JSON). Ör. `auth`: yerel giriş kapalı mı.

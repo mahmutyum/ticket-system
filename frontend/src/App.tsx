@@ -26,6 +26,8 @@ const TaskDetailPage = lazy(() => import('./pages/staff/TaskDetailPage'));
 const PasswordsPage = lazy(() => import('./pages/staff/PasswordsPage'));
 const AccountPage = lazy(() => import('./pages/staff/AccountPage'));
 const IntegrationsPage = lazy(() => import('./pages/staff/IntegrationsPage'));
+const KbPage = lazy(() => import('./pages/public/kb/KbPage'));
+const KbManagementPage = lazy(() => import('./pages/staff/KbManagementPage'));
 
 function PageLoader() {
   const { t } = useTranslation();
@@ -83,6 +85,8 @@ export default function App() {
           <Route path="/create" element={<CreateTicketPage />} />
           <Route path="/track" element={<TrackTicketPage />} />
           <Route path="/ticket/:accessToken" element={<TicketStatusPage />} />
+          <Route path="/kb" element={<KbPage />} />
+          <Route path="/kb/:id" element={<KbPage />} />
         </Route>
 
         {/* Staff routes */}
@@ -142,6 +146,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="kb" element={<KbManagementPage />} />
           <Route
             path="integrations"
             element={

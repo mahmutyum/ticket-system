@@ -67,6 +67,19 @@ Giriş yok, kayıt yok. Talep eden yalnızca e-posta adresini verir.
 
 > Şirketin `allowedDomains` ayarı varsa, talep edenin e-posta domain'i bu listede olmalıdır.
 
+### Bilgi bankası — `/kb`
+
+Yayındaki çözüm makaleleri portalda aranabilir. Talep sihirbazında kategori seçildiğinde o
+kategorinin makaleleri önerilir; kullanıcı "Evet, sorunum çözüldü" derse talep açılmadan
+çıkılır (makalenin "önlenen talep" sayacı artar). Şirkete özel makaleler yalnızca o şirketin
+portalından görünür.
+
+**Yönetim — `/staff/kb`:** makaleler Markdown ile yazılır (ham HTML işlenmez), TR zorunlu,
+EN isteğe bağlıdır (yoksa TR gösterilir). Global makaleleri yalnızca `admin`, şirkete özel
+makaleleri kapsamındaki `it_manager` düzenler; tüm personel okuyabilir ve ticket notuna
+"Bilgi bankasından ekle" ile makale bağlantısı ekleyebilir. Görüntülenme, 👍/👎 ve önlenen
+talep sayıları listede görünür.
+
 ### Memnuniyet anketi (CSAT)
 
 Talep çözülünce/kapanınca talep sahibine bir kez anket e-postası gider (şirketin **SLA &

@@ -9,6 +9,7 @@ import type { Company, Location, Category, CustomField } from '../../types';
 import FieldHint from '../../components/FieldHint';
 import { INPUT_LIMITS as LIMITS } from '../../types';
 import { useEnumLabels } from '../../i18n/labels';
+import KbSuggestions from './kb/KbSuggestions';
 
 interface FormData {
   email: string;
@@ -459,6 +460,7 @@ export default function CreateTicketPage() {
                 </button>
               ))}
             </div>
+            {form.companyId && form.categoryId && <KbSuggestions companyId={form.companyId} categoryId={form.categoryId} />}
           </div>
         )}
 

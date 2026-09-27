@@ -30,6 +30,10 @@ _Planned work is tracked in [docs/yol-haritasi.md](docs/yol-haritasi.md)._
   replay protection) and LDAP/AD (escaped filters, user bind); group → role/company
   mapping synced on every sign-in, opt-in JIT provisioning, account linking by subject,
   and an option to disable local password sign-in (admins keep break-glass access).
+- **Knowledge base**: per-company or global Markdown articles (TR/EN, raw HTML disabled),
+  portal search and article pages, category-based suggestions in the request wizard with a
+  deflection counter, helpful/not-helpful feedback, staff editor with preview and
+  "insert article link" in ticket notes. Company scoping mirrors company data rules.
 - **Satisfaction survey (CSAT)**: a one-time survey email on resolution/closure (per-company
   toggle); star links only preselect the rating on the tracking page — the vote is saved on
   confirmation, so link scanners cannot cast votes. One rating per request (DB-checked 1–5),

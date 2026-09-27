@@ -39,6 +39,7 @@ Talep edenler için şifresiz public portal · IT ekibi için rollü yönetim pa
 
 **⚙️ Arka planda**
 - E-posta / SMS bildirimleri BullMQ ile asenkron (3 deneme, exponential backoff).
+- **Bilgi bankası**: Markdown makaleler (TR/EN), portalda arama, talep sihirbazında kategoriye göre öneri ve "talep açmadan çözüldü" metriği.
 - **Memnuniyet anketi (CSAT)**: çözümde tek seferlik 1–5 puan + yorum; raporda ortalama, yanıt oranı ve kırılımlar.
 - **Entegrasyonlar**: Microsoft Teams, Slack ve HMAC imzalı genel webhook'lar (talep ve SLA olayları).
 - **SSO**: personel girişi için OpenID Connect, SAML 2.0 ve LDAP/Active Directory; grup → rol/şirket eşlemesi, JIT, yerel girişi kapatma.

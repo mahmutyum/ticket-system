@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   ShieldAlert,
   Webhook,
+  BookOpen,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +38,7 @@ const navItems: NavItem[] = [
   { path: '/staff/staff-management', labelKey: 'nav.staff', icon: Users },
   { path: '/staff/reports', labelKey: 'nav.reports', icon: BarChart3 },
   { path: '/staff/templates', labelKey: 'nav.templates', icon: FileText },
+  { path: '/staff/kb', labelKey: 'nav.kb', icon: BookOpen },
   { path: '/staff/passwords', labelKey: 'nav.passwords', icon: KeyRound, roles: ['admin', 'it_manager'] },
   { path: '/staff/integrations', labelKey: 'nav.integrations', icon: Webhook, roles: ['admin'] },
   { path: '/staff/account', labelKey: 'nav.account', icon: ShieldCheck },
