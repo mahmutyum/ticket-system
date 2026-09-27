@@ -54,6 +54,12 @@ _Planned work is tracked in [docs/yol-haritasi.md](docs/yol-haritasi.md)._
 - Live `sla_alert` panel notifications; SLA events in the ticket timeline; paused-time
   metrics in the SLA report.
 
+### Security
+- Dependencies updated (`npm audit fix`; `@fastify/swagger-ui` 6). Fastify 5.12 dropped
+  numeric hop-count `trustProxy`; `TRUST_PROXY=N` keeps its meaning but now also requires
+  every trusted hop to be an internal/loopback address, and accepts an IP/CIDR list.
+  Without this, all clients would have shared one rate-limit bucket after the upgrade.
+
 ### Fixed
 - Token refresh rejected the empty JSON body the frontend sends, so sessions were not
   restored on page reload and automatic token renewal failed.

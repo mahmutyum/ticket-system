@@ -63,8 +63,18 @@ const envSchema = z.object({
    * Fazla vermek tehlikelidir (istemcinin uydurduğu IP'ye güvenilir), az vermek
    * yalnızca hassasiyeti düşürür (herkes proxy'nin IP'sinden görünür). Bu yüzden
    * güvenli tarafa, 1'e varsayılıyor.
+   *
+   * Hop sayısıyla birlikte her güvenilen hop'un iç ağ/loopback adresi olması şartı
+   * aranır (`utils/trust-proxy.ts`). Alternatif: proxy'lerin IP/CIDR listesi
+   * (ör. `172.18.0.0/16`) — Fastify'a olduğu gibi geçer.
    */
-  TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(1),
+  TRUST_PROXY: z
+    .string()
+    .default('1')
+    .refine(
+      v => /^\d+$/.test(v.trim()) ? Number(v) <= 10 : v.split(',').every(p => /^[0-9a-fA-F:.]+(\/\d{1,3})?$|^(loopback|linklocal|uniquelocal)$/.test(p.trim())),
+      { message: 'TRUST_PROXY: 0-10 arası hop sayısı ya da virgülle ayrılmış IP/CIDR listesi' },
+    ),
 })
   /**
    * Access ve refresh secret'ları FARKLI olmalı.

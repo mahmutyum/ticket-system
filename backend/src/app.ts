@@ -11,6 +11,7 @@ import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { jsonSchemaTransform, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { config } from './config/index.js';
+import { buildTrustProxy } from './utils/trust-proxy.js';
 import { prismaPlugin } from './plugins/prisma.js';
 import { redisPlugin } from './plugins/redis.js';
 import { authPlugin } from './plugins/auth.js';
@@ -52,7 +53,7 @@ export async function buildApp() {
     // request.ip istemcinin uydurduğu değeri alırdı; rate limiting'in tamamı
     // (login 5/dk dahil) tek bir başlıkla baypas edilirdi.
     // Değeri TRUST_PROXY belirler — gerekçe ve doğru değer config/index.ts'te.
-    trustProxy: config.TRUST_PROXY,
+    trustProxy: buildTrustProxy(config.TRUST_PROXY),
     logger: {
       level: config.NODE_ENV === 'production' ? 'info' : 'debug',
       transport: config.NODE_ENV === 'development'
