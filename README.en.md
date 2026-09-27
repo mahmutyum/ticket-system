@@ -39,6 +39,7 @@ Passwordless public portal for requesters · role-based admin panel for the IT t
 
 **⚙️ Behind the scenes**
 - Email / SMS notifications async via BullMQ (3 retries, exponential backoff).
+- **SSO**: OpenID Connect, SAML 2.0 and LDAP/Active Directory for staff sign-in; group → role/company mapping, JIT, optional local-login shutdown.
 - **Reply by email**: IMAP, Microsoft 365 or Gmail mailbox; replies land on the ticket, unmatched emails can open new tickets.
 - SLA checks every 5 minutes; per-category response/resolution targets, per-company business hours and holidays, SLA pausing in waiting statuses, pre-breach warnings and escalation to managers.
 - Live panel updates over SSE; per-domain company branding (logo + theme).

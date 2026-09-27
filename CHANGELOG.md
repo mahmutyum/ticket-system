@@ -26,10 +26,18 @@ _Planned work is tracked in [docs/yol-haritasi.md](docs/yol-haritasi.md)._
 - **Ticket relations**: merge duplicates (notes/files move, source closes, requester becomes
   CC), single-level parent/child with "apply to children" status changes, and watchers —
   requester-side CC (portal field, email To/Cc, can reply by email) and staff watchers.
+- **Staff SSO**: OpenID Connect (PKCE, nonce), SAML 2.0 (signed assertions, InResponseTo
+  replay protection) and LDAP/AD (escaped filters, user bind); group → role/company
+  mapping synced on every sign-in, opt-in JIT provisioning, account linking by subject,
+  and an option to disable local password sign-in (admins keep break-glass access).
+- `ALLOW_PRIVATE_INTEGRATION_HOSTS` to allow internal-network SMTP/IMAP/LDAP/OIDC hosts
+  (loopback and cloud metadata stay blocked).
 - Live `sla_alert` panel notifications; SLA events in the ticket timeline; paused-time
   metrics in the SLA report.
 
 ### Fixed
+- Token refresh rejected the empty JSON body the frontend sends, so sessions were not
+  restored on page reload and automatic token renewal failed.
 - SLA notification labels ("Response/Resolution Time") now follow the recipient's language.
 - Bulk ticket updates now record history and apply the same SLA/first-response/link-expiry
   rules as single updates; a requester reply now resumes the SLA and is recorded in history.

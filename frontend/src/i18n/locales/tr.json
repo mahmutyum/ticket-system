@@ -174,6 +174,26 @@
     "mfaVerify": "Kodu Doğrula",
     "mfaPrompt": "Authenticator uygulamanızdaki kodu girin",
     "welcome": "Hoş geldiniz, {{name}}",
-    "loginFailed": "Giriş başarısız"
+    "loginFailed": "Giriş başarısız",
+    "ssoWith": "{{name}} ile giriş",
+    "or": "veya",
+    "ldapUsername": "Kullanıcı adı",
+    "ldapLogin": "{{name}} hesabıyla giriş",
+    "backToOptions": "Diğer giriş seçenekleri",
+    "localAdminLogin": "Yönetici girişi (yerel hesap)",
+    "ssoCompleting": "Oturum açılıyor…",
+    "ssoErrors": {
+      "unknown_provider": "Kimlik sağlayıcı bulunamadı",
+      "provider_unavailable": "Kimlik sağlayıcıya ulaşılamadı",
+      "invalid_state": "Giriş oturumunun süresi doldu, lütfen tekrar deneyin",
+      "provider_rejected": "Kimlik sağlayıcı girişi doğrulayamadı",
+      "no_email": "Kimlik sağlayıcı e-posta adresi göndermedi",
+      "domain_not_allowed": "Bu e-posta domain'i izinli değil",
+      "no_matching_group": "Hesabınız sisteme erişim veren bir gruba üye değil",
+      "no_account": "Bu hesap için personel kaydı yok; yöneticinize başvurun",
+      "inactive": "Hesabınız pasif",
+      "identity_conflict": "Bu e-posta başka bir kurumsal kimliğe bağlı",
+      "session": "Oturum açılamadı"
+    }
   }
 }

@@ -88,6 +88,12 @@ enum CompanyGroupType {
   retail
 }
 
+enum IdentityProviderType {
+  oidc
+  saml
+  ldap
+}
+
 enum MailboxProvider {
   imap
   microsoft365
@@ -332,6 +338,9 @@ model Staff {
   mfaEnabled   Boolean   @default(false) @map("mfa_enabled")
   // Bildirim (e-posta/SMS) dili. Şablon seçimi bu değere göre yapılır; yoksa 'tr'.
   locale       String    @default("tr")
+  /// SSO/dizin ile bağlanmış hesap: sağlayıcı + sağlayıcıdaki kalıcı kimlik (sub / NameID / DN).
+  identityProviderId String? @map("identity_provider_id")
+  externalSubject    String? @map("external_subject")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
@@ -343,7 +352,9 @@ model Staff {
   taskAssignments   TaskAssignee[]
   taskComments      TaskComment[]   @relation("TaskCommenter")
   watching          TicketWatcher[]
+  identityProvider  IdentityProvider? @relation(fields: [identityProviderId], references: [id], onDelete: SetNull)
 
+  @@unique([identityProviderId, externalSubject])
   @@map("staff")
 }
 
@@ -461,6 +472,42 @@ model TicketNote {
   createdBy Staff  @relation(fields: [createdById], references: [id])
 
   @@map("ticket_notes")
+}
+
+/// Personel girişi için kimlik sağlayıcı (OIDC / SAML 2.0 / LDAP-AD).
+/// Tür-özgü ayarlar `config` JSON'unda (biçim: `services/sso/config.ts`); sırlar şifreli.
+model IdentityProvider {
+  id              String               @id @default(cuid())
+  /// URL'de kullanılır: /auth/sso/<slug>/start
+  slug            String               @unique
+  /// Giriş ekranındaki düğme metni ("Microsoft ile giriş").
+  name            String
+  type            IdentityProviderType
+  isActive        Boolean              @default(true) @map("is_active")
+  config          Json                 @default("{}")
+  /// OIDC client secret / LDAP bind parolası — AES-256-GCM.
+  secretEnc       String?              @map("secret_enc")
+  /// Eşleşen rol grubuyla ilk girişte personel kaydı oluştur.
+  jitProvisioning Boolean              @default(false) @map("jit_provisioning")
+  /// [{ group, role }] — tanımlıysa her girişte rol gruplardan senkronlanır.
+  roleMappings    Json                 @default("[]") @map("role_mappings")
+  /// [{ group, companyId }] — tanımlıysa her girişte şirket ataması senkronlanır.
+  companyMappings Json                 @default("[]") @map("company_mappings")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+
+  staff Staff[]
+
+  @@map("identity_providers")
+}
+
+/// Sistem geneli ayarlar (anahtar → JSON). Ör. `auth`: yerel giriş kapalı mı.
+model SystemSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
 }
 
 /// Ticket izleyicileri (CC). `staffId` doluysa personel izleyicidir (kullanıcı

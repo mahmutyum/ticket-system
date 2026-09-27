@@ -15,6 +15,7 @@ import { prismaPlugin } from './plugins/prisma.js';
 import { redisPlugin } from './plugins/redis.js';
 import { authPlugin } from './plugins/auth.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
+import { ssoRoutes } from './modules/auth/sso.routes.js';
 import { companyRoutes } from './modules/companies/companies.routes.js';
 import { companySlaRoutes } from './modules/companies/company-sla.routes.js';
 import { mailboxRoutes } from './modules/companies/mailbox.routes.js';
@@ -232,6 +233,7 @@ export async function buildApp() {
 
   // API Routes
   await app.register(authRoutes, { prefix: '/auth' });
+  await app.register(ssoRoutes, { prefix: '/auth/sso' });
   await app.register(companyRoutes, { prefix: '/companies' });
   await app.register(companySlaRoutes, { prefix: '/companies' });
   await app.register(mailboxRoutes, { prefix: '/companies' });

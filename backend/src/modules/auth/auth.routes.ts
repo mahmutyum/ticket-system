@@ -6,7 +6,6 @@ import { commonErrorResponses, successResponseSchema } from '../../utils/api-sch
 import {
   generateTokens,
   verifyRefreshToken,
-  newSessionId,
   refreshKey,
   invalidateAccessTokens,
 } from '../../plugins/auth.js';
@@ -16,8 +15,9 @@ import { nanoid } from 'nanoid';
 import { decrypt, encrypt } from '../../utils/crypto.js';
 import { generateTotpSecret, totpUri, verifyTotp } from '../../utils/totp.js';
 import { t } from '../../i18n/index.js';
+import { issueSession, REFRESH_TTL_SECONDS } from './session.js';
+import { getAuthSettings } from '../../services/system-settings.js';
 
-const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 /**
  * Hesap kilitleme.
@@ -112,48 +112,24 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
 
     await app.redis.del(failKey(body.email));
 
+    // SSO zorunluysa yerel parola yalnızca admin'lere (acil durum / break-glass) açıktır.
+    // Kontrol parola doğrulandıktan SONRA yapılır: aksi hâlde hangi e-postanın hangi
+    // rolde olduğu parolasız öğrenilebilirdi.
+    if (staff.role !== 'admin' && (await getAuthSettings(app.prisma)).localLoginDisabled) {
+      await createAuditLog({
+        entityType: 'auth', entityId: staff.id, action: 'login_blocked_local_disabled',
+        performedBy: staff.email, ipAddress: ip,
+      });
+      return reply.status(403).send({ success: false, error: t(request, 'auth.local_login_disabled') });
+    }
+
     if (staff.mfaEnabled && staff.mfaSecretEnc) {
       const challenge = nanoid(32);
       await app.redis.set(mfaChallengeKey(challenge), staff.id, 'EX', 5 * 60);
       return reply.send({ success: true, data: { mfaRequired: true, challenge } });
     }
 
-    // Her giriş yeni bir OTURUM açar. Anahtar refresh:<staffId>:<sid> olduğu için
-    // aynı kullanıcı laptop + telefonda eşzamanlı oturum tutabilir; önceden tek
-    // anahtar vardı ve B'de giriş A'yı sessizce düşürüyordu.
-    const sid = newSessionId();
-    const tokens = generateTokens({ id: staff.id, email: staff.email, role: staff.role }, sid);
-
-    await app.redis.set(refreshKey(staff.id, sid), tokens.refreshToken, 'EX', REFRESH_TTL_SECONDS);
-
-    reply
-      .setCookie('refresh_token', tokens.refreshToken, {
-        httpOnly: true,
-        // config.NODE_ENV kullanılır: ham process.env okunursa zod'un doğruladığı
-        // enum baypas edilir ve NODE_ENV tanımsız/yanlış yazılmışsa cookie
-        // Secure'suz gider.
-        secure: config.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: REFRESH_TTL_SECONDS,
-      })
-      .send({
-        success: true,
-        data: {
-          accessToken: tokens.accessToken,
-          user: {
-            id: staff.id,
-            email: staff.email,
-            fullName: staff.fullName,
-            role: staff.role,
-            department: staff.department,
-            avatarUrl: staff.avatarUrl,
-            mfaEnabled: staff.mfaEnabled,
-            locale: staff.locale,
-          },
-          mfaWarningEnabled: config.MFA_WARNING_ENABLED,
-        },
-      });
+    reply.send({ success: true, data: await issueSession(app, reply, staff) });
   });
 
   app.post('/staff/mfa/verify-login', {
@@ -173,15 +149,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
       return reply.status(401).send({ success: false, error: t(request, 'auth.mfa_code_invalid') });
     }
     await app.redis.del(mfaChallengeKey(body.challenge));
-    const sid = newSessionId();
-    const tokens = generateTokens({ id: staff.id, email: staff.email, role: staff.role }, sid);
-    await app.redis.set(refreshKey(staff.id, sid), tokens.refreshToken, 'EX', REFRESH_TTL_SECONDS);
-    reply.setCookie('refresh_token', tokens.refreshToken, {
-      httpOnly: true, secure: config.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: REFRESH_TTL_SECONDS,
-    }).send({ success: true, data: { accessToken: tokens.accessToken, user: {
-      id: staff.id, email: staff.email, fullName: staff.fullName, role: staff.role,
-      department: staff.department, avatarUrl: staff.avatarUrl, mfaEnabled: staff.mfaEnabled, locale: staff.locale,
-    }, mfaWarningEnabled: config.MFA_WARNING_ENABLED } });
+    reply.send({ success: true, data: await issueSession(app, reply, staff) });
   });
 
   // Refresh token

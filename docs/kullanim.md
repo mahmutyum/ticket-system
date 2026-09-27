@@ -241,6 +241,32 @@ Ticket dağılımı, personel performansı, kategori kırılımı, genel bakış
 Personel ekleme/düzenleme/silme, rol atama ve **şirket kapsamı** belirleme. Tüm işlemler
 audit log'a yazılır.
 
+#### SSO / Dizin — kimlik sağlayıcılar
+
+Personel girişi için **OpenID Connect** (Entra ID, Keycloak, Google Workspace…),
+**SAML 2.0** (ADFS vb.) ve **LDAP / Active Directory** tanımlanabilir. Giriş ekranında her
+aktif sağlayıcı için bir düğme görünür.
+
+- **OIDC:** IdP'de *Web* uygulaması oluşturun, ekranda gösterilen **redirect URI**'yi
+  ekleyin (`https://<alan>/api/auth/sso/<kısa-ad>/callback`). Grup bilgisi için IdP'nin
+  `groups` (Entra'da grup/uygulama rolü) claim'ini açın. Issuer HTTPS olmalıdır.
+- **SAML:** IdP'ye **ACS** (`…/acs`) ve **metadata** (`…/metadata`) adreslerini tanıtın;
+  IdP imza sertifikasını yapıştırın. İmzasız ve istenmemiş (IdP-initiated) yanıtlar
+  reddedilir.
+- **LDAP/AD:** servis hesabıyla kullanıcı aranır, ardından kullanıcının kendi parolasıyla
+  bind edilir. `ldaps://` önerilir (ya da `ldap://` + StartTLS).
+- **Grup → rol eşlemesi:** tanımlıysa rol her girişte gruplardan belirlenir (birden çok
+  eşleşmede en yüksek rol); hiçbir grubu tutmayan kullanıcı giremez — dizinde gruptan
+  çıkarılan kişi erişimini kaybeder. **Grup → şirket eşlemesi** tanımlıysa şirket
+  atamaları her girişte yenilenir.
+- **JIT:** açıksa, bir rol grubu tutan ama sistemde kaydı olmayan kullanıcı için ilk
+  girişte personel kaydı açılır. Aynı e-postalı mevcut hesap ilk SSO girişinde bağlanır.
+- **Yerel parola girişini kapat:** personel yalnızca SSO ile girer; **admin hesapları acil
+  durum için yerel girişi korur** (giriş ekranındaki "Yönetici girişi" bağlantısı). SSO
+  girişlerinde ikinci faktör (MFA) kimlik sağlayıcıda uygulanır.
+- Kurum içi IdP / dizin sunucuları için `.env`'de `ALLOW_PRIVATE_INTEGRATION_HOSTS=true`
+  gerekir (varsayılan olarak iç ağ adreslerine bağlantı engellidir).
+
 ---
 
 ## Şifre kasası

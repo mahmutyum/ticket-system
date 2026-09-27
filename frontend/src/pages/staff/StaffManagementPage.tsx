@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit2, UserX, UserCheck, Building2 } from 'lucide-react';
+import { Plus, Edit2, UserX, UserCheck, Building2, KeyRound } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
 import { getApiError } from '../../utils/api-error';
 import type { Company, Staff } from '../../types';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useEnumLabels } from '../../i18n/labels';
+import { IdentityProvidersModal } from './IdentityProvidersModal';
 
 const ROLE_VALUES = ['admin', 'it_manager', 'it_staff'];
 
@@ -27,6 +28,7 @@ export default function StaffManagementPage() {
   const labels = useEnumLabels();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [showSso, setShowSso] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<StaffForm>(emptyForm);
 
@@ -126,13 +128,20 @@ export default function StaffManagementPage() {
   return (
     <div className="space-y-4">
       <PageHeader eyebrow={t('staffMgmt.eyebrow')} title={t('staffMgmt.title')} description={t('staffMgmt.description')} actions={
-        <button
-          onClick={() => { setShowForm(true); setEditId(null); setForm(emptyForm); }}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" /> {t('staffMgmt.newStaff')}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => setShowSso(true)} className="btn-secondary flex items-center gap-2">
+            <KeyRound className="w-4 h-4" /> {t('staffMgmt.sso.button')}
+          </button>
+          <button
+            onClick={() => { setShowForm(true); setEditId(null); setForm(emptyForm); }}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> {t('staffMgmt.newStaff')}
+          </button>
+        </div>
       } />
+
+      {showSso && <IdentityProvidersModal onClose={() => setShowSso(false)} />}
 
       {/* Staff Form Modal */}
       {showForm && (
