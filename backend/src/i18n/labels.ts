@@ -63,10 +63,19 @@ export const onsiteUpdatedNote = (locale: string): string =>
   norm(locale) === 'en' ? 'Your onsite support appointment has been updated.' : 'Yerinde destek randevunuz güncellendi.';
 
 /** Bildirimlerde tarih/saat — alıcının diline göre biçimlenir. */
-export function formatDateTime(locale: string, value: string | Date): string {
+export function formatDateTime(locale: string, value: string | Date, timeZone?: string): string {
   const d = value instanceof Date ? value : new Date(value);
   return d.toLocaleString(norm(locale) === 'en' ? 'en-US' : 'tr-TR', {
     dateStyle: 'medium',
     timeStyle: 'short',
+    ...(timeZone ? { timeZone } : {}),
   });
 }
+
+export type SlaKind = 'response' | 'resolution';
+
+/** SLA bildirimlerindeki "Yanıt Süresi" / "Çözüm Süresi" etiketi. */
+export const slaTypeLabel = (locale: string, kind: SlaKind): string => {
+  if (norm(locale) === 'en') return kind === 'response' ? 'Response Time' : 'Resolution Time';
+  return kind === 'response' ? 'Yanıt Süresi' : 'Çözüm Süresi';
+};

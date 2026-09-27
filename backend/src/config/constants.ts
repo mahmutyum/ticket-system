@@ -54,6 +54,31 @@ export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
   closed: 'Kapatıldı',
 };
 
+/**
+ * SLA saatini DURDURAN durumlar — ticket dış bir tarafa (kullanıcı, başka birim,
+ * IT dışı süreç) bağlıyken geçen süre personelin SLA'sına yazılmaz. Bu durumlara
+ * girildiğinde `slaPausedAt` işaretlenir; çıkıldığında son tarihler duraklatılan
+ * süre kadar ileri kaydırılır. (v1.3'te bu liste durum sınıfına taşınacak.)
+ */
+export const SLA_PAUSING_STATUSES: readonly TicketStatus[] = [
+  TicketStatus.waiting_user_response,
+  TicketStatus.waiting_other_department,
+  TicketStatus.process_outside_it,
+  TicketStatus.on_hold,
+];
+
+/** SLA'nın artık ölçülmediği son durumlar. */
+export const SLA_FINAL_STATUSES: readonly TicketStatus[] = [TicketStatus.resolved, TicketStatus.closed];
+
+/**
+ * Public takip linkinin çözüm/kapanıştan sonra geçerli kaldığı gün sayısı.
+ * Süresi dolan link `/public/track` (numara + e-posta) ile yenilenebilir.
+ */
+export const PUBLIC_ACCESS_RETENTION_DAYS = 90;
+
+/** Öncelik yükseltme sırası (SLA ihlali eskalasyonunda kullanılır). */
+export const PRIORITY_ORDER: readonly Priority[] = [Priority.low, Priority.medium, Priority.high, Priority.critical];
+
 /** Ticket ve görevler için ORTAK öncelik sözlüğü. */
 export const PRIORITIES = Priority;
 export const PRIORITY_VALUES = Object.values(Priority);

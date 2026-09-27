@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Planned work is tracked in [docs/yol-haritasi.md](docs/yol-haritasi.md)._
 
+### Added
+- **SLA pausing**: the SLA clock stops while a ticket waits on the requester, another
+  department, an outside process or is on hold; due dates shift by the paused time on resume.
+- **Business hours & holidays** per company (time zone aware, split windows, DST safe);
+  selected priorities can stay 24/7.
+- **Pre-breach warnings** at a configurable threshold (default 80%) and **escalation** of
+  breaches to the company's IT managers, with optional automatic priority bump.
+- Live `sla_alert` panel notifications; SLA events in the ticket timeline; paused-time
+  metrics in the SLA report.
+
+### Fixed
+- SLA notification labels ("Response/Resolution Time") now follow the recipient's language.
+- Bulk ticket updates now record history and apply the same SLA/first-response/link-expiry
+  rules as single updates; a requester reply now resumes the SLA and is recorded in history.
+- Moving a ticket out of `open` to any status (or a staff public note) counts as the first
+  response.
+- Internal SLA events are no longer exposed in the public ticket history.
+- The staff SSE connection no longer reconnects on every page re-render.
+
 ## [1.0.0] - 2026-07-17
 
 First tagged release. A production-ready, multi-tenant internal IT helpdesk.

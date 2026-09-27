@@ -12,6 +12,7 @@ import type { Ticket, PaginatedResponse, Staff } from '../../types';
 
 const PRIORITY_KEYS = ['low', 'medium', 'high', 'critical'] as const;
 import { useStaffSSE } from '../../hooks/useSSE';
+import { useSlaAlertToast } from '../../hooks/useSlaAlertToast';
 import { useAuthStore } from '../../stores/auth.store';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { EmptyState, SkeletonRows } from '../../components/ui/AsyncState';
@@ -40,9 +41,14 @@ export default function TicketListPage() {
   const [bulkPriority, setBulkPriority] = useState('');
   const [bulkAssignee, setBulkAssignee] = useState<string>('');
 
+  const showSlaAlert = useSlaAlertToast();
   useStaffSSE({
     onTicketCreated: () => queryClient.invalidateQueries({ queryKey: ['tickets'] }),
     onTicketUpdated: () => queryClient.invalidateQueries({ queryKey: ['tickets'] }),
+    onSlaAlert: (alert) => {
+      showSlaAlert(alert);
+      void queryClient.invalidateQueries({ queryKey: ['tickets'] });
+    },
   });
 
   const { data, isLoading } = useQuery<PaginatedResponse<Ticket>>({
@@ -258,7 +264,7 @@ export default function TicketListPage() {
                     <div className="flex items-center justify-between gap-2"><span className="font-mono text-xs font-semibold text-primary-600">{ticket.ticketNumber}</span><span className="whitespace-nowrap text-xs text-muted">{new Date(ticket.createdAt).toLocaleDateString(dateLocale())}</span></div>
                     <h3 className="mt-1 truncate font-semibold">{ticket.subject}</h3>
                     <p className="mt-1 truncate text-sm text-muted">{ticket.company.name} · {ticket.category.name}</p>
-                    <div className="mt-3 flex flex-wrap gap-2"><StatusBadge status={ticket.status} /><PriorityBadge priority={ticket.priority} /></div>
+                    <div className="mt-3 flex flex-wrap gap-2"><StatusBadge status={ticket.status} slaPaused={!!ticket.slaPausedAt} /><PriorityBadge priority={ticket.priority} /></div>
                   </Link>
                 </div>
               </div>
@@ -318,7 +324,7 @@ export default function TicketListPage() {
                     <td className="px-4 py-3 text-gray-500">{ticket.company.name}</td>
                     <td className="px-4 py-3 text-gray-500">{ticket.category.name}</td>
                     <td className="px-4 py-3">
-                      <StatusBadge status={ticket.status} />
+                      <StatusBadge status={ticket.status} slaPaused={!!ticket.slaPausedAt} />
                     </td>
                     <td className="px-4 py-3">
                       <PriorityBadge priority={ticket.priority} />

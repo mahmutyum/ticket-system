@@ -6,6 +6,9 @@ import { saveFile, isAllowedMimeType, isBufferConsistentWithMime } from '../../s
 import { requiredText, emailSchema, LIMITS } from '../../utils/validation.js';
 import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
 import { t } from '../../i18n/index.js';
+import { TicketStatus } from '@prisma/client';
+import { planStatusTransition } from '../../utils/ticket-lifecycle.js';
+import { calendarFor, loadCompanySlaContext } from '../../services/sla-context.js';
 
 /**
  * Public takip linkinin süresi dolmuş mu?
@@ -139,8 +142,11 @@ export const publicRoutes: FastifyPluginAsyncZod = async (app) => {
         //
         // İkinci savunma katmanı notes.routes.ts'tedir: iç notların metni artık
         // history'ye hiç yazılmıyor.
+        //
+        // SLA olayları (`sla_*`: duraklatma, uyarı, ihlal, eskalasyon) da iç
+        // operasyon bilgisidir; talep sahibine gösterilmez.
         history: {
-          where: { action: { not: 'internal_note_added' } },
+          where: { NOT: [{ action: 'internal_note_added' }, { action: { startsWith: 'sla_' } }] },
           orderBy: { createdAt: 'asc' },
           select: {
             id: true,
@@ -201,7 +207,18 @@ export const publicRoutes: FastifyPluginAsyncZod = async (app) => {
         createdByEmail: true,
         assignedToId: true,
         status: true,
+        priority: true,
         accessTokenExpiresAt: true,
+        firstRespondedAt: true,
+        resolvedAt: true,
+        slaResponseDue: true,
+        slaResolveDue: true,
+        slaResponseMet: true,
+        slaResolveMet: true,
+        slaResponseWarnAt: true,
+        slaResolveWarnAt: true,
+        slaPausedAt: true,
+        slaPausedMinutes: true,
         assignedTo: { select: { email: true, fullName: true } },
       },
     });
@@ -211,7 +228,20 @@ export const publicRoutes: FastifyPluginAsyncZod = async (app) => {
     }
 
     // Create history + update status atomically
-    const wasWaiting = ticket.status === 'waiting_user_response';
+    //
+    // Kullanıcı yanıt verdiyse "yanıt bekleniyor" biter: ticket tekrar ele alınmak
+    // üzere `open`a döner ve duraklatılan SLA devam eder. Geçiş, personel
+    // güncellemesiyle aynı planlayıcıdan geçer (kaydırma + geçmiş kaydı).
+    const wasWaiting = ticket.status === TicketStatus.waiting_user_response;
+    const plan = wasWaiting
+      ? planStatusTransition(
+          ticket,
+          TicketStatus.open,
+          new Date(),
+          calendarFor(await loadCompanySlaContext(app.prisma, ticket.companyId), ticket.priority),
+          { email: ticket.createdByEmail },
+        )
+      : null;
     await app.prisma.$transaction(async (tx) => {
       await tx.ticketHistory.create({
         data: {
@@ -222,10 +252,10 @@ export const publicRoutes: FastifyPluginAsyncZod = async (app) => {
         },
       });
 
-      if (wasWaiting) {
+      if (plan) {
         await tx.ticket.update({
           where: { id: ticket.id },
-          data: { status: 'open' },
+          data: { ...plan.data, history: { create: plan.history } },
         });
       }
     });

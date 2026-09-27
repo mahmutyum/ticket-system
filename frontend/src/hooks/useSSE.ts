@@ -2,10 +2,18 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useAuthStore } from '../stores/auth.store';
 import api from '../api/client';
 
+export interface SlaAlert {
+  ticketId: string;
+  ticketNumber: string;
+  kind: 'response' | 'resolution';
+  level: 'approaching' | 'breached';
+}
+
 interface SSEOptions {
   onTicketCreated?: (data: unknown) => void;
   onTicketUpdated?: (data: unknown) => void;
   onNoteAdded?: (data: unknown) => void;
+  onSlaAlert?: (data: SlaAlert) => void;
   enabled?: boolean;
 }
 
@@ -13,7 +21,12 @@ const MAX_RETRIES = 10;
 const BASE_DELAY = 1000;
 
 export function useStaffSSE(options: SSEOptions) {
-  const { onTicketCreated, onTicketUpdated, onNoteAdded, enabled = true } = options;
+  const { enabled = true } = options;
+  // Handler'lar ref'te tutulur: çağıranlar genelde satır içi fonksiyon verir ve
+  // bunlar `connect`'in bağımlılığı olsaydı her render'da bağlantı kapanıp yeni
+  // bir biletle yeniden açılırdı.
+  const handlersRef = useRef(options);
+  handlersRef.current = options;
   const eventSourceRef = useRef<EventSource | null>(null);
   const retriesRef = useRef(0);
   const token = useAuthStore((s) => s.accessToken);
@@ -38,15 +51,19 @@ export function useStaffSSE(options: SSEOptions) {
     eventSourceRef.current = es;
 
     es.addEventListener('ticket_created', (e) => {
-      try { onTicketCreated?.(JSON.parse(e.data)); } catch { /* ignore */ }
+      try { handlersRef.current.onTicketCreated?.(JSON.parse(e.data)); } catch { /* ignore */ }
     });
 
     es.addEventListener('ticket_updated', (e) => {
-      try { onTicketUpdated?.(JSON.parse(e.data)); } catch { /* ignore */ }
+      try { handlersRef.current.onTicketUpdated?.(JSON.parse(e.data)); } catch { /* ignore */ }
     });
 
     es.addEventListener('note_added', (e) => {
-      try { onNoteAdded?.(JSON.parse(e.data)); } catch { /* ignore */ }
+      try { handlersRef.current.onNoteAdded?.(JSON.parse(e.data)); } catch { /* ignore */ }
+    });
+
+    es.addEventListener('sla_alert', (e) => {
+      try { handlersRef.current.onSlaAlert?.(JSON.parse(e.data) as SlaAlert); } catch { /* ignore */ }
     });
 
     es.addEventListener('connected', () => {
@@ -64,7 +81,7 @@ export function useStaffSSE(options: SSEOptions) {
         setTimeout(() => void connect(), delay);
       }
     };
-  }, [token, onTicketCreated, onTicketUpdated, onNoteAdded]);
+  }, [token]);
 
   useEffect(() => {
     if (!enabled || !token) return;

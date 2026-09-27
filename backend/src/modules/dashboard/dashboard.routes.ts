@@ -47,6 +47,12 @@ const slaResponseSchema = z.object({
     totalWithSla: z.number().int(),
     response: z.object({ met: z.number().int(), violated: z.number().int(), complianceRate: z.number().int() }),
     resolution: z.object({ met: z.number().int(), violated: z.number().int(), complianceRate: z.number().int() }),
+    paused: z.object({
+      /** Şu an SLA'sı duraklatılmış (bekleme durumundaki) ticket sayısı. */
+      current: z.number().int(),
+      /** Duraklatma yaşamış ticket'larda ortalama duraklatılmış SLA dakikası. */
+      avgMinutes: z.number().int(),
+    }),
   }),
 });
 const myTicketSchema = ticketCardSchema.extend({
@@ -107,9 +113,14 @@ export const dashboardRoutes: FastifyPluginAsyncZod = async (app) => {
       app.prisma.ticket.count({
         where: {
           ...scopeWhere,
+          status: { notIn: ['resolved', 'closed'] },
+          // Kayıtlı ihlaller + işçinin henüz işlemediği süresi geçmişler.
+          // Duraklatılmış (bekleme durumundaki) ticket'ın saati işlemiyor.
           OR: [
-            { slaResponseDue: { lt: new Date() }, slaResponseMet: null, status: { notIn: ['resolved', 'closed'] } },
-            { slaResolveDue: { lt: new Date() }, slaResolveMet: null, status: { notIn: ['resolved', 'closed'] } },
+            { slaResponseMet: false },
+            { slaResolveMet: false },
+            { slaResponseDue: { lt: new Date() }, slaResponseMet: null, firstRespondedAt: null, slaPausedAt: null },
+            { slaResolveDue: { lt: new Date() }, slaResolveMet: null, slaPausedAt: null },
           ],
         },
       }),
@@ -200,12 +211,14 @@ export const dashboardRoutes: FastifyPluginAsyncZod = async (app) => {
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     const scopeWhere = scopeCompanyIds ? { companyId: { in: scopeCompanyIds } } : {};
 
-    const [totalWithSla, responseMet, responseViolated, resolveMet, resolveViolated] = await Promise.all([
+    const [totalWithSla, responseMet, responseViolated, resolveMet, resolveViolated, pausedNow, pausedAgg] = await Promise.all([
       app.prisma.ticket.count({ where: { ...scopeWhere, slaResponseDue: { not: null } } }),
       app.prisma.ticket.count({ where: { ...scopeWhere, slaResponseMet: true } }),
       app.prisma.ticket.count({ where: { ...scopeWhere, slaResponseMet: false } }),
       app.prisma.ticket.count({ where: { ...scopeWhere, slaResolveMet: true } }),
       app.prisma.ticket.count({ where: { ...scopeWhere, slaResolveMet: false } }),
+      app.prisma.ticket.count({ where: { ...scopeWhere, slaPausedAt: { not: null } } }),
+      app.prisma.ticket.aggregate({ where: { ...scopeWhere, slaPausedMinutes: { gt: 0 } }, _avg: { slaPausedMinutes: true } }),
     ]);
 
     reply.send({
@@ -225,6 +238,10 @@ export const dashboardRoutes: FastifyPluginAsyncZod = async (app) => {
           complianceRate: (resolveMet + resolveViolated) > 0
             ? Math.round((resolveMet / (resolveMet + resolveViolated)) * 100)
             : 100,
+        },
+        paused: {
+          current: pausedNow,
+          avgMinutes: Math.round(pausedAgg._avg.slaPausedMinutes ?? 0),
         },
       },
     });

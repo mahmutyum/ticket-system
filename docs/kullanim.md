@@ -169,6 +169,22 @@ değiştirilebilir.
 - **Özel alanlar:** şirkete özel form alanları — tip, zorunluluk, seçenekler.
 - **Şirket bazlı SMTP:** her şirket kendi SMTP'siyle mail gönderebilir. Tanımlı değilse
   global SMTP kullanılır. Panelden **test maili** gönderilebilir.
+- **SLA & Mesai** (`admin`, kendi şirketlerinde `it_manager`):
+  - **Mesai takvimi** — gün bazlı çalışma aralıkları (öğle arası gibi bölünmüş aralıklar
+    dahil) ve saat dilimi. Açıksa SLA yalnızca mesai içinde işler; kapalıysa 7/24.
+  - **Tatil günleri** — takvim açıkken SLA bu günlerde durur. Sabit tarihli tatiller tek
+    tıkla sonraki yıla kopyalanır; dini bayramlar gibi kayan günler elle düzeltilir.
+  - **7/24 öncelikler** — seçilen önceliklerde (ör. `critical`) takvim yok sayılır.
+  - **İhlal öncesi uyarı eşiği** — süre bu yüzdeye ulaşınca (varsayılan %80) atanana,
+    atanmamışsa şirketin IT yöneticilerine e-posta + panel bildirimi gider.
+  - **Eskalasyon** — ihlalde yöneticilere bildirim; isteğe bağlı olarak çözüm SLA'sı
+    aşılınca öncelik bir kademe yükseltilir.
+
+> **SLA duraklatma:** ticket `Kullanıcı Yanıtı Bekleniyor`, `Diğer Birimden Destek
+> Bekleniyor`, `Süreç IT Dışında İlerliyor` veya `Beklemede` durumundayken SLA saati
+> durur; aktif duruma dönünce son tarihler bekleyen süre kadar ileri kayar. Kullanıcı
+> yanıt verdiğinde ticket otomatik olarak `Açık`a döner ve saat yeniden işler. Personelin
+> ilk durum değişikliği veya talep sahibine görünen ilk notu "ilk yanıt" sayılır.
 
 > Şirket SMTP şifreleri AES-256-GCM ile şifrelenir. Eski kurulumlar için tek seferlik
 > dönüşüm adımı [SECURITY.md](../SECURITY.md) içinde belgelenmiştir.
@@ -176,7 +192,7 @@ değiştirilebilir.
 ### Şablonlar — `/staff/templates` (`admin`, `it_manager`)
 
 - **E-posta şablonları:** ticket oluşturuldu, durum değişti, atandı, not eklendi,
-  randevu planlandı, SLA uyarısı.
+  randevu planlandı, SLA ihlali, SLA yaklaşıyor, SLA eskalasyonu.
 - **SMS şablonları:** SMS gateway tanımlıysa.
 - **Hazır yanıtlar (canned responses):** ticket detayında tek tıkla eklenen kalıp metinler.
 

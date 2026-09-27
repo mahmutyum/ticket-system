@@ -36,7 +36,16 @@
       "priorityChanged": "Öncelik: {{from}} → {{to}}",
       "assigned": "Talep atandı",
       "userReply": "Kullanıcı yanıtı: {{value}}",
-      "onsiteScheduled": "Yerinde destek planlandı"
+      "onsiteScheduled": "Yerinde destek planlandı",
+      "slaViolated": "SLA ihlali: {{kind}}",
+      "slaWarning": "SLA süresi dolmak üzere: {{kind}}",
+      "slaEscalated": "SLA ihlali yöneticilere bildirildi: {{kind}}",
+      "slaPaused": "SLA duraklatıldı (bekleme durumu)",
+      "slaResumed": "SLA devam ediyor ({{minutes}} dk duraklatıldı)",
+      "slaKind": {
+        "response": "yanıt süresi",
+        "resolution": "çözüm süresi"
+      }
     }
   },
   "en": {
@@ -76,7 +85,16 @@
       "priorityChanged": "Priority: {{from}} → {{to}}",
       "assigned": "Ticket assigned",
       "userReply": "User reply: {{value}}",
-      "onsiteScheduled": "On-site support scheduled"
+      "onsiteScheduled": "On-site support scheduled",
+      "slaViolated": "SLA breached: {{kind}}",
+      "slaWarning": "SLA deadline approaching: {{kind}}",
+      "slaEscalated": "SLA breach escalated to managers: {{kind}}",
+      "slaPaused": "SLA paused (waiting status)",
+      "slaResumed": "SLA resumed ({{minutes}} min paused)",
+      "slaKind": {
+        "response": "response time",
+        "resolution": "resolution time"
+      }
     }
   }
 }

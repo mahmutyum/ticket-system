@@ -81,7 +81,10 @@
     "pageLoading": "Sayfa yükleniyor…",
     "errorTitle": "Bir Hata Oluştu",
     "errorBody": "Sayfa yüklenirken beklenmeyen bir hata oluştu. Lütfen sayfayı yenileyin.",
-    "reloadPage": "Sayfayı Yenile"
+    "reloadPage": "Sayfayı Yenile",
+    "slaPaused": "SLA duraklatıldı (bekleme durumu)",
+    "slaAlertBreached": "{{ticketNumber}}: SLA {{kind}} aşıldı",
+    "slaAlertApproaching": "{{ticketNumber}}: SLA {{kind}} dolmak üzere"
   },
   "enums": {
     "status": {

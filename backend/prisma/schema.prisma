@@ -111,9 +111,13 @@ model Company {
   notificationEmail String?          @map("notification_email") // IT grup maili: it-destek@abc.com.tr
   isActive          Boolean          @default(true) @map("is_active")
   settings          Json             @default("{}")
+  /// SLA takvimi, uyarı eşiği ve eskalasyon ayarları. Biçim: `utils/sla-settings.ts`.
+  /// Boş → varsayılanlar (7/24 SLA, %80 uyarı, ihlalde yöneticiye bildirim).
+  slaSettings       Json?            @map("sla_settings")
   createdAt         DateTime         @default(now()) @map("created_at")
   updatedAt         DateTime         @updatedAt @map("updated_at")
 
+  holidays          CompanyHoliday[]
   locations         Location[]
   categories        Category[]
   customFields      CustomField[]
@@ -124,6 +128,21 @@ model Company {
   credentialEntries CredentialEntry[]
 
   @@map("companies")
+}
+
+/// Şirketin kapalı günleri — mesai takvimi etkinse SLA bu günlerde işlemez.
+model CompanyHoliday {
+  id        String   @id @default(cuid())
+  companyId String   @map("company_id")
+  /// Şirket saat dilimine göre yerel gün.
+  date      DateTime @db.Date
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, date])
+  @@map("company_holidays")
 }
 
 model CompanySmtp {
@@ -301,6 +320,13 @@ model Ticket {
   slaResolveDue        DateTime?    @map("sla_resolve_due")
   slaResponseMet       Boolean?     @map("sla_response_met")
   slaResolveMet        Boolean?     @map("sla_resolve_met")
+  /// İhlal öncesi uyarı anları. Uyarı gönderilince / hedef tutturulunca null'lanır.
+  slaResponseWarnAt    DateTime?    @map("sla_response_warn_at")
+  slaResolveWarnAt     DateTime?    @map("sla_resolve_warn_at")
+  /// Bekleme durumundayken SLA duraklatılır; çıkışta son tarihler kaydırılır.
+  slaPausedAt          DateTime?    @map("sla_paused_at")
+  /// Toplam duraklatılmış SLA dakikası (raporlama için).
+  slaPausedMinutes     Int          @default(0) @map("sla_paused_minutes")
   firstRespondedAt     DateTime?    @map("first_responded_at")
   resolvedAt           DateTime?    @map("resolved_at")
   closedAt             DateTime?    @map("closed_at")

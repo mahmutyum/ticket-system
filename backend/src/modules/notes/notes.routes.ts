@@ -2,6 +2,7 @@ import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { requiredText, LIMITS } from '../../utils/validation.js';
 import { queueEmail } from '../../jobs/queue.js';
+import { isSlaMet } from '../../utils/sla.js';
 import { config } from '../../config/index.js';
 import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.js';
 import { getStaffCompanyScope } from '../../utils/staff-scope.js';
@@ -43,7 +44,10 @@ export const noteRoutes: FastifyPluginAsyncZod = async (app) => {
 
     const ticket = await app.prisma.ticket.findUnique({
       where: { id: ticketId },
-      select: { id: true, ticketNumber: true, createdByEmail: true, accessToken: true, companyId: true },
+      select: {
+        id: true, ticketNumber: true, createdByEmail: true, accessToken: true, companyId: true,
+        firstRespondedAt: true, slaResponseDue: true, slaResponseMet: true,
+      },
     });
     if (!ticket) {
       return reply.status(404).send({ success: false, error: t(request, 'notes.ticket_not_found') });
@@ -65,6 +69,20 @@ export const noteRoutes: FastifyPluginAsyncZod = async (app) => {
         createdBy: { select: { fullName: true, role: true } },
       },
     });
+
+    // Talep sahibine görünen ilk personel notu "ilk yanıt"tır — durum
+    // değiştirilmeden yalnızca yanıt yazılması da yanıt SLA'sını karşılar.
+    if (!body.isInternal && !ticket.firstRespondedAt) {
+      const now = new Date();
+      await app.prisma.ticket.update({
+        where: { id: ticketId },
+        data: {
+          firstRespondedAt: now,
+          slaResponseMet: ticket.slaResponseMet ?? isSlaMet(ticket.slaResponseDue, now),
+          slaResponseWarnAt: null,
+        },
+      });
+    }
 
     // Add history entry
     //

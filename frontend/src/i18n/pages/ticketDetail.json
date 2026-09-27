@@ -46,7 +46,11 @@
     "appointmentNotesPlaceholder": "Not...",
     "slaTargets": "SLA hedefleri",
     "responseTime": "Yanıt Süresi:",
-    "resolveTime": "Çözüm Süresi:"
+    "resolveTime": "Çözüm Süresi:",
+    "slaPaused": "SLA duraklatıldı",
+    "slaPausedSince": "{{time}} tarihinden beri bekleme durumunda — süre işlemiyor.",
+    "slaPausedTotal": "Toplam duraklatma",
+    "minutesShort": "{{count}} dk"
   },
   "en": {
     "statusUpdated": "Status updated",
@@ -95,6 +99,10 @@
     "appointmentNotesPlaceholder": "Note...",
     "slaTargets": "SLA targets",
     "responseTime": "Response Time:",
-    "resolveTime": "Resolution Time:"
+    "resolveTime": "Resolution Time:",
+    "slaPaused": "SLA paused",
+    "slaPausedSince": "Waiting since {{time}} — the clock is stopped.",
+    "slaPausedTotal": "Total paused",
+    "minutesShort": "{{count}} min"
   }
 }

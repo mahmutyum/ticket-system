@@ -81,7 +81,10 @@
     "pageLoading": "Loading page…",
     "errorTitle": "An Error Occurred",
     "errorBody": "An unexpected error occurred while loading the page. Please reload.",
-    "reloadPage": "Reload Page"
+    "reloadPage": "Reload Page",
+    "slaPaused": "SLA paused (waiting status)",
+    "slaAlertBreached": "{{ticketNumber}}: SLA {{kind}} breached",
+    "slaAlertApproaching": "{{ticketNumber}}: SLA {{kind}} approaching"
   },
   "enums": {
     "status": {

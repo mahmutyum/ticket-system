@@ -45,7 +45,9 @@
     "allPriorities": "Tüm Öncelikler",
     "allCompanies": "Tüm Şirketler",
     "allCategories": "Tüm Kategoriler",
-    "allStaff": "Tüm Personel"
+    "allStaff": "Tüm Personel",
+    "slaPausedNow": "Şu an SLA'sı duraklatılmış talep",
+    "slaPausedAvg": "Duraklatılan taleplerde ortalama {{count}} dk bekleme (SLA'ya sayılmaz)"
   },
   "en": {
     "eyebrow": "Analytics center",
@@ -93,6 +95,8 @@
     "allPriorities": "All Priorities",
     "allCompanies": "All Companies",
     "allCategories": "All Categories",
-    "allStaff": "All Staff"
+    "allStaff": "All Staff",
+    "slaPausedNow": "Tickets with SLA currently paused",
+    "slaPausedAvg": "Average {{count}} min waiting on paused tickets (not counted toward SLA)"
   }
 }

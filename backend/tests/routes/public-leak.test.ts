@@ -73,7 +73,9 @@ describe('GET /public/ticket/:accessToken — iç veri sızıntısı', () => {
     expect(body.data).not.toHaveProperty('companyId');
 
     const select = findUnique.mock.calls[0][0].select ?? findUnique.mock.calls[0][0].include;
-    expect(select.history.where).toEqual({ action: { not: 'internal_note_added' } });
+    expect(select.history.where).toEqual({
+      NOT: [{ action: 'internal_note_added' }, { action: { startsWith: 'sla_' } }],
+    });
   });
 
   it('notes sorgusu yalnızca public notları ister', async () => {
@@ -122,13 +124,16 @@ describe('POST /tickets/:ticketId/notes — iç not metni history\'ye yazılmaz'
   });
 
   it('public notta önizleme yazılmaya devam eder', async () => {
+    const ticketUpdate = vi.fn(async () => ({}));
     const historyCreate = vi.fn<(args: { data: Record<string, unknown> }) => Promise<unknown>>(async () => ({}));
     const prisma = {
       ticket: {
         findUnique: async () => ({
           id: 't1', ticketNumber: 'TKT-1', createdByEmail: 'u@c.com',
           accessToken: 'tok', companyId: 'co-1', assignedTo: null,
+          firstRespondedAt: null, slaResponseDue: null, slaResponseMet: null,
         }),
+        update: ticketUpdate,
       },
       ticketNote: { create: async () => ({ id: 'n1', createdBy: { fullName: 'IT' } }) },
       ticketHistory: { create: historyCreate },
@@ -151,5 +156,10 @@ describe('POST /tickets/:ticketId/notes — iç not metni history\'ye yazılmaz'
     const data = historyCreate.mock.calls[0][0].data;
     expect(data.action).toBe('note_added');
     expect(data.newValue).toBe('Cihazınız hazır');
+    // Talep sahibine görünen ilk personel notu ilk yanıt sayılır.
+    expect(ticketUpdate).toHaveBeenCalledWith({
+      where: { id: 't1' },
+      data: expect.objectContaining({ firstRespondedAt: expect.any(Date), slaResponseMet: null }),
+    });
   });
 });

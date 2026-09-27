@@ -10,6 +10,10 @@ export const companiesMessages = {
     'companies.logoMimeNotAllowed': 'Sadece PNG, JPG, WEBP veya SVG yüklenebilir',
     'companies.fileTooLarge': 'Dosya boyutu 2MB üzerinde olamaz',
     'companies.fileMimeMismatch': 'Dosya içeriği belirtilen türle eşleşmiyor',
+    'companies.slaNoWorkingHours': 'Mesai takvimi açıkken en az bir çalışma aralığı tanımlanmalı',
+    'companies.holidayExists': 'Bu tarih için zaten bir tatil kaydı var',
+    'companies.holidayNotFound': 'Tatil kaydı bulunamadı',
+    'companies.holidayCopySameYear': 'Kaynak ve hedef yıl aynı olamaz',
   } as Record<string, string>,
   en: {
     'companies.companyNotFound': 'Company not found',
@@ -22,5 +26,9 @@ export const companiesMessages = {
     'companies.logoMimeNotAllowed': 'Only PNG, JPG, WEBP or SVG can be uploaded',
     'companies.fileTooLarge': 'File size cannot exceed 2MB',
     'companies.fileMimeMismatch': 'File content does not match the specified type',
+    'companies.slaNoWorkingHours': 'At least one working-hours window is required when the business calendar is enabled',
+    'companies.holidayExists': 'A holiday already exists for this date',
+    'companies.holidayNotFound': 'Holiday not found',
+    'companies.holidayCopySameYear': 'Source and target year cannot be the same',
   } as Record<string, string>,
 };

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit2, MapPin, Building2, Mail, Trash2, CheckCircle2, XCircle, Tags } from 'lucide-react';
+import { Plus, Edit2, MapPin, Building2, Mail, Trash2, CheckCircle2, XCircle, Tags, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
 import { getApiError } from '../../utils/api-error';
@@ -14,6 +14,7 @@ import {
 import { CompanyFormModal, LocationFormModal, SmtpConfigModal } from './CompanyManagementModals';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { CategoryManagementModal } from './CategoryManagementModal';
+import { SlaSettingsModal } from './SlaSettingsModal';
 
 export default function CompanyManagementPage() {
   const { t } = useTranslation();
@@ -24,6 +25,7 @@ export default function CompanyManagementPage() {
   const [form, setForm] = useState(emptyCompanyForm);
   const [logoUploading, setLogoUploading] = useState(false);
   const [categoryCompany, setCategoryCompany] = useState<{ id: string; name: string } | null>(null);
+  const [slaCompany, setSlaCompany] = useState<{ id: string; name: string } | null>(null);
 
   // Location form
   const [showLocForm, setShowLocForm] = useState(false);
@@ -270,6 +272,14 @@ export default function CompanyManagementPage() {
         />
       )}
 
+      {slaCompany && (
+        <SlaSettingsModal
+          companyId={slaCompany.id}
+          companyName={slaCompany.name}
+          onClose={() => setSlaCompany(null)}
+        />
+      )}
+
       {/* Companies list */}
       <div className="space-y-4">
         {companies?.map(company => (
@@ -292,6 +302,12 @@ export default function CompanyManagementPage() {
                   className="btn-secondary flex items-center gap-1 text-xs"
                 >
                   <Tags className="h-3 w-3" /> {t('companyMgmt.categories')}
+                </button>
+                <button
+                  onClick={() => setSlaCompany({ id: company.id, name: company.name })}
+                  className="btn-secondary flex items-center gap-1 text-xs"
+                >
+                  <Clock className="h-3 w-3" /> {t('companyMgmt.slaButton')}
                 </button>
                 <button
                   onClick={() => openSmtpForm(company.id, company.name)}

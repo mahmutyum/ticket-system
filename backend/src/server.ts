@@ -3,6 +3,7 @@ import { config } from './config/index.js';
 import { closeQueues, slaCheckQueue } from './jobs/queue.js';
 import { warmTicketCounter } from './utils/ticket-number.js';
 import { ensureTaskEmailTemplates } from './modules/tasks/task-templates.js';
+import { ensureSlaEmailTemplates } from './jobs/sla-templates.js';
 import { PrismaClient } from '@prisma/client';
 
 // Import workers to start them
@@ -54,8 +55,9 @@ async function start() {
     try {
       const prisma = new PrismaClient();
       await ensureTaskEmailTemplates(prisma);
+      await ensureSlaEmailTemplates(prisma);
       await prisma.$disconnect();
-      app.log.info('Task email templates ensured');
+      app.log.info('Task and SLA email templates ensured');
     } catch (err) {
       app.log.warn({ err }, 'Failed to ensure task email templates');
     }

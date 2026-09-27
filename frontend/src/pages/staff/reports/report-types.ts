@@ -52,6 +52,7 @@ export interface SlaSummary {
   totalWithSla: number;
   response: { met: number; violated: number; complianceRate: number };
   resolution: { met: number; violated: number; complianceRate: number };
+  paused: { current: number; avgMinutes: number };
 }
 
 export function buildReportQuery(filters: ReportFilters, extra: Record<string, string> = {}): string {

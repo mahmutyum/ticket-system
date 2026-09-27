@@ -63,6 +63,8 @@ function makeApp(ticketCompanyId: string) {
     slaResolveDue: null,
     slaResponseMet: null,
     slaResolveMet: null,
+    slaPausedAt: null,
+    slaPausedMinutes: 0,
     firstRespondedAt: new Date(),
     resolvedAt: null,
     closedAt: null,
@@ -103,6 +105,10 @@ function makeApp(ticketCompanyId: string) {
         slaResolveDue: null,
         slaResponseMet: null,
         slaResolveMet: null,
+        slaResponseWarnAt: null,
+        slaResolveWarnAt: null,
+        slaPausedAt: null,
+        slaPausedMinutes: 0,
         resolvedAt: null,
         closedAt: null,
         createdAt: new Date(),
@@ -121,6 +127,9 @@ function makeApp(ticketCompanyId: string) {
       update: ticketUpdate,
     },
     ticketHistory: { create: vi.fn(), createMany: vi.fn() },
+    // SLA bağlamı (mesai takvimi) — ayar yok = 7/24 varsayılanlar.
+    company: { findUnique: vi.fn(async () => ({ slaSettings: null })) },
+    companyHoliday: { findMany: vi.fn(async () => []) },
     attachment: {
       // Dönüş tipi açıkça yazılır: aksi halde ilk değerden çıkarılır ve testler
       // `fileSize: null` (Prisma'nın boş toplamı) veremez.

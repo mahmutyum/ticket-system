@@ -10,6 +10,7 @@ import api from '../../api/client';
 import { VALID_STATUSES, type DashboardStats } from '../../types';
 import { useEnumLabels } from '../../i18n/labels';
 import { useStaffSSE } from '../../hooks/useSSE';
+import { useSlaAlertToast } from '../../hooks/useSlaAlertToast';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { EmptyState, SkeletonRows } from '../../components/ui/AsyncState';
 import { PriorityBadge, StatusBadge } from '../../components/ui/Badge';
@@ -23,9 +24,14 @@ export default function DashboardPage() {
   const [onlyMine, setOnlyMine] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
+  const showSlaAlert = useSlaAlertToast();
   useStaffSSE({
     onTicketCreated: () => queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] }),
     onTicketUpdated: () => queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] }),
+    onSlaAlert: (alert) => {
+      showSlaAlert(alert);
+      void queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    },
   });
 
   const filterParams = new URLSearchParams();

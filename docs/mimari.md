@@ -219,7 +219,12 @@ Başarısız denemeler `Notification` tablosuna yazılır ve panelden retry edil
 - `email.worker` — nodemailer. **Şirket bazlı SMTP:** şirketin `CompanySmtp` kaydı varsa
   onunla, yoksa global SMTP ile gönderir. Transporter'lar 10 dk cache'lenir.
 - `sms.worker` — SMS gateway adapter'ı. Gateway tanımlı değilse devre dışı.
-- `sla-check.worker` — her 5 dk; kategori bazlı yanıt/çözüm sürelerine göre SLA uyarısı üretir.
+- `sla-check.worker` — her 5 dk; `jobs/sla-check.ts` turunu çalıştırır: ihlal öncesi uyarı
+  (`sla*WarnAt`), ihlal kaydı (`sla*Met=false`) ve eskalasyon. Duraklatılmış
+  (`slaPausedAt` dolu) ticket'lar atlanır. Son tarihler ticket açılışında şirketin mesai
+  takvimine göre hesaplanır (`utils/business-hours.ts`); durum geçişlerinin SLA etkileri
+  tek yerde, `utils/ticket-lifecycle.ts` planlayıcısındadır (tekil/toplu güncelleme ve
+  public kullanıcı yanıtı aynı yoldan geçer).
 
 ---
 

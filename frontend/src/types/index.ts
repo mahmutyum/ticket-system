@@ -85,6 +85,8 @@ export interface Ticket {
   slaResolveDue?: string;
   slaResponseMet?: boolean | null;
   slaResolveMet?: boolean | null;
+  slaPausedAt?: string | null;
+  slaPausedMinutes?: number;
   firstRespondedAt?: string;
   resolvedAt?: string;
   closedAt?: string;

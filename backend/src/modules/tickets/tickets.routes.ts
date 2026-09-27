@@ -10,20 +10,12 @@ import { saveFile, isAllowedMimeType, isBufferConsistentWithMime } from '../../s
 import { config } from '../../config/index.js';
 import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.js';
 import { getStaffCompanyScope, resolveCompanyFilter, isCompanyInScope } from '../../utils/staff-scope.js';
-import { calculateSlaDueDates, isSlaMet } from '../../utils/sla.js';
+import { calculateSlaDueDates } from '../../utils/sla.js';
+import { planStatusTransition } from '../../utils/ticket-lifecycle.js';
+import { calendarFor, createSlaContextCache, loadCompanySlaContext } from '../../services/sla-context.js';
 import { commonErrorResponses } from '../../utils/api-schema.js';
 import { t } from '../../i18n/index.js';
 import { priorityLabel } from '../../i18n/labels.js';
-
-/**
- * Ticket kapandıktan sonra public takip linkinin ne kadar geçerli kalacağı.
- *
- * Talep eden sonucu görebilmeli, ama link sonsuza dek çalışmamalı — access_log'a
- * ve e-postalara düştüğü için tek bir sızıntı kalıcı erişim demek olurdu.
- * Süresi dolan link için /public/track ile (ticket no + e-posta) yeniden erişim
- * alınabilir.
- */
-const PUBLIC_ACCESS_RETENTION_DAYS = 90;
 
 /**
  * Ticket oluşturma — KİMLİK DOĞRULAMASI YOK, yalnızca rate limit var.
@@ -127,6 +119,7 @@ const staffTicketBaseSchema = z.object({
   priority: z.nativeEnum(Priority), status: z.nativeEnum(TicketStatus),
   slaResponseDue: z.date().nullable(), slaResolveDue: z.date().nullable(),
   slaResponseMet: z.boolean().nullable(), slaResolveMet: z.boolean().nullable(),
+  slaPausedAt: z.date().nullable(), slaPausedMinutes: z.number().int(),
   firstRespondedAt: z.date().nullable(), resolvedAt: z.date().nullable(), closedAt: z.date().nullable(),
   createdAt: z.date(), updatedAt: z.date(),
 });
@@ -134,7 +127,7 @@ const ticketListItemSchema = staffTicketBaseSchema.pick({
   id: true, ticketNumber: true, companyId: true, assignedToId: true, createdByEmail: true,
   subject: true, priority: true, status: true, slaResponseDue: true, slaResolveDue: true,
   slaResponseMet: true, slaResolveMet: true, firstRespondedAt: true, resolvedAt: true,
-  createdAt: true, updatedAt: true,
+  slaPausedAt: true, createdAt: true, updatedAt: true,
 }).extend({
   company: z.object({ name: z.string() }), location: z.object({ name: z.string() }),
   category: z.object({ name: z.string() }),
@@ -258,7 +251,13 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
       where: { id: body.categoryId },
     });
 
-    const { slaResponseDue, slaResolveDue } = calculateSlaDueDates(category);
+    // Mesai takvimi + ihlal öncesi uyarı eşiği şirket ayarlarından gelir.
+    const slaContext = await loadCompanySlaContext(app.prisma, body.companyId);
+    const { slaResponseDue, slaResolveDue, slaResponseWarnAt, slaResolveWarnAt } = calculateSlaDueDates(
+      category,
+      new Date(),
+      { calendar: calendarFor(slaContext, body.priority), warningPercent: slaContext.settings.warningPercent },
+    );
 
     // Create ticket with custom fields
     const ticket = await app.prisma.ticket.create({
@@ -276,6 +275,8 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
         accessToken,
         slaResponseDue,
         slaResolveDue,
+        slaResponseWarnAt,
+        slaResolveWarnAt,
         // Auto-assign if category has it set
         assignedToId: category?.autoAssignTo || undefined,
         customValues: body.customFields
@@ -439,6 +440,7 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
           slaResolveDue: true,
           slaResponseMet: true,
           slaResolveMet: true,
+          slaPausedAt: true,
           firstRespondedAt: true,
           resolvedAt: true,
           companyId: true,
@@ -557,42 +559,18 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
     const updateData: Prisma.TicketUncheckedUpdateInput = {};
 
     if (body.status && body.status !== currentTicket.status) {
-      updateData.status = body.status;
-      historyEntries.push({
-        action: 'status_changed',
-        field: 'status',
-        oldValue: currentTicket.status,
-        newValue: body.status,
-        createdById: staffUser.id,
-      });
-
-      // Track first response and resolution
-      if (!currentTicket.firstRespondedAt && body.status === TicketStatus.in_progress) {
-        updateData.firstRespondedAt = new Date();
-        updateData.slaResponseMet = isSlaMet(currentTicket.slaResponseDue, new Date());
-      }
-      if (body.status === TicketStatus.resolved) {
-        updateData.resolvedAt = new Date();
-        updateData.slaResolveMet = isSlaMet(currentTicket.slaResolveDue, new Date());
-      }
-      if (body.status === TicketStatus.closed) {
-        updateData.closedAt = new Date();
-      }
-
-      // Public takip linkine SON VER / geri aç.
-      //
-      // Link nginx access_log'una, e-postalara ve tarayıcı geçmişine düşer;
-      // süresiz kalırsa tek bir sızıntı o ticket'a kalıcı erişim demektir.
-      // Talep eden kapanıştan sonra da bir süre sonucu görebilmeli — bu yüzden
-      // iptal değil, saklama süreli sona erdirme.
-      if (body.status === TicketStatus.resolved || body.status === TicketStatus.closed) {
-        updateData.accessTokenExpiresAt = new Date(
-          Date.now() + PUBLIC_ACCESS_RETENTION_DAYS * 24 * 60 * 60 * 1000,
-        );
-      } else {
-        // Yeniden açıldı → link tekrar süresiz.
-        updateData.accessTokenExpiresAt = null;
-      }
+      // İlk yanıt / çözüm zamanları, SLA duraklatma ve erişim linki süresi tek
+      // yerde hesaplanır (bkz. utils/ticket-lifecycle.ts).
+      const slaContext = await loadCompanySlaContext(app.prisma, currentTicket.companyId);
+      const plan = planStatusTransition(
+        currentTicket,
+        body.status,
+        new Date(),
+        calendarFor(slaContext, currentTicket.priority),
+        { id: staffUser.id },
+      );
+      Object.assign(updateData, plan.data);
+      historyEntries.push(...plan.history);
     }
 
     if (body.priority && body.priority !== currentTicket.priority) {
@@ -666,26 +644,62 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
 
     const staffUser = request.staffUser!;
 
-    const updateData: Prisma.TicketUncheckedUpdateManyInput = {};
-    if (body.status) updateData.status = body.status;
-    if (body.assignedToId !== undefined) updateData.assignedToId = body.assignedToId;
-    if (body.priority) updateData.priority = body.priority;
-
     // Company scope restriction
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     const scopeWhere = scopeCompanyIds ? { companyId: { in: scopeCompanyIds } } : {};
 
-    const result = await app.prisma.ticket.updateMany({
+    // Toplu güncelleme eskiden tek bir `updateMany` idi: durum değişse de ilk
+    // yanıt/çözüm zamanı, SLA duraklatma, erişim linki süresi ve geçmiş kaydı
+    // atlanıyordu. Artık her ticket tekil güncellemeyle aynı planlayıcıdan geçer.
+    const tickets = await app.prisma.ticket.findMany({
       where: { id: { in: body.ticketIds }, ...scopeWhere },
-      data: updateData,
     });
+    const slaContextFor = createSlaContextCache(app.prisma);
+    const now = new Date();
+
+    await app.prisma.$transaction(async (tx) => {
+      for (const ticket of tickets) {
+        const data: Prisma.TicketUncheckedUpdateInput = {};
+        const history: Prisma.TicketHistoryUncheckedCreateWithoutTicketInput[] = [];
+
+        if (body.status && body.status !== ticket.status) {
+          const plan = planStatusTransition(
+            ticket,
+            body.status,
+            now,
+            calendarFor(await slaContextFor(ticket.companyId), ticket.priority),
+            { id: staffUser.id },
+          );
+          Object.assign(data, plan.data);
+          history.push(...plan.history);
+        }
+        if (body.priority && body.priority !== ticket.priority) {
+          data.priority = body.priority;
+          history.push({ action: 'priority_changed', field: 'priority', oldValue: ticket.priority, newValue: body.priority, createdById: staffUser.id });
+        }
+        if (body.assignedToId !== undefined && body.assignedToId !== ticket.assignedToId) {
+          data.assignedToId = body.assignedToId;
+          history.push({ action: 'assigned', field: 'assignedToId', oldValue: ticket.assignedToId, newValue: body.assignedToId, createdById: staffUser.id });
+        }
+        if (history.length === 0) continue;
+
+        await tx.ticket.update({
+          where: { id: ticket.id },
+          data: { ...data, history: { create: history } },
+        });
+      }
+    });
+
+    for (const ticket of tickets) {
+      broadcastToStaff('ticket_updated', { id: ticket.id, ticketNumber: ticket.ticketNumber }, ticket.companyId);
+    }
 
     reply.send({
       success: true,
       data: {
-        updated: result.count,
+        updated: tickets.length,
         requested: body.ticketIds.length,
-        skipped: body.ticketIds.length - result.count,
+        skipped: body.ticketIds.length - tickets.length,
       },
     });
   });

@@ -39,7 +39,7 @@ Talep edenler için şifresiz public portal · IT ekibi için rollü yönetim pa
 
 **⚙️ Arka planda**
 - E-posta / SMS bildirimleri BullMQ ile asenkron (3 deneme, exponential backoff).
-- SLA kontrolü her 5 dakikada; kategori bazlı yanıt/çözüm süreleri.
+- SLA kontrolü her 5 dakikada; kategori bazlı yanıt/çözüm süreleri, şirket bazlı mesai takvimi ve tatiller, bekleme durumlarında SLA duraklatma, ihlal öncesi uyarı ve yöneticiye eskalasyon.
 - SSE ile panelde canlı güncelleme; domain'e göre şirket branding (logo + tema).
 - **Çift dil**: arayüz tarayıcı diline göre açılır, düğmeyle anında geçilir; API mesajları `Accept-Language`'e, bildirimler alıcının diline göre.
 

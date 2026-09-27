@@ -125,6 +125,43 @@
       "deactivateCompany": "\"{{name}}\" şirketini pasifleştirmek istediğinize emin misiniz? Mevcut biletler korunur ancak yeni bilet açılamaz.",
       "reactivateCompany": "\"{{name}}\" şirketini tekrar aktif etmek istediğinize emin misiniz?",
       "deleteSmtp": "SMTP ayarlarını kaldırmak istediğinize emin misiniz? Global SMTP kullanılacak."
+    },
+    "slaButton": "SLA & Mesai",
+    "sla": {
+      "title": "SLA ve mesai takvimi",
+      "subtitle": "{{name}} için SLA hesaplama kuralları",
+      "businessHoursEnabled": "SLA süreleri yalnızca mesai saatlerinde işlesin",
+      "businessHoursHint": "Kapalıysa SLA 7/24 işler. Açıksa hafta sonu, mesai dışı ve tatil günleri sayılmaz.",
+      "timezone": "Saat dilimi (IANA)",
+      "start": "Başlangıç",
+      "end": "Bitiş",
+      "closed": "Kapalı",
+      "weekdays": {
+        "mon": "Pazartesi",
+        "tue": "Salı",
+        "wed": "Çarşamba",
+        "thu": "Perşembe",
+        "fri": "Cuma",
+        "sat": "Cumartesi",
+        "sun": "Pazar"
+      },
+      "alwaysOnTitle": "7/24 SLA öncelikleri",
+      "alwaysOnHint": "Seçilen önceliklerde mesai takvimi yok sayılır.",
+      "warningPercent": "İhlal öncesi uyarı eşiği",
+      "warningHint": "SLA süresinin bu yüzdesi dolduğunda atanan personele (atanmamışsa yöneticilere) uyarı gider. 0 = kapalı.",
+      "notifyManagers": "İhlalde şirketin IT yöneticilerine bildir",
+      "bumpPriority": "Çözüm SLA'sı aşılınca önceliği bir kademe yükselt",
+      "saved": "SLA ayarları kaydedildi",
+      "saveFailed": "SLA ayarları kaydedilemedi",
+      "holidays": "Tatil günleri",
+      "holidaysHint": "Mesai takvimi açıkken bu günlerde SLA işlemez.",
+      "holidayDate": "Tarih",
+      "holidayName": "Açıklama (örn. Cumhuriyet Bayramı)",
+      "addHoliday": "Tatil ekle",
+      "noHolidays": "Tanımlı tatil yok",
+      "holidayFailed": "Tatil işlemi başarısız",
+      "copyYear": "{{from}} tatillerini {{to}} yılına kopyala",
+      "copied": "{{year}} yılına {{count}} tatil kopyalandı"
     }
   },
   "en": {
@@ -253,6 +290,43 @@
       "deactivateCompany": "Are you sure you want to deactivate the company \"{{name}}\"? Existing tickets are preserved but no new tickets can be opened.",
       "reactivateCompany": "Are you sure you want to reactivate the company \"{{name}}\"?",
       "deleteSmtp": "Are you sure you want to remove the SMTP settings? Global SMTP will be used."
+    },
+    "slaButton": "SLA & Hours",
+    "sla": {
+      "title": "SLA and business hours",
+      "subtitle": "SLA calculation rules for {{name}}",
+      "businessHoursEnabled": "Count SLA time only during business hours",
+      "businessHoursHint": "When off, SLA runs 24/7. When on, weekends, off-hours and holidays are not counted.",
+      "timezone": "Time zone (IANA)",
+      "start": "Start",
+      "end": "End",
+      "closed": "Closed",
+      "weekdays": {
+        "mon": "Monday",
+        "tue": "Tuesday",
+        "wed": "Wednesday",
+        "thu": "Thursday",
+        "fri": "Friday",
+        "sat": "Saturday",
+        "sun": "Sunday"
+      },
+      "alwaysOnTitle": "24/7 SLA priorities",
+      "alwaysOnHint": "The business calendar is ignored for the selected priorities.",
+      "warningPercent": "Pre-breach warning threshold",
+      "warningHint": "When this share of the SLA time has elapsed, the assignee (or managers if unassigned) is warned. 0 = off.",
+      "notifyManagers": "Notify the company's IT managers on breach",
+      "bumpPriority": "Raise priority one level when the resolution SLA is breached",
+      "saved": "SLA settings saved",
+      "saveFailed": "Could not save SLA settings",
+      "holidays": "Holidays",
+      "holidaysHint": "SLA does not run on these days while the business calendar is on.",
+      "holidayDate": "Date",
+      "holidayName": "Description (e.g. New Year's Day)",
+      "addHoliday": "Add holiday",
+      "noHolidays": "No holidays defined",
+      "holidayFailed": "Holiday operation failed",
+      "copyYear": "Copy {{from}} holidays to {{to}}",
+      "copied": "Copied {{count}} holidays to {{year}}"
     }
   }
 }

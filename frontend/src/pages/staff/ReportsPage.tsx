@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
   Download, BarChart3, Clock, CheckCircle2, Users, Tag,
-  LayoutDashboard, TrendingUp,
+  LayoutDashboard, TrendingUp, PauseCircle,
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
@@ -399,6 +399,12 @@ export default function ReportsPage() {
                 <Clock className="w-8 h-8 text-blue-500 mx-auto mb-2" />
                 <p className="text-3xl font-bold text-blue-600">{sla.resolution.complianceRate}%</p>
                 <p className="text-sm text-muted">{t('reports.resolutionCompliance')}</p>
+              </div>
+              <div className="card text-center md:col-span-3">
+                <PauseCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                <p className="text-3xl font-bold text-amber-600">{sla.paused.current}</p>
+                <p className="text-sm text-muted">{t('reports.slaPausedNow')}</p>
+                <p className="text-xs text-muted mt-1">{t('reports.slaPausedAvg', { count: sla.paused.avgMinutes })}</p>
               </div>
             </div>
           )}

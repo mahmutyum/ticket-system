@@ -14,6 +14,15 @@ interface Props {
   notes?: TicketNote[];
 }
 
+/**
+ * SLA olayının türü (yanıt/çözüm). Yeni kayıtlarda `newValue`, eski ihlal
+ * kayıtlarında (`newValue` Türkçe serbest metin) `field` belirleyicidir.
+ */
+function slaKind(item: TicketHistory, t: TFunction): string {
+  const kind = item.newValue === 'response' || item.field === 'sla_response' ? 'response' : 'resolution';
+  return t(`ticketList.timeline.slaKind.${kind}`);
+}
+
 function historyText(
   item: TicketHistory,
   t: TFunction,
@@ -32,6 +41,11 @@ function historyText(
     case 'assigned': return t('ticketList.timeline.assigned');
     case 'user_reply': return t('ticketList.timeline.userReply', { value: item.newValue });
     case 'onsite_scheduled': return t('ticketList.timeline.onsiteScheduled');
+    case 'sla_violated': return t('ticketList.timeline.slaViolated', { kind: slaKind(item, t) });
+    case 'sla_warning': return t('ticketList.timeline.slaWarning', { kind: slaKind(item, t) });
+    case 'sla_escalated': return t('ticketList.timeline.slaEscalated', { kind: slaKind(item, t) });
+    case 'sla_paused': return t('ticketList.timeline.slaPaused');
+    case 'sla_resumed': return t('ticketList.timeline.slaResumed', { minutes: item.newValue ?? '0' });
     default: return item.action;
   }
 }
