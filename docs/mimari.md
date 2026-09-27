@@ -219,6 +219,10 @@ Başarısız denemeler `Notification` tablosuna yazılır ve panelden retry edil
 - `email.worker` — nodemailer. **Şirket bazlı SMTP:** şirketin `CompanySmtp` kaydı varsa
   onunla, yoksa global SMTP ile gönderir. Transporter'lar 10 dk cache'lenir.
 - `sms.worker` — SMS gateway adapter'ı. Gateway tanımlı değilse devre dışı.
+- `mail-fetch.worker` — her 2 dk; aktif şirket posta kutularını (`services/mail/`: IMAP,
+  Microsoft Graph, Gmail API — üçü de ham MIME döndürür) okur, `jobs/mail-fetch.ts`
+  eşleştirir. Yanıt ve yeni ticket, portalla aynı `services/ticket-intake.ts` yolundan
+  geçer. İşlenen iletiler `inbound_messages`'ta (posta kutusu + Message-ID tekil) tutulur.
 - `sla-check.worker` — her 5 dk; `jobs/sla-check.ts` turunu çalıştırır: ihlal öncesi uyarı
   (`sla*WarnAt`), ihlal kaydı (`sla*Met=false`) ve eskalasyon. Duraklatılmış
   (`slaPausedAt` dolu) ticket'lar atlanır. Son tarihler ticket açılışında şirketin mesai

@@ -88,6 +88,12 @@ enum CompanyGroupType {
   retail
 }
 
+enum MailboxProvider {
+  imap
+  microsoft365
+  gmail
+}
+
 enum CustomFieldType {
   text
   number
@@ -118,6 +124,7 @@ model Company {
   updatedAt         DateTime         @updatedAt @map("updated_at")
 
   holidays          CompanyHoliday[]
+  mailbox           CompanyMailbox?
   locations         Location[]
   categories        Category[]
   customFields      CustomField[]
@@ -143,6 +150,64 @@ model CompanyHoliday {
 
   @@unique([companyId, date])
   @@map("company_holidays")
+}
+
+/// Şirketin gelen posta kutusu — e-postayla gelen yanıtlar ticket'a not olarak düşer,
+/// eşleşmeyen e-postalardan (ayar açıksa) yeni ticket açılır.
+model CompanyMailbox {
+  id                String          @id @default(cuid())
+  companyId         String          @unique @map("company_id")
+  provider          MailboxProvider
+  /// Posta kutusunun adresi. Talep sahibine giden bildirimlerde Reply-To olarak kullanılır.
+  address           String          @unique
+  isActive          Boolean         @default(true) @map("is_active")
+  // IMAP
+  imapHost          String?         @map("imap_host")
+  imapPort          Int?            @map("imap_port")
+  imapSecure        Boolean         @default(true) @map("imap_secure")
+  username          String?
+  // Microsoft 365 (Graph, client credentials) / Gmail (OAuth)
+  tenantId          String?         @map("tenant_id")
+  clientId          String?         @map("client_id")
+  /// IMAP parolası / M365 client secret / Google client secret — AES-256-GCM.
+  secretEnc         String?         @map("secret_enc")
+  /// Gmail OAuth refresh token — AES-256-GCM.
+  refreshTokenEnc   String?         @map("refresh_token_enc")
+  // Eşleşmeyen e-postalar
+  createTickets     Boolean         @default(false) @map("create_tickets")
+  defaultCategoryId String?         @map("default_category_id")
+  defaultLocationId String?         @map("default_location_id")
+  defaultLocale     String          @default("tr") @map("default_locale")
+  lastFetchAt       DateTime?       @map("last_fetch_at")
+  lastError         String?         @map("last_error")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  company  Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  messages InboundMessage[]
+
+  @@map("company_mailboxes")
+}
+
+/// İşlenmiş gelen e-postaların kaydı — aynı mesaj iki kez işlenmez (okundu
+/// işaretlenemese bile) ve yöneticiye ne olduğu gösterilir.
+model InboundMessage {
+  id         String   @id @default(cuid())
+  mailboxId  String   @map("mailbox_id")
+  messageId  String   @map("message_id")
+  fromEmail  String   @map("from_email")
+  subject    String
+  /// reply | created | ignored | failed
+  action     String
+  reason     String?
+  ticketId   String?  @map("ticket_id")
+  receivedAt DateTime @default(now()) @map("received_at")
+
+  mailbox CompanyMailbox @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+
+  @@unique([mailboxId, messageId])
+  @@index([mailboxId, receivedAt])
+  @@map("inbound_messages")
 }
 
 model CompanySmtp {
@@ -329,6 +394,8 @@ model Ticket {
   slaPausedMinutes     Int          @default(0) @map("sla_paused_minutes")
   /// Son durum değişikliği anı — otomatik kapatma süreleri buradan sayılır.
   statusChangedAt      DateTime?    @map("status_changed_at")
+  /// Ticket'ın geldiği kanal: portal | email
+  source               String       @default("portal")
   /// "Kullanıcı yanıtı bekleniyor" hatırlatmasının gönderildiği an (durum değişince sıfırlanır).
   autoCloseReminderAt  DateTime?    @map("auto_close_reminder_at")
   firstRespondedAt     DateTime?    @map("first_responded_at")

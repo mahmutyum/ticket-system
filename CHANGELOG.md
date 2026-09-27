@@ -18,6 +18,11 @@ _Planned work is tracked in [docs/yol-haritasi.md](docs/yol-haritasi.md)._
 - **Auto-close** per company: resolved tickets close after N days (default 7); tickets
   awaiting the requester can get a reminder and then close (off by default). Bilingual
   requester notifications (`ticket_waiting_reminder`, `ticket_auto_closed`).
+- **Reply by email** per company mailbox — IMAP, Microsoft 365 (Graph, app-only) or Gmail
+  (OAuth). Requester notifications carry the mailbox as Reply-To; replies are matched by
+  ticket number + requester address, quoted text is stripped, attachments follow the upload
+  rules; unmatched mail can open tickets (`source: email`). Auto-replies, own address and
+  per-sender floods are ignored; every message is processed once and logged.
 - Live `sla_alert` panel notifications; SLA events in the ticket timeline; paused-time
   metrics in the SLA report.
 

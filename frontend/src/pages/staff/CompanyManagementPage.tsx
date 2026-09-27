@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit2, MapPin, Building2, Mail, Trash2, CheckCircle2, XCircle, Tags, Clock } from 'lucide-react';
+import { Plus, Edit2, MapPin, Building2, Mail, Trash2, CheckCircle2, XCircle, Tags, Clock, Inbox } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
 import { getApiError } from '../../utils/api-error';
@@ -15,6 +16,8 @@ import { CompanyFormModal, LocationFormModal, SmtpConfigModal } from './CompanyM
 import { PageHeader } from '../../components/ui/PageHeader';
 import { CategoryManagementModal } from './CategoryManagementModal';
 import { SlaSettingsModal } from './SlaSettingsModal';
+import { MailboxModal } from './MailboxModal';
+import { useAuthStore } from '../../stores/auth.store';
 
 export default function CompanyManagementPage() {
   const { t } = useTranslation();
@@ -26,6 +29,19 @@ export default function CompanyManagementPage() {
   const [logoUploading, setLogoUploading] = useState(false);
   const [categoryCompany, setCategoryCompany] = useState<{ id: string; name: string } | null>(null);
   const [slaCompany, setSlaCompany] = useState<{ id: string; name: string } | null>(null);
+  const [mailboxCompany, setMailboxCompany] = useState<{ id: string; name: string } | null>(null);
+  const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Gmail OAuth dönüşü: /staff/companies?mailbox=connected|error
+  useEffect(() => {
+    const result = searchParams.get('mailbox');
+    if (!result) return;
+    if (result === 'connected') toast.success(t('companyMgmt.mailbox.connectedToast'));
+    else toast.error(t('companyMgmt.mailbox.connectErrorToast'));
+    searchParams.delete('mailbox');
+    setSearchParams(searchParams, { replace: true });
+  }, [searchParams, setSearchParams, t]);
 
   // Location form
   const [showLocForm, setShowLocForm] = useState(false);
@@ -280,6 +296,14 @@ export default function CompanyManagementPage() {
         />
       )}
 
+      {mailboxCompany && (
+        <MailboxModal
+          companyId={mailboxCompany.id}
+          companyName={mailboxCompany.name}
+          onClose={() => setMailboxCompany(null)}
+        />
+      )}
+
       {/* Companies list */}
       <div className="space-y-4">
         {companies?.map(company => (
@@ -309,6 +333,14 @@ export default function CompanyManagementPage() {
                 >
                   <Clock className="h-3 w-3" /> {t('companyMgmt.slaButton')}
                 </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => setMailboxCompany({ id: company.id, name: company.name })}
+                    className="btn-secondary flex items-center gap-1 text-xs"
+                  >
+                    <Inbox className="h-3 w-3" /> {t('companyMgmt.mailboxButton')}
+                  </button>
+                )}
                 <button
                   onClick={() => openSmtpForm(company.id, company.name)}
                   className={`btn-secondary text-xs flex items-center gap-1 ${company.smtpConfig ? 'ring-1 ring-green-300' : ''}`}

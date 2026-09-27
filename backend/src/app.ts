@@ -17,6 +17,7 @@ import { authPlugin } from './plugins/auth.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { companyRoutes } from './modules/companies/companies.routes.js';
 import { companySlaRoutes } from './modules/companies/company-sla.routes.js';
+import { mailboxRoutes } from './modules/companies/mailbox.routes.js';
 import { locationRoutes } from './modules/locations/locations.routes.js';
 import { categoryRoutes } from './modules/categories/categories.routes.js';
 import { customFieldRoutes } from './modules/custom-fields/custom-fields.routes.js';
@@ -232,6 +233,7 @@ export async function buildApp() {
   await app.register(authRoutes, { prefix: '/auth' });
   await app.register(companyRoutes, { prefix: '/companies' });
   await app.register(companySlaRoutes, { prefix: '/companies' });
+  await app.register(mailboxRoutes, { prefix: '/companies' });
   await app.register(locationRoutes, { prefix: '/locations' });
   await app.register(categoryRoutes, { prefix: '/categories' });
   await app.register(customFieldRoutes, { prefix: '/custom-fields' });

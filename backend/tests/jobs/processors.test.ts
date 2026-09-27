@@ -44,3 +44,28 @@ describe('notification job processors', () => {
     expect(isFinalAttempt(3, 3)).toBe(true);
   });
 });
+
+describe('Reply-To (e-postayla yanıt)', () => {
+  function prismaFor(isStaff: boolean) {
+    return {
+      staff: { findUnique: async () => (isStaff ? { locale: 'tr' } : null) },
+      ticket: { findUnique: async () => ({ locale: 'tr' }) },
+      emailTemplate: { findFirst: async () => ({ subject: 's', bodyHtml: 'b', bodyText: 't' }) },
+      companySmtp: { findUnique: async () => null },
+      companyMailbox: { findUnique: async () => ({ address: 'destek@acme.com', isActive: true }) },
+      notification: { create: async () => ({}) },
+    } as unknown as PrismaClient;
+  }
+
+  it('talep sahibine giden bildirimde şirket posta kutusu Reply-To olur', async () => {
+    const sender = vi.fn(async () => undefined);
+    await processEmailJob({ to: 'user@acme.com', templateSlug: 'note_added', variables: {}, ticketId: 't1', companyId: 'co-1' }, prismaFor(false), sender);
+    expect(sender).toHaveBeenCalledWith(expect.objectContaining({ replyTo: 'destek@acme.com' }), 'co-1', null);
+  });
+
+  it('personele giden bildirimde Reply-To kullanılmaz', async () => {
+    const sender = vi.fn(async () => undefined);
+    await processEmailJob({ to: 'it@acme.com', templateSlug: 'user_reply', variables: {}, ticketId: 't1', companyId: 'co-1' }, prismaFor(true), sender);
+    expect(sender).toHaveBeenCalledWith(expect.objectContaining({ replyTo: undefined }), 'co-1', null);
+  });
+});

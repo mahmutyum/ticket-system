@@ -291,7 +291,10 @@ export default function TicketDetailPage() {
 
             {/* Created by */}
             <div>
-              <span className="text-xs text-gray-500 block mb-1">{t('ticketDetail.createdBy')}</span>
+              <span className="text-xs text-gray-500 block mb-1">
+                {t('ticketDetail.createdBy')}
+                {ticket.source === 'email' && <span className="ml-2 rounded bg-blue-100 px-1.5 py-0.5 text-[11px] text-blue-800 dark:bg-blue-500/15 dark:text-blue-300">{t('ticketDetail.viaEmail')}</span>}
+              </span>
               <div className="flex items-center gap-2 text-sm">
                 <Mail className="w-4 h-4 text-gray-400" />
                 <span>{ticket.createdByEmail}</span>

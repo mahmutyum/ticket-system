@@ -184,6 +184,26 @@ değiştirilebilir.
     hatırlatma, sonra kapatma süresi tanımlanabilir (varsayılan kapalı). Talep sahibine
     çift dilli bildirim gider; işlem ticket geçmişine sistem kaydı olarak düşer.
 
+- **Gelen Posta** (yalnızca `admin`) — şirketin destek posta kutusu. Talep sahibine
+  giden bildirimlerde bu adres **Reply-To** olur; e-postayla verilen yanıtlar ticket'a
+  kullanıcı yanıtı olarak düşer (alıntılanan eski mesaj kırpılır, ekler portal
+  yüklemesiyle aynı kurallardan geçer). Kutu 2 dakikada bir kontrol edilir.
+  - **Sağlayıcılar:** IMAP (kendi sunucunuz ya da uygulama şifresiyle Gmail),
+    **Microsoft 365** (Entra ID uygulama kaydı, `Mail.ReadWrite` *Application* izni +
+    yönetici onayı; uygulamayı Exchange *Application Access Policy* ile yalnızca bu
+    posta kutusuna kısıtlayın), **Gmail / Google Workspace** (Google Cloud'da *Web
+    application* OAuth istemcisi; ekranda gösterilen yönlendirme adresini ekleyip
+    "Google ile bağlan").
+  - **Eşleştirme:** konudaki ticket numarası (`TKT-YYYY-NNNNN`) **ve** gönderen = talep
+    sahibi **ve** aynı şirket. Başka biri numarayı yazsa da not ekleyemez.
+  - **Eşleşmeyen e-postalar:** ayar açıksa varsayılan kategori/lokasyonla yeni talep
+    açılır (şirketin izinli domain kısıtı geçerlidir). Kapanmış talebe gelen yanıt, önceki
+    numaraya atıf yapan yeni talep olur; çözülmüş talebe gelen yanıt talebi yeniden açar.
+  - **Koruma:** otomatik yanıtlar / bültenler / teslim raporları, posta kutusunun kendi
+    adresi ve gönderen başına saatte 30'u aşan iletiler işlenmez. Her ileti bir kez işlenir;
+    son 20 iletinin sonucu (yanıt eklendi / talep açıldı / yok sayıldı + neden) ekranda görünür.
+  - Sırlar (parola, client secret, Google yetkisi) şifreli saklanır ve arayüze geri dönmez.
+
 > **SLA duraklatma:** ticket `Kullanıcı Yanıtı Bekleniyor`, `Diğer Birimden Destek
 > Bekleniyor`, `Süreç IT Dışında İlerliyor` veya `Beklemede` durumundayken SLA saati
 > durur; aktif duruma dönünce son tarihler bekleyen süre kadar ileri kayar. Kullanıcı

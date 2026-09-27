@@ -109,6 +109,8 @@ export interface EmailOptions {
   subject: string;
   html: string;
   text?: string;
+  /** Talep sahibine giden bildirimlerde şirketin gelen posta kutusu (e-postayla yanıt). */
+  replyTo?: string;
 }
 
 /**
@@ -122,6 +124,7 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
     subject: options.subject,
     html: options.html,
     text: options.text,
+    replyTo: options.replyTo,
   });
 }
 
@@ -141,6 +144,7 @@ export async function sendEmailForCompany(
       subject: options.subject,
       html: options.html,
       text: options.text,
+      replyTo: options.replyTo,
     });
   } else {
     // Fallback to global SMTP

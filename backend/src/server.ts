@@ -1,6 +1,6 @@
 import { buildApp } from './app.js';
 import { config } from './config/index.js';
-import { closeQueues, slaCheckQueue } from './jobs/queue.js';
+import { closeQueues, mailFetchQueue, slaCheckQueue } from './jobs/queue.js';
 import { warmTicketCounter } from './utils/ticket-number.js';
 import { ensureTaskEmailTemplates } from './modules/tasks/task-templates.js';
 import { ensureSystemEmailTemplates } from './jobs/notification-templates.js';
@@ -10,6 +10,7 @@ import { PrismaClient } from '@prisma/client';
 import { emailWorker } from './jobs/email.worker.js';
 import { smsWorker } from './jobs/sms.worker.js';
 import { slaCheckWorker } from './jobs/sla-check.worker.js';
+import { mailFetchWorker } from './jobs/mail-fetch.worker.js';
 
 async function start() {
   const app = await buildApp();
@@ -26,7 +27,7 @@ async function start() {
     forceExit.unref();
     try {
       await app.close();
-      await Promise.all([emailWorker.close(), smsWorker.close(), slaCheckWorker.close()]);
+      await Promise.all([emailWorker.close(), smsWorker.close(), slaCheckWorker.close(), mailFetchWorker.close()]);
       await closeQueues();
       clearTimeout(forceExit);
       process.exit(0);
@@ -77,6 +78,14 @@ async function start() {
       { name: 'auto-close' },
     );
     app.log.info('Auto-close scheduler started (every 15 min)');
+
+    // Gelen posta kutuları (e-postayla yanıt) — 2 dakikada bir.
+    await mailFetchQueue.upsertJobScheduler(
+      'mail-periodic-fetch',
+      { every: 2 * 60 * 1000 },
+      { name: 'mail-fetch' },
+    );
+    app.log.info('Mail fetch scheduler started (every 2 min)');
   } catch (err) {
     app.log.error(err);
     process.exit(1);

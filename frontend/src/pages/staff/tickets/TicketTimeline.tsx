@@ -39,7 +39,9 @@ function historyText(
       to: item.newValue ? labels.priority(item.newValue) : item.newValue,
     });
     case 'assigned': return t('ticketList.timeline.assigned');
-    case 'user_reply': return t('ticketList.timeline.userReply', { value: item.newValue });
+    case 'user_reply': return item.field === 'email'
+      ? t('ticketList.timeline.userReplyEmail', { value: item.newValue })
+      : t('ticketList.timeline.userReply', { value: item.newValue });
     case 'onsite_scheduled': return t('ticketList.timeline.onsiteScheduled');
     case 'sla_violated': return t('ticketList.timeline.slaViolated', { kind: slaKind(item, t) });
     case 'sla_warning': return t('ticketList.timeline.slaWarning', { kind: slaKind(item, t) });

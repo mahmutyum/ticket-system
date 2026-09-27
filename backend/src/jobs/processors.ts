@@ -11,14 +11,34 @@ import { sendSms } from '../services/sms.service.js';
  * diline göre gönderilir — yanlış). Personel değilse talep sahibinin dili
  * (`ticket.locale`) kullanılır. İkisi de yoksa 'tr'.
  */
-async function resolveRecipientLocale(prisma: PrismaClient, to: string, ticketId?: string): Promise<string> {
+async function resolveRecipient(
+  prisma: PrismaClient,
+  to: string,
+  ticketId?: string,
+): Promise<{ locale: string; isStaff: boolean }> {
   const staff = await prisma.staff.findUnique({ where: { email: to }, select: { locale: true } });
-  if (staff) return staff.locale;
+  if (staff) return { locale: staff.locale, isStaff: true };
   if (ticketId) {
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId }, select: { locale: true } });
-    if (ticket?.locale) return ticket.locale;
+    if (ticket?.locale) return { locale: ticket.locale, isStaff: false };
   }
-  return 'tr';
+  return { locale: 'tr', isStaff: false };
+}
+
+async function resolveRecipientLocale(prisma: PrismaClient, to: string, ticketId?: string): Promise<string> {
+  return (await resolveRecipient(prisma, to, ticketId)).locale;
+}
+
+/**
+ * Talep sahibine (personel olmayan alıcıya) giden bildirimde Reply-To: şirketin
+ * aktif gelen posta kutusu varsa yanıtlar oraya gider ve ticket'a not olarak düşer.
+ * Personele giden bildirimlerde kullanılmaz — personel yanıtı talep sahibi adına
+ * kaydedilmemeli.
+ */
+async function resolveReplyTo(prisma: PrismaClient, companyId: string | undefined, isStaff: boolean): Promise<string | undefined> {
+  if (isStaff || !companyId) return undefined;
+  const mailbox = await prisma.companyMailbox.findUnique({ where: { companyId }, select: { address: true, isActive: true } });
+  return mailbox?.isActive ? mailbox.address : undefined;
 }
 
 export async function processEmailJob(
@@ -27,7 +47,7 @@ export async function processEmailJob(
   sender = sendEmailForCompany,
 ): Promise<void> {
   const { to, templateSlug, variables, ticketId, companyId } = data;
-  const locale = await resolveRecipientLocale(prisma, to, ticketId);
+  const { locale, isStaff } = await resolveRecipient(prisma, to, ticketId);
   // Alıcının dilinde şablon; yoksa Türkçeye düş.
   const template =
     (await prisma.emailTemplate.findFirst({ where: { slug: templateSlug, locale } })) ??
@@ -46,7 +66,8 @@ export async function processEmailJob(
     fromEmail: smtpRecord.fromEmail,
   } : null;
 
-  await sender({ to, subject, html, text }, companyId || null, companySmtp);
+  const replyTo = await resolveReplyTo(prisma, companyId, isStaff);
+  await sender({ to, subject, html, text, replyTo }, companyId || null, companySmtp);
   await prisma.notification.create({ data: {
     ticketId: ticketId || null, type: 'email', channel: templateSlug, recipient: to,
     subject, body: text, status: 'sent', sentAt: new Date(),

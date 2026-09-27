@@ -7,6 +7,7 @@ export const redisConnection = new IORedis(config.REDIS_URL, { maxRetriesPerRequ
 export const emailQueue = new Queue('email', { connection: redisConnection });
 export const smsQueue = new Queue('sms', { connection: redisConnection });
 export const slaCheckQueue = new Queue('sla-check', { connection: redisConnection });
+export const mailFetchQueue = new Queue('mail-fetch', { connection: redisConnection });
 
 export interface EmailJobData {
   to: string;
@@ -52,6 +53,7 @@ export async function closeQueues(): Promise<void> {
     emailQueue.close(),
     smsQueue.close(),
     slaCheckQueue.close(),
+    mailFetchQueue.close(),
   ]);
   await redisConnection.quit();
 }

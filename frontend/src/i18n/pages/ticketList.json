@@ -48,7 +48,8 @@
       },
       "autoClosedResolved": "Otomatik kapatıldı (çözüldükten sonra yeniden açılmadı)",
       "autoClosedNoResponse": "Otomatik kapatıldı (kullanıcı yanıt vermedi)",
-      "autoCloseReminder": "Talep sahibine yanıt hatırlatması gönderildi"
+      "autoCloseReminder": "Talep sahibine yanıt hatırlatması gönderildi",
+      "userReplyEmail": "Kullanıcı yanıtı (e-posta): {{value}}"
     }
   },
   "en": {
@@ -100,7 +101,8 @@
       },
       "autoClosedResolved": "Closed automatically (not reopened after resolution)",
       "autoClosedNoResponse": "Closed automatically (no reply from the requester)",
-      "autoCloseReminder": "Reply reminder sent to the requester"
+      "autoCloseReminder": "Reply reminder sent to the requester",
+      "userReplyEmail": "User reply (email): {{value}}"
     }
   }
 }

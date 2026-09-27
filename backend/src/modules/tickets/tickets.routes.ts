@@ -1,21 +1,17 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { nanoid } from 'nanoid';
-import { generateTicketNumber } from '../../utils/ticket-number.js';
 import { paginationSchema, paginate, paginatedResponse } from '../../utils/pagination.js';
 import { requiredText, optionalText, phoneSchema, emailSchema, LIMITS, ATTACHMENT_LIMITS } from '../../utils/validation.js';
 import { Prisma, TicketStatus, Priority } from '@prisma/client';
 import { queueEmail, queueSms } from '../../jobs/queue.js';
 import { saveFile, isAllowedMimeType, isBufferConsistentWithMime } from '../../services/storage.service.js';
-import { config } from '../../config/index.js';
 import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.js';
 import { getStaffCompanyScope, resolveCompanyFilter, isCompanyInScope } from '../../utils/staff-scope.js';
-import { calculateSlaDueDates } from '../../utils/sla.js';
 import { planStatusTransition } from '../../utils/ticket-lifecycle.js';
+import { createRequesterTicket, isEmailDomainAllowed, trackingUrlFor } from '../../services/ticket-intake.js';
 import { calendarFor, createSlaContextCache, loadCompanySlaContext } from '../../services/sla-context.js';
 import { commonErrorResponses } from '../../utils/api-schema.js';
 import { t } from '../../i18n/index.js';
-import { priorityLabel } from '../../i18n/labels.js';
 
 /**
  * Ticket oluşturma — KİMLİK DOĞRULAMASI YOK, yalnızca rate limit var.
@@ -119,7 +115,7 @@ const staffTicketBaseSchema = z.object({
   priority: z.nativeEnum(Priority), status: z.nativeEnum(TicketStatus),
   slaResponseDue: z.date().nullable(), slaResolveDue: z.date().nullable(),
   slaResponseMet: z.boolean().nullable(), slaResolveMet: z.boolean().nullable(),
-  slaPausedAt: z.date().nullable(), slaPausedMinutes: z.number().int(),
+  slaPausedAt: z.date().nullable(), slaPausedMinutes: z.number().int(), source: z.string(),
   firstRespondedAt: z.date().nullable(), resolvedAt: z.date().nullable(), closedAt: z.date().nullable(),
   createdAt: z.date(), updatedAt: z.date(),
 });
@@ -201,171 +197,24 @@ export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {
     }
 
     // Email domain restriction
-    const allowedDomains = company.allowedDomains as string[];
-    if (allowedDomains && allowedDomains.length > 0) {
-      const emailDomain = body.email.split('@')[1]?.toLowerCase();
-      const domainAllowed = allowedDomains.some(d => d.toLowerCase() === emailDomain);
-      if (!domainAllowed) {
-        return reply.status(400).send({
-          success: false,
-          error: t(request, 'tickets.email_domain_not_allowed'),
-        });
-      }
-    }
-
-    // Find or create user
-    let user = await app.prisma.user.findUnique({
-      where: { email: body.email },
-    });
-
-    if (user) {
-      // Update user info
-      user = await app.prisma.user.update({
-        where: { email: body.email },
-        data: {
-          fullName: body.fullName,
-          phone: body.phone || user.phone,
-          companyId: body.companyId,
-          locationId: body.locationId,
-          department: body.department || user.department,
-        },
-      });
-    } else {
-      user = await app.prisma.user.create({
-        data: {
-          email: body.email,
-          fullName: body.fullName,
-          phone: body.phone,
-          companyId: body.companyId,
-          locationId: body.locationId,
-          department: body.department,
-        },
+    if (!isEmailDomainAllowed(company.allowedDomains, body.email)) {
+      return reply.status(400).send({
+        success: false,
+        error: t(request, 'tickets.email_domain_not_allowed'),
       });
     }
 
-    const ticketNumber = await generateTicketNumber();
-    const accessToken = nanoid(32);
-
-    // Calculate SLA if category has SLA settings
-    const category = await app.prisma.category.findUnique({
-      where: { id: body.categoryId },
+    // Kullanıcı kaydı, SLA, bildirimler ve SSE — e-posta kanalıyla ortak.
+    const ticket = await createRequesterTicket(app.prisma, { ...body, source: 'portal' }, {
+      queueEmail, queueSms, broadcastStaff: broadcastToStaff,
     });
-
-    // Mesai takvimi + ihlal öncesi uyarı eşiği şirket ayarlarından gelir.
-    const slaContext = await loadCompanySlaContext(app.prisma, body.companyId);
-    const { slaResponseDue, slaResolveDue, slaResponseWarnAt, slaResolveWarnAt } = calculateSlaDueDates(
-      category,
-      new Date(),
-      { calendar: calendarFor(slaContext, body.priority), warningPercent: slaContext.settings.warningPercent },
-    );
-
-    // Create ticket with custom fields
-    const ticket = await app.prisma.ticket.create({
-      data: {
-        ticketNumber,
-        companyId: body.companyId,
-        locationId: body.locationId,
-        categoryId: body.categoryId,
-        createdByEmail: body.email,
-        createdByUserId: user.id,
-        subject: body.subject,
-        description: body.description,
-        priority: body.priority,
-        locale: body.locale,
-        accessToken,
-        slaResponseDue,
-        slaResolveDue,
-        slaResponseWarnAt,
-        slaResolveWarnAt,
-        statusChangedAt: new Date(),
-        // Auto-assign if category has it set
-        assignedToId: category?.autoAssignTo || undefined,
-        customValues: body.customFields
-          ? {
-              create: body.customFields.map(cf => ({
-                customFieldId: cf.fieldId,
-                value: cf.value,
-              })),
-            }
-          : undefined,
-        history: {
-          create: {
-            action: 'ticket_created',
-            newValue: 'open',
-            createdByEmail: body.email,
-          },
-        },
-      },
-      include: {
-        company: { select: { name: true } },
-        location: { select: { name: true } },
-        category: { select: { name: true } },
-      },
-    });
-
-    // Queue email notification
-    const trackingUrl = `${config.CANONICAL_URL}/ticket/${accessToken}`;
-    await queueEmail({
-      to: body.email,
-      templateSlug: 'ticket_created',
-      variables: {
-        ticketNumber,
-        userName: body.fullName,
-        subject: body.subject,
-        priority: priorityLabel(body.locale, body.priority),
-        trackingUrl,
-      },
-      ticketId: ticket.id,
-      companyId: body.companyId,
-    });
-
-    // Queue SMS if phone provided
-    if (body.phone) {
-      await queueSms({
-        to: body.phone,
-        templateSlug: 'ticket_created',
-        variables: { ticketNumber, trackingUrl },
-        ticketId: ticket.id,
-      });
-    }
-
-    // Notify company's IT group email
-    if (company.notificationEmail) {
-      const staffUrl = `${config.CANONICAL_URL}/staff/tickets/${ticket.id}`;
-      await queueEmail({
-        to: company.notificationEmail,
-        templateSlug: 'ticket_created_internal',
-        variables: {
-          ticketNumber,
-          companyName: ticket.company.name,
-          userName: body.fullName,
-          userEmail: body.email,
-          subject: body.subject,
-          priority: body.priority,
-          categoryName: ticket.category?.name || '-',
-          staffUrl,
-        },
-        ticketId: ticket.id,
-        companyId: body.companyId,
-      });
-    }
-
-    // Broadcast to staff
-    broadcastToStaff('ticket_created', {
-      id: ticket.id,
-      ticketNumber: ticket.ticketNumber,
-      subject: ticket.subject,
-      status: ticket.status,
-      priority: body.priority,
-      company: ticket.company.name,
-    }, ticket.companyId);
 
     reply.status(201).send({
       success: true,
       data: {
         ticketNumber: ticket.ticketNumber,
         accessToken: ticket.accessToken,
-        trackingUrl: `${config.CANONICAL_URL}/ticket/${ticket.accessToken}`,
+        trackingUrl: trackingUrlFor(ticket.accessToken),
         status: ticket.status,
         subject: ticket.subject,
       },
