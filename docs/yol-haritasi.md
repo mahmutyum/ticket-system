@@ -361,6 +361,14 @@ bildirim şablonu (`my_tickets_link`) ve bir public sayfa (`MyTicketsPage`) ekle
 
 ### 3. Docker Hub imajları ve tek-komut kurulum
 
+> **⏸ Ertelendi (2026-11-14):** Ücret/efor araştırması yapıldı — public repo'da
+> Actions sınırsız + ücretsiz arm64 runner mevcut, Hub'da public repo sınırsız;
+> yani ücretsiz ve ~yarım günlük kurulum. Öncelik sıralaması nedeniyle bu döngüde
+> **sonraya bırakıldı**. Bu madde ertelenince **otomatik changelog** (madde 4) da
+> ertelendi: imaj etiketleri Hub yayınına bağlıydı; CHANGELOG elle bakılmaya devam
+> eder. Araştırma özeti: Docker Hub pull limitleri yalnızca İNDİREN tarafı etkiler
+> (kimliksiz ~10 pull/saat/IP, Nisan 2025); GHCR paralel yayını limitsiz alternatiftir.
+
 Bugün `docker compose` imajları yerelde **derliyor**. Hedef: backend ve frontend
 imajlarını CI ile **Docker Hub'a yayınlamak** ve sürüm etiketiyle (`:1.0.0`, `:latest`)
 `docker pull` edilip derleme gerektirmeden çalıştırılabilen bir compose sağlamak — böylece
@@ -375,7 +383,7 @@ sistem, kaynağı klonlamadan indirilip kurulabilir.
 
 - SemVer git tag'leri + GitHub Releases.
 - Conventional commit'lerden **otomatik CHANGELOG** üretimi (elle bakım yerine).
-- İmaj etiketleri sürümle senkron.
+- İmaj etiketleri sürümle senkron. *(Docker Hub ertelendiği için bu madde de ertelendi.)*
 
 ### 5. S3-uyumlu depolama (AWS S3 / MinIO)
 
