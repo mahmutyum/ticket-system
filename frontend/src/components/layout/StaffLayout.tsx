@@ -19,6 +19,8 @@ import {
   Webhook,
   BookOpen,
   Monitor,
+  Clock3,
+  DatabaseBackup,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -43,6 +45,8 @@ const navItems: NavItem[] = [
   { path: '/staff/assets', labelKey: 'nav.assets', icon: Monitor },
   { path: '/staff/passwords', labelKey: 'nav.passwords', icon: KeyRound, roles: ['admin', 'it_manager'] },
   { path: '/staff/integrations', labelKey: 'nav.integrations', icon: Webhook, roles: ['admin'] },
+  { path: '/staff/scheduled-jobs', labelKey: 'nav.scheduledJobs', icon: Clock3, roles: ['admin'] },
+  { path: '/staff/backups', labelKey: 'nav.backups', icon: DatabaseBackup, roles: ['admin'] },
   { path: '/staff/account', labelKey: 'nav.account', icon: ShieldCheck },
 ];
 

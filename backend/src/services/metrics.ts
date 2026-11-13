@@ -116,4 +116,23 @@ export function registerCollectors(prisma: PrismaClient, queues: Record<string, 
       this.set({ type: 'public' }, counts.public);
     },
   });
+
+  new Gauge({
+    // operasyon.md'deki "son başarılı backup 26 saatten eski" alarmı bu
+    // metrikle otomatik izlenir (v1.2). Değer Unix saniye cinsinden son
+    // başarılı yedek zamanı; hiç yedek yoksa 0 — `== 0` alarmı da yakalar.
+    name: 'ticket_backup_last_success_timestamp',
+    help: 'Son başarılı yedeğin Unix zaman damgası (saniye; yedek yoksa 0)',
+    registers: [registry],
+    async collect() {
+      const [latest] = await prisma.$queryRaw<Array<{ ts: Date | null }>>`
+        SELECT max(ts) AS ts FROM (
+          SELECT last_success_at AS ts FROM backup_targets
+          UNION ALL
+          SELECT max(finished_at) AS ts FROM scheduled_job_runs WHERE job_key = 'backup' AND status = 'ok'
+        ) t
+      `;
+      this.set(latest?.ts ? Math.floor(latest.ts.getTime() / 1000) : 0);
+    },
+  });
 }

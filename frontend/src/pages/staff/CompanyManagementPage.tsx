@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit2, MapPin, Building2, Mail, Trash2, CheckCircle2, XCircle, Tags, Clock, Inbox } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
+import { qk } from '../../api/query-keys';
 import { getApiError } from '../../utils/api-error';
 import { useEnumLabels } from '../../i18n/labels';
 import type { Company, Location } from '../../types';
@@ -57,7 +58,7 @@ export default function CompanyManagementPage() {
   const [smtpTesting, setSmtpTesting] = useState(false);
 
   const { data: companies } = useQuery<Company[]>({
-    queryKey: ['companies-admin'],
+    queryKey: qk.companies.admin,
     queryFn: async () => (await api.get('/companies/admin/all')).data.data,
   });
 
@@ -72,7 +73,7 @@ export default function CompanyManagementPage() {
         await api.post('/companies', payload);
         toast.success(t('companyMgmt.toast.companyAdded'));
       }
-      queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
+      queryClient.invalidateQueries({ queryKey: qk.companies.all });
       setShowForm(false);
       setEditId(null);
       setForm(emptyCompanyForm);
@@ -101,7 +102,7 @@ export default function CompanyManagementPage() {
       if (url) {
         setForm(prev => ({ ...prev, logo: url }));
         toast.success(t('companyMgmt.toast.logoUploaded'));
-        queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
+        queryClient.invalidateQueries({ queryKey: qk.companies.all });
       }
     } catch (err: unknown) {
       toast.error(getApiError(err, t('companyMgmt.toast.logoUploadFailed')));
@@ -120,7 +121,7 @@ export default function CompanyManagementPage() {
         await api.post('/locations', { companyId: locCompanyId, ...locForm });
         toast.success(t('companyMgmt.toast.locationAdded'));
       }
-      queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
+      queryClient.invalidateQueries({ queryKey: qk.companies.all });
       setShowLocForm(false);
       setLocEditId(null);
       setLocForm(emptyLocationForm);
@@ -147,7 +148,7 @@ export default function CompanyManagementPage() {
     try {
       await api.delete(`/locations/${loc.id}`);
       toast.success(t('companyMgmt.toast.locationDeleted'));
-      queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
+      queryClient.invalidateQueries({ queryKey: qk.companies.all });
     } catch (err: unknown) {
       toast.error(getApiError(err, t('companyMgmt.toast.deleteFailed')));
     }
@@ -195,7 +196,7 @@ export default function CompanyManagementPage() {
     try {
       await api.put(`/companies/${smtpCompanyId}/smtp`, smtpForm);
       toast.success(t('companyMgmt.toast.smtpSaved'));
-      queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
+      queryClient.invalidateQueries({ queryKey: qk.companies.all });
       setShowSmtpForm(false);
     } catch (err: unknown) {
       toast.error(getApiError(err, t('companyMgmt.toast.saveFailed')));
@@ -216,7 +217,7 @@ export default function CompanyManagementPage() {
         await api.post(`/companies/${company.id}/restore`);
         toast.success(t('companyMgmt.toast.companyReactivated'));
       }
-      queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
+      queryClient.invalidateQueries({ queryKey: qk.companies.all });
     } catch (err: unknown) {
       toast.error(getApiError(err, t('common.operationFailed')));
     }
@@ -227,7 +228,7 @@ export default function CompanyManagementPage() {
     try {
       await api.delete(`/companies/${smtpCompanyId}/smtp`);
       toast.success(t('companyMgmt.toast.smtpDeleted'));
-      queryClient.invalidateQueries({ queryKey: ['companies-admin'] });
+      queryClient.invalidateQueries({ queryKey: qk.companies.all });
       setShowSmtpForm(false);
     } catch {
       toast.error(t('companyMgmt.toast.deleteFailedGeneric'));

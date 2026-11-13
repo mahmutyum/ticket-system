@@ -96,6 +96,7 @@ docker-compose.override.yml
 # AI asistan talimatları — yalnızca local, repoya girmez
 CLAUDE.md
 .claude/
+.zcode/
 AGENTS.md
 .agents/
 .codex/

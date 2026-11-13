@@ -56,6 +56,11 @@ jobs:
       - name: Testler
         run: npm test
 
+      # Eşikler vitest.config.ts'te (lines/functions 70, branches 60) — amaç
+      # gerilemeyi yakalamak, sayı büyütmek değil; yükseltmek bilinçli karardır.
+      - name: Test kapsamı
+        run: npm run test:coverage
+
       # Üretime giden bağımlılıklarda bilinen açık OLMAMALI.
       # --omit=dev: dev araçlarının açıkları (vitest/esbuild zinciri gibi)
       # kullanıcıya ulaşmaz; burada onları kırmızı yapmak gürültü olur.

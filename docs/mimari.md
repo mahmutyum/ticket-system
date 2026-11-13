@@ -8,15 +8,19 @@ Teknik genel bakış. Kurulum için [kurulum.md](kurulum.md), kullanım için
 ## Genel yapı
 
 ```
-İnternet/VPN → NPM (SSL + FQDN) → frontend:1111 ─┬─ /          → SPA (nginx)
-                                                  ├─ /api/*     → backend:4000
-                                                  └─ /uploads/* → backend:4000
+İnternet/VPN → NPM (SSL + FQDN) → frontend:1111 ─┬─ /                        → SPA (nginx)
+                                                  ├─ /api/*                   → backend:4000
+                                                  └─ /attachments, /branding  → backend:4000
                                                         │
                                           ┌─────────────┴─────────────┐
                                           │                           │
                                     postgres:5432               redis:6379
                                     (Prisma)                    (cache, kuyruk,
                                                                  refresh token)
+                                          ↑
+                    backup servisi (opsiyonel `--profile backup`):
+                    pg_dump + uploads arşivi + rclone hedefleri
+                    + restore provası — tetik: `backup` kuyruğu
 ```
 
 Host'a yalnızca `frontend` açılır. `backend`, `postgres` ve `redis` dahili `app-network`
@@ -84,14 +88,15 @@ Container'da bundan önce `prisma migrate deploy` çalışır (bkz. `backend/Doc
 `trustProxy` (`TRUST_PROXY`: hop sayısı + her hop iç ağ adresi olmalı, ya da IP/CIDR
 listesi — `utils/trust-proxy.ts`) → rate limit (global 100/dk) → CORS (`config.APP_ORIGINS`) → helmet
 (CSP dahil) → cookie (`JWT_SECRET` ile imzalı) → multipart → prisma/redis/auth
-plugin'leri → static `/uploads/` → **swagger `/docs`** → `/health` → modül route'ları →
+plugin'leri → ek/logo route'ları (`/attachments/:id`, `/branding/:companyId/:file` — static
+servis yok; bkz. `app.ts` notu) → **swagger `/docs`** → `/health` → modül route'ları →
 global error handler (Türkçe; production'da 500 detaylarını gizler).
 
 **CSP hakkında:** Backend'in CSP'si yalnızca kendi yanıtlarını etkiler. SPA'yı frontend
 container'ındaki nginx servis ettiği için arayüzün asıl politikası `frontend/nginx.conf`
 içindedir (`script-src 'self'`, unsafe-inline/eval yok — Vite build'i inline script
 üretmez). Backend'de politika Swagger UI'ın çalışabileceği en sıkı hâldir; asıl kazanç
-`/uploads`'a uygulanan `default-src 'none'; sandbox`'tır.
+`/attachments` ucunun yanıt başına verdiği `default-src 'none'; sandbox`'tır.
 
 ### Modüller
 
@@ -118,6 +123,8 @@ içindedir (`script-src 'self'`, unsafe-inline/eval yok — Vite build'i inline 
 | `/webhooks` | Giden webhook + Teams/Slack — yalnızca admin |
 | `/kb`, `/public/kb` | Bilgi bankası (personel CRUD, public arama/okuma/geri bildirim) |
 | `/assets` | Varlık envanteri + CSV içe aktarma |
+| `/scheduled-jobs` | Zamanlanmış görevler — kayıt defteri, cron/aktiflik, çalışma geçmişi (v1.2) |
+| `/backups` | Yedek hedefleri — rclone tanımı (şifreli, write-only), bağlantı testi (v1.2) |
 | `/metrics` | Prometheus (yalnızca `METRICS_TOKEN` ile) |
 
 ### API sözleşmesi
@@ -237,6 +244,13 @@ Migration'lar `prisma/migrations/` altında versiyonlanır; açılışta `migrat
 
 ## Kuyruk ve arka plan işleri
 
+**Zamanlanmış görevler (v1.2):** tüm periyodik işler (`jobs/scheduler.ts` JOB_REGISTRY:
+sla-check, auto-close, mail-fetch, retention-check, backup, backup-verify) `ScheduledJob`
+tablosundaki cron/saat dilimi/aktiflik tercihleriyle BullMQ scheduler'larına
+`syncSchedules()` ile uygulanır. Her çalışma Redis tekil kilidi + `ScheduledJobRun`
+kaydı ile sarılır; başarısızlıkta admin'lere e-posta gider. `backup` kuyruğunun işçisi
+ayrı `backup` servisindedir (backend imajına pg_dump/rclone/age konmaz).
+
 **BullMQ + Redis.** E-posta ve SMS gönderimi asenkron: **3 deneme, exponential backoff**.
 Başarısız denemeler `Notification` tablosuna yazılır ve panelden retry edilebilir.
 
@@ -302,7 +316,7 @@ durumu yalnızca auth için Zustand.
 | Özel alanlar ayrı tabloda (JSON değil) | Raporlama ve validation kolaylığı. |
 | Modül başına tek `routes.ts` | Küçük yüzey, dolaşması kolay. Controller/service katmanı yok. |
 | Frontend build-time env'siz | Tek imaj, her ortam. Konfigürasyon tamamen runtime/backend tarafında. |
-| `trustProxy: true` | NPM/Coolify arkasında gerçek client IP — rate-limit ve audit log doğru çalışsın. |
+| `trustProxy: TRUST_PROXY` (hop sayısı; her hop iç ağ/loopback veya IP/CIDR) | NPM/Coolify arkasında gerçek client IP ama spoof korumalı — zincirin tamamına güvenmek (`true`) rate limit'i tek `X-Forwarded-For` başlığıyla baypas ettirirdi. |
 | Randevularda çakışma yok | Randevular personele atanmıyor; paralel randevu normal. |
 
 ---

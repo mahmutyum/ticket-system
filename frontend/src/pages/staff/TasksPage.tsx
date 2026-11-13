@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { dateLocale } from '../../i18n/format';
@@ -6,6 +6,9 @@ import { Link } from 'react-router-dom';
 import { Plus, Edit2, Trash2, Users, Clock, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
+import { useSearchParam } from '../../hooks/useSearchParam';
+import { qk } from '../../api/query-keys';
+import { Modal } from '../../components/ui/Modal';
 import { useAuthStore } from '../../stores/auth.store';
 // Öncelik sözlüğü ticket'larla ORTAK — burada kopyalama, tek kaynaktan al.
 import { PRIORITY_COLORS as PRIORITY_COLOR, PRIORITY_WEIGHT } from '../../types';
@@ -14,7 +17,7 @@ import { useEnumLabels } from '../../i18n/labels';
 import { getApiError } from '../../utils/api-error';
 import TaskFilters from './tasks/TaskFilters';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { EmptyState, SkeletonRows } from '../../components/ui/AsyncState';
+import { EmptyState, ErrorState, SkeletonRows } from '../../components/ui/AsyncState';
 import {
   EMPTY_TASK_FORM, TASK_STATUS_COLORS, TASK_STATUS_KEYS, isTaskOverdue, taskDaysOpen,
   type TaskFormState, type TaskPayload, type TaskScope, type TaskSortKey,
@@ -35,19 +38,27 @@ export default function TasksPage() {
 
   // scope ve statusFilter sunucuya gider; aşağıdakiler istemci tarafında uygulanır
   // (liste sayfalanmadığı için tamamı zaten bellekte).
-  const [scope, setScope] = useState<TaskScope>(isManager ? 'all' : 'assigned');
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const [assigneeFilter, setAssigneeFilter] = useState<string>('');
-  const [priorityFilter, setPriorityFilter] = useState<string>('');
-  const [overdueOnly, setOverdueOnly] = useState(false);
-  const [search, setSearch] = useState('');
-  const [sortKey, setSortKey] = useState<TaskSortKey>('dueDate');
+  // Filtreler URL'de yaşar (useSearchParam) — görünüm link olarak paylaşılabilir.
+  const [scopeParam, setScopeParam] = useSearchParam('scope', isManager ? 'all' : 'assigned');
+  const scope = scopeParam as TaskScope;
+  const [statusFilter, setStatusFilter] = useSearchParam('status', '');
+  const [assigneeFilter, setAssigneeFilter] = useSearchParam('assignee', '');
+  const [priorityFilter, setPriorityFilter] = useSearchParam('priority', '');
+  const [overdueParam, setOverdueParam] = useSearchParam('overdue', '');
+  const overdueOnly = overdueParam === '1';
+  // TaskFilters boolean setter fonksiyonel güncelleme kullanır — sarmalayıcı
+  // bu arayüzü korur.
+  const setOverdueOnly = (value: boolean | ((current: boolean) => boolean)) =>
+    setOverdueParam(typeof value === 'function' ? (value(overdueOnly) ? '1' : '') : value ? '1' : '');
+  const [search, setSearch] = useSearchParam('q', '');
+  const [sortParam, setSortParam] = useSearchParam('sort', 'dueDate');
+  const sortKey = sortParam as TaskSortKey;
 
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<TaskFormState>(EMPTY_TASK_FORM);
 
-  const { data: tasks, isLoading } = useQuery<Task[]>({
+  const { data: tasks, isLoading, isError: tasksLoadFailed, refetch: refetchTasks } = useQuery<Task[]>({
     queryKey: ['tasks', scope, statusFilter],
     queryFn: async () => {
       const params: Record<string, string> = {};
@@ -59,13 +70,13 @@ export default function TasksPage() {
   });
 
   const { data: staffList } = useQuery<Staff[]>({
-    queryKey: ['staff-all'],
+    queryKey: qk.staff.list,
     queryFn: async () => (await api.get('/staff')).data.data,
     enabled: isManager,
   });
 
   const { data: companies } = useQuery<Company[]>({
-    queryKey: ['companies-active'],
+    queryKey: qk.companies.active,
     queryFn: async () => (await api.get('/companies')).data.data,
     enabled: isManager,
   });
@@ -252,7 +263,7 @@ export default function TasksPage() {
       <TaskFilters
         isManager={isManager}
         scope={scope}
-        onScopeChange={setScope}
+        onScopeChange={setScopeParam}
         search={search}
         onSearchChange={setSearch}
         assigneeId={assigneeFilter}
@@ -262,7 +273,7 @@ export default function TasksPage() {
         priority={priorityFilter}
         onPriorityChange={setPriorityFilter}
         sort={sortKey}
-        onSortChange={setSortKey}
+        onSortChange={setSortParam}
         staff={staffList}
         active={filtersActive}
         onClear={clearFilters}
@@ -271,11 +282,16 @@ export default function TasksPage() {
 
       {/* Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          {/* .card zaten dark: karşılığını içerir — ham bg-white karanlık modda beyaz kalıyordu. */}
-          <div className="card w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="dialog-title mb-4">{editId ? t('tasks.editTask') : t('tasks.newTask')}</h2>
-            <form onSubmit={handleSubmit} className="space-y-3">
+        <Modal
+          open
+          onClose={() => { setShowForm(false); setEditId(null); }}
+          ariaLabel={editId ? t('tasks.editTask') : t('tasks.newTask')}
+          size="max-w-2xl"
+          closeOnBackdrop={false}
+          panelClassName="max-h-[90vh] overflow-y-auto"
+        >
+          <h2 className="dialog-title mb-4">{editId ? t('tasks.editTask') : t('tasks.newTask')}</h2>
+          <form onSubmit={handleSubmit} className="space-y-3">
               <div>
                 <label className="block text-sm font-medium mb-1">{t('tasks.fieldTitle')} *</label>
                 <input className="input-field" value={form.title} onChange={e => update({ title: e.target.value })} required maxLength={300} />
@@ -286,8 +302,8 @@ export default function TasksPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">{t('common.priority')}</label>
-                  <select className="input-field" value={form.priority} onChange={e => update({ priority: e.target.value })}>
+                  <label className="block text-sm font-medium mb-1" htmlFor="task-priority">{t('common.priority')}</label>
+                  <select id="task-priority" className="input-field" value={form.priority} onChange={e => update({ priority: e.target.value })}>
                     {PRIORITY_KEYS.map(k => <option key={k} value={k}>{labels.priority(k)}</option>)}
                   </select>
                 </div>
@@ -298,8 +314,9 @@ export default function TasksPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">{t('common.company')} {!editId && '*'}</label>
+                  <label className="block text-sm font-medium mb-1" htmlFor="task-company">{t('common.company')} {!editId && '*'}</label>
                   <select
+                    id="task-company"
                     className="input-field"
                     value={form.companyId}
                     onChange={e => update({ companyId: e.target.value, locationId: '' })}
@@ -312,8 +329,9 @@ export default function TasksPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">{t('common.location')} {!editId && '*'}</label>
+                  <label className="block text-sm font-medium mb-1" htmlFor="task-location">{t('common.location')} {!editId && '*'}</label>
                   <select
+                    id="task-location"
                     className="input-field"
                     value={form.locationId}
                     onChange={e => update({ locationId: e.target.value })}
@@ -350,14 +368,15 @@ export default function TasksPage() {
                 <button type="submit" className="btn-primary flex-1">{t('common.save')}</button>
                 <button type="button" onClick={() => { setShowForm(false); setEditId(null); }} className="btn-secondary flex-1">{t('common.cancel')}</button>
               </div>
-            </form>
-          </div>
-        </div>
+          </form>
+        </Modal>
       )}
 
       {/* List */}
       {isLoading ? (
         <div className="card overflow-hidden p-0"><SkeletonRows rows={6} /></div>
+      ) : tasksLoadFailed ? (
+        <div className="card p-0"><ErrorState title={t('common.loadError')} retryLabel={t('common.retry')} onRetry={() => void refetchTasks()} /></div>
       ) : !visible.length ? (
         <div className="card">
           {tasks?.length ? (

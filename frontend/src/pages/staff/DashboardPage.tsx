@@ -12,7 +12,7 @@ import { useEnumLabels } from '../../i18n/labels';
 import { useStaffSSE } from '../../hooks/useSSE';
 import { useSlaAlertToast } from '../../hooks/useSlaAlertToast';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { EmptyState, SkeletonRows } from '../../components/ui/AsyncState';
+import { EmptyState, ErrorState, SkeletonRows } from '../../components/ui/AsyncState';
 import { PriorityBadge, StatusBadge } from '../../components/ui/Badge';
 
 export default function DashboardPage() {
@@ -39,7 +39,7 @@ export default function DashboardPage() {
   if (status) filterParams.set('status', status);
   if (onlyMine) filterParams.set('onlyMine', 'true');
 
-  const { data: stats, isLoading } = useQuery<DashboardStats>({
+  const { data: stats, isLoading, isError: statsLoadFailed, refetch: refetchStats } = useQuery<DashboardStats>({
     queryKey: ['dashboard-stats', companyId, status, onlyMine],
     queryFn: async () => (await api.get(`/dashboard/stats?${filterParams}`)).data.data,
   });
@@ -52,6 +52,11 @@ export default function DashboardPage() {
     setOnlyMine(false);
   };
 
+  // Hata açıkça gösterilir — eskiden isError yoktu ve hatalı yükleme sonsuz
+  // iskelet gibi görünüyordu (stats undefined olduğu için bu dala düşüyordu).
+  if (statsLoadFailed) {
+    return <div className="card p-0"><ErrorState title={t('common.loadError')} retryLabel={t('common.retry')} onRetry={() => void refetchStats()} /></div>;
+  }
   if (isLoading || !stats) {
     return <div className="card overflow-hidden p-0"><SkeletonRows rows={6} /></div>;
   }
@@ -173,7 +178,9 @@ export default function DashboardPage() {
               </button>
             ))}
             {stats.byCompany.length === 0 && (
-              <p className="text-sm text-gray-400">{t('common.noData')}</p>
+              // text-muted tasarım sistemi tonudur: koyu mod karşılığıyla birlikte
+              // AA kontrastını sağlar (gray-400 açık zeminde ihlal üretiyordu).
+              <p className="text-sm text-muted">{t('common.noData')}</p>
             )}
           </div>
         </div>

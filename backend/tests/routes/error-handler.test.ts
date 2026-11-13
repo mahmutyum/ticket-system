@@ -81,6 +81,9 @@ describe('gerçek buildApp — handler uygulanıyor mu', () => {
     }));
     vi.doMock('../../src/jobs/queue.js', () => ({
       queueEmail: vi.fn(), queueSms: vi.fn(),
+      // scheduler.ts (scheduled-jobs route'ları üzerinden) registry'de bu kuyruk
+      // referanslarını modül yüklenirken okur — test yalnızca /tickets'i tetikler.
+      slaCheckQueue: {}, mailFetchQueue: {}, backupQueue: {}, redisConnection: {},
     }));
 
     const { buildApp } = await import('../../src/app.js');

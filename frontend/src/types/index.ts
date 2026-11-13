@@ -316,37 +316,11 @@ export const VALID_STATUSES = [
   'topic_transferred', 'process_outside_it', 'on_hold', 'resolved', 'closed',
 ] as const;
 
-export const STATUS_LABELS: Record<string, string> = {
-  open: 'Açık',
-  in_progress: 'İşlemde',
-  waiting_user_response: 'Kullanıcı Yanıtı Bekleniyor',
-  waiting_other_department: 'Diğer Birimden Destek Bekleniyor',
-  topic_transferred: 'Konu Aktarıldı',
-  process_outside_it: 'Süreç IT Dışında İlerliyor',
-  on_hold: 'Beklemede',
-  resolved: 'Çözüldü',
-  closed: 'Kapatıldı',
-};
-
-export const PRIORITY_LABELS: Record<string, string> = {
-  low: 'Düşük',
-  medium: 'Orta',
-  high: 'Yüksek',
-  critical: 'Kritik',
-};
-
-export const ROLE_LABELS: Record<string, string> = {
-  admin: 'Sistem Yöneticisi',
-  it_manager: 'IT Yöneticisi',
-  it_staff: 'IT Personeli',
-};
-
-export const GROUP_TYPE_LABELS: Record<string, string> = {
-  call_center: 'Çağrı Merkezi',
-  corporate: 'Kurumsal',
-  warehouse: 'Depo',
-  retail: 'Perakende',
-};
+// NOT: Burada eskiden TR etiket sözlükleri vardı (STATUS_LABELS,
+// PRIORITY_LABELS, ROLE_LABELS, GROUP_TYPE_LABELS, ONSITE_STATUS_LABELS).
+// Etiketler artık çeviri dosyalarından gelir — `i18n/labels.ts`'teki
+// `useEnumLabels()` kullanın. v1.3'te bunlar DB'deki sözlük tablolarından
+// okunacak (bkz. docs/yol-haritasi.md).
 
 export const STATUS_COLORS: Record<string, string> = {
   open: 'bg-blue-100 text-blue-800',
@@ -376,20 +350,6 @@ export const PRIORITY_WEIGHT: Record<string, number> = {
   high: 3,
   medium: 2,
   low: 1,
-};
-
-export const ONSITE_STATUS_LABELS: Record<string, string> = {
-  scheduled: 'Planlanmış',
-  in_progress: 'Devam Ediyor',
-  completed: 'Tamamlandı',
-  cancelled: 'İptal',
-};
-
-export const ONSITE_STATUS_COLORS: Record<string, string> = {
-  scheduled: 'bg-blue-100 text-blue-800',
-  in_progress: 'bg-yellow-100 text-yellow-800',
-  completed: 'bg-green-100 text-green-800',
-  cancelled: 'bg-red-100 text-red-800',
 };
 
 /**

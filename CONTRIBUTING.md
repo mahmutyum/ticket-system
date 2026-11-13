@@ -23,8 +23,9 @@ Kod tabanının teknik özeti için [docs/mimari.md](docs/mimari.md).
 
 ## Değişiklik göndermeden önce
 
-CI (`.github/workflows/ci.yml`) PR'larda hepsini çalıştırır, ama yerelde geçirmek zamandan
-kazandırır:
+CI (`.github/workflows/ci.yml`) **elle tetiklenir** (GitHub → Actions → "Run workflow");
+push/PR'da otomatik koşmaz. Yani gönderdiğin değişikliği CI sizin yerinizde doğrulamaz —
+aşağıdaki kontrolleri yerelde geçirmek zorunludur:
 
 ```bash
 # Backend
@@ -60,7 +61,8 @@ CI ayrıca migration'ları **gerçek bir Postgres'e** uygular ve şemanın verit
   serpiştirme.
 - Admin/staff CRUD işlemlerinde `createAuditLog()` çağır.
 - Frontend: dosya başına bir component, veri çekme TanStack Query ile.
-- Mevcut kodun stiline uy. Lint/format aracı henüz yok, tutarlılık elle sağlanıyor.
+- Mevcut kodun stiline uy. ESLint + Prettier yapılandırılmıştır (`npm run lint`,
+  `npm run format` — backend ve frontend'de).
 
 ---
 

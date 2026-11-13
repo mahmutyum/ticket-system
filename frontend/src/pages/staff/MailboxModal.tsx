@@ -4,6 +4,8 @@ import { FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
+import { qk } from '../../api/query-keys';
+import { Modal } from '../../components/ui/Modal';
 import { dateLocale } from '../../i18n/format';
 import { getApiError } from '../../utils/api-error';
 
@@ -111,7 +113,7 @@ export function MailboxModal({ companyId, companyName, onClose }: { companyId: s
     queryFn: async () => (await api.get(`/companies/${companyId}/mailbox`)).data.data,
   });
   const { data: categories = [] } = useQuery<Option[]>({
-    queryKey: ['company-categories', companyId],
+    queryKey: qk.categories.forCompany(companyId),
     queryFn: async () => (await api.get(`/companies/${companyId}/categories`)).data.data,
   });
   const { data: locations = [] } = useQuery<Option[]>({
@@ -180,15 +182,20 @@ export function MailboxModal({ companyId, companyName, onClose }: { companyId: s
   const secretLabel = form.provider === 'imap' ? t('companyMgmt.mailbox.password') : t('companyMgmt.mailbox.clientSecret');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label={t('companyMgmt.mailbox.title')} className="card max-h-[92vh] w-full max-w-4xl overflow-y-auto !p-0" onClick={(event) => event.stopPropagation()}>
-        <div className="flex items-start justify-between gap-4 border-b border-subtle px-6 py-5">
-          <div>
-            <h2 className="flex items-center gap-2 text-lg font-semibold"><Inbox className="h-5 w-5 text-primary-500" /> {t('companyMgmt.mailbox.title')}</h2>
-            <p className="mt-1 text-sm text-muted">{t('companyMgmt.mailbox.subtitle', { name: companyName })}</p>
-          </div>
-          <button className="icon-button border-0" onClick={onClose} aria-label={t('common.close')}><X className="h-5 w-5" /></button>
+    <Modal
+      open
+      onClose={onClose}
+      ariaLabel={t('companyMgmt.mailbox.title')}
+      size="max-w-4xl"
+      panelClassName="max-h-[92vh] overflow-y-auto !p-0"
+    >
+      <div className="flex items-start justify-between gap-4 border-b border-subtle px-6 py-5">
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-semibold"><Inbox className="h-5 w-5 text-primary-500" /> {t('companyMgmt.mailbox.title')}</h2>
+          <p className="mt-1 text-sm text-muted">{t('companyMgmt.mailbox.subtitle', { name: companyName })}</p>
         </div>
+        <button className="icon-button border-0" onClick={onClose} aria-label={t('common.close')}><X className="h-5 w-5" /></button>
+      </div>
 
         {isLoading ? (
           <p className="p-6 text-sm text-muted">{t('common.loading')}</p>
@@ -355,7 +362,6 @@ export function MailboxModal({ companyId, companyName, onClose }: { companyId: s
             </aside>
           </div>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }

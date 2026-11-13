@@ -1,10 +1,11 @@
 import { buildApp } from './app.js';
 import { config } from './config/index.js';
-import { closeQueues, mailFetchQueue, slaCheckQueue } from './jobs/queue.js';
+import { closeQueues } from './jobs/queue.js';
+import { syncSchedules } from './jobs/scheduler.js';
 import { warmTicketCounter } from './utils/ticket-number.js';
 import { ensureTaskEmailTemplates } from './modules/tasks/task-templates.js';
 import { ensureSystemEmailTemplates } from './jobs/notification-templates.js';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from './db.js';
 
 // Import workers to start them
 import { emailWorker } from './jobs/email.worker.js';
@@ -45,6 +46,17 @@ async function start() {
     await app.listen({ port: config.PORT, host: '0.0.0.0' });
     app.log.info(`Server running on port ${config.PORT}`);
 
+    // Operasyonel uyku halleri: bu ayarlar sessizce "kapalı/düşük korumalı"
+    // davranış üretir, kimse fark etmez. Açılışta yüksek sesle uyar.
+    if (config.NODE_ENV === 'production') {
+      if (!config.METRICS_TOKEN) {
+        app.log.warn('METRICS_TOKEN tanımsız — /metrics kapalı (404). Prometheus izlemesi sessizce veri almıyor olabilir.');
+      }
+      if (config.ENABLE_API_DOCS) {
+        app.log.warn('ENABLE_API_DOCS=true ve NODE_ENV=production — /docs internete açık kurulumlarda kapatılmalı (bkz. docs/operasyon.md).');
+      }
+    }
+
     // Warm ticket counter so cold starts don't pay seed cost on first ticket
     try {
       await warmTicketCounter();
@@ -53,40 +65,25 @@ async function start() {
       app.log.warn({ err }, 'Failed to warm ticket counter — will seed on first ticket');
     }
 
-    // Ensure task email templates exist (idempotent — only creates if missing)
+    // Ensure task email templates exist (idempotent — only creates if missing).
+    // Paylaşılan db.ts singleton'ı kullanılır: ikinci bir PrismaClient örneklemek
+    // ayrı bir bağlantı havuzu açar ve kapanış sırasını karmaşıklaştırır.
     try {
-      const prisma = new PrismaClient();
       await ensureTaskEmailTemplates(prisma);
       await ensureSystemEmailTemplates(prisma);
-      await prisma.$disconnect();
       app.log.info('Task and system email templates ensured');
     } catch (err) {
       app.log.warn({ err }, 'Failed to ensure task email templates');
     }
 
-    // Schedule SLA check every 5 minutes
-    await slaCheckQueue.upsertJobScheduler(
-      'sla-periodic-check',
-      { every: 5 * 60 * 1000 },
-      { name: 'sla-check' },
-    );
-    app.log.info('SLA check scheduler started (every 5 min)');
+    // Zamanlanmış görevler (v1.2): registry DB'den okunur, BullMQ
+    // scheduler'ları upsert edilir. İlk açılışta ScheduledJob kayıtları
+    // varsayılanlarla oluşur; sonraki açılışlarda paneldeki cron/enabled
+    // tercihleri geçerlidir. Eksik/bozuk cron görevleri atlanır ve
+    // loglanır — açılış düşmez.
+    await syncSchedules();
+    app.log.info('Scheduled jobs synced from registry');
 
-    // Otomatik kapatma / bekleme hatırlatması — aynı kuyrukta, 15 dakikada bir.
-    await slaCheckQueue.upsertJobScheduler(
-      'ticket-auto-close',
-      { every: 15 * 60 * 1000 },
-      { name: 'auto-close' },
-    );
-    app.log.info('Auto-close scheduler started (every 15 min)');
-
-    // Gelen posta kutuları (e-postayla yanıt) — 2 dakikada bir.
-    await mailFetchQueue.upsertJobScheduler(
-      'mail-periodic-fetch',
-      { every: 2 * 60 * 1000 },
-      { name: 'mail-fetch' },
-    );
-    app.log.info('Mail fetch scheduler started (every 2 min)');
   } catch (err) {
     app.log.error(err);
     process.exit(1);

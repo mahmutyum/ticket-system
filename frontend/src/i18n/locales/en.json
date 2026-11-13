@@ -7,6 +7,7 @@
     "english": "English"
   },
   "common": {
+    "appTitle": "IT Ticket System",
     "save": "Save",
     "saving": "Saving...",
     "cancel": "Cancel",
@@ -58,6 +59,7 @@
     "error": "An error occurred",
     "success": "Operation successful",
     "retry": "Retry",
+    "loadError": "Could not load data.",
     "copy": "Copy",
     "copied": "Copied",
     "show": "Show",
@@ -140,6 +142,8 @@
     "passwords": "Passwords",
     "account": "Account & Security",
     "integrations": "Integrations",
+    "scheduledJobs": "Scheduled Jobs",
+    "backups": "Backups",
     "kb": "Knowledge Base",
     "assets": "Assets"
   },

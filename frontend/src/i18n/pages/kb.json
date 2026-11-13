@@ -41,6 +41,10 @@
       "failed": "İşlem başarısız",
       "empty": "Henüz makale yok.",
       "search": "Makale ara…",
+      "showingSummary": "Toplam {{total}} makale · {{from}}–{{to}} gösteriliyor",
+      "prevPage": "Önceki sayfa",
+      "nextPage": "Sonraki sayfa",
+      "pageInfo": "{{page}} / {{totalPages}}",
       "insert": "Bilgi bankasından ekle",
       "insertHint": "Makale bağlantısını nota ekler"
     }
@@ -87,6 +91,10 @@
       "failed": "Operation failed",
       "empty": "No articles yet.",
       "search": "Search articles…",
+      "showingSummary": "{{total}} articles total · showing {{from}}–{{to}}",
+      "prevPage": "Previous page",
+      "nextPage": "Next page",
+      "pageInfo": "{{page}} / {{totalPages}}",
       "insert": "Insert from knowledge base",
       "insertHint": "Adds the article link to the note"
     }

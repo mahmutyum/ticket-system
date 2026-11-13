@@ -143,10 +143,68 @@ const ticketListItemSchema = staffTicketBaseSchema.pick({
 });
 const relatedTicketSelect = { id: true, ticketNumber: true, subject: true, status: true } as const;
 const relatedTicketSchema = z.object({ id: z.string(), ticketNumber: z.string(), subject: z.string(), status: z.nativeEnum(TicketStatus) });
+const staffAttachmentSchema = z.object({
+  id: z.string(), ticketId: z.string(), fileName: z.string(), fileSize: z.number().int(),
+  mimeType: z.string(), uploadedBy: z.string(), createdAt: z.date(),
+});
+
+// GET /:id include'larının tam yanıtları. Serializer şemada tanımlı olmayan
+// alanları YANITTAN ATAR — buradaki her nesne prisma/schema.prisma'daki
+// modelin skaler alanlarıyla birebir tutulmalıdır (eklenmiş/eksik alan
+// frontend'i sessizce kırar). JSON kolonları (settings, slaSettings,
+// allowedDomains, options) serbest biçimli config bloklarıdır: z.unknown().
+const staffCompanySchema = z.object({
+  id: z.string(), name: z.string(), groupType: z.string(), logo: z.string().nullable(),
+  primaryColor: z.string().nullable(), allowedDomains: z.unknown(), portalDomains: z.unknown(),
+  notificationEmail: z.string().nullable(), isActive: z.boolean(), settings: z.unknown(),
+  slaSettings: z.unknown(), createdAt: z.date(), updatedAt: z.date(),
+});
+const staffLocationSchema = z.object({
+  id: z.string(), companyId: z.string(), name: z.string(), address: z.string().nullable(),
+  phone: z.string().nullable(), floor: z.string().nullable(), itRoom: z.string().nullable(),
+  isActive: z.boolean(), createdAt: z.date(),
+});
+const staffCategorySchema = z.object({
+  id: z.string(), companyId: z.string().nullable(), name: z.string(), description: z.string().nullable(),
+  parentId: z.string().nullable(), sortOrder: z.number().int(), isActive: z.boolean(),
+  slaResponseMinutes: z.number().int().nullable(), slaResolutionMinutes: z.number().int().nullable(),
+  autoAssignTo: z.string().nullable(), createdAt: z.date(),
+});
+const staffCustomFieldSchema = z.object({
+  id: z.string(), companyId: z.string().nullable(), fieldName: z.string(), fieldLabel: z.string(),
+  fieldType: z.string(), options: z.unknown(), required: z.boolean(), sortOrder: z.number().int(),
+  isActive: z.boolean(), placeholder: z.string().nullable(), createdAt: z.date(),
+});
+const staffOnsiteSupportSchema = z.object({
+  id: z.string(), ticketId: z.string(), locationId: z.string(), type: z.string(),
+  scheduledAt: z.date(), scheduledEnd: z.date().nullable(), roomInfo: z.string().nullable(),
+  floorInfo: z.string().nullable(), notes: z.string().nullable(), status: z.string(),
+  completedAt: z.date().nullable(), createdAt: z.date(),
+  location: staffLocationSchema,
+});
 const staffTicketDetailSchema = staffTicketBaseSchema.extend({
-  company: z.unknown(), location: z.unknown(), category: z.unknown(),
-  assignedTo: z.unknown(), createdBy: z.unknown(), customValues: z.unknown(),
-  notes: z.unknown(), history: z.unknown(), attachments: z.unknown(), onsiteSupport: z.unknown(),
+  company: staffCompanySchema,
+  location: staffLocationSchema,
+  category: staffCategorySchema,
+  assignedTo: z.object({ id: z.string(), fullName: z.string(), email: z.string(), role: z.string() }).nullable(),
+  createdBy: z.object({ fullName: z.string(), phone: z.string().nullable() }).nullable(),
+  customValues: z.array(z.object({
+    id: z.string(), ticketId: z.string(), customFieldId: z.string(), value: z.string(),
+    customField: staffCustomFieldSchema,
+  })),
+  notes: z.array(z.object({
+    id: z.string(), ticketId: z.string(), content: z.string(), isInternal: z.boolean(),
+    createdById: z.string(), createdAt: z.date(),
+    createdBy: z.object({ fullName: z.string(), role: z.string() }),
+  })),
+  history: z.array(z.object({
+    id: z.string(), ticketId: z.string(), action: z.string(), field: z.string().nullable(),
+    oldValue: z.string().nullable(), newValue: z.string().nullable(), createdById: z.string().nullable(),
+    createdByEmail: z.string().nullable(), createdAt: z.date(),
+    createdBy: z.object({ fullName: z.string() }).nullable(),
+  })),
+  attachments: z.array(staffAttachmentSchema),
+  onsiteSupport: z.array(staffOnsiteSupportSchema),
   parent: relatedTicketSchema.nullable(),
   children: z.array(relatedTicketSchema),
   mergedInto: relatedTicketSchema.nullable(),
@@ -160,10 +218,6 @@ const staffTicketDetailSchema = staffTicketBaseSchema.extend({
 const staffTicketUpdateResponseSchema = staffTicketBaseSchema.extend({
   company: z.object({ name: z.string() }),
   assignedTo: z.object({ id: z.string(), fullName: z.string() }).nullable(),
-});
-const staffAttachmentSchema = z.object({
-  id: z.string(), ticketId: z.string(), fileName: z.string(), fileSize: z.number().int(),
-  mimeType: z.string(), uploadedBy: z.string(), createdAt: z.date(),
 });
 
 export const ticketRoutes: FastifyPluginAsyncZod = async (app) => {

@@ -263,6 +263,15 @@ değiştirilebilir.
 - **SMS şablonları:** SMS gateway tanımlıysa.
 - **Hazır yanıtlar (canned responses):** ticket detayında tek tıkla eklenen kalıp metinler.
 
+### Zamanlanmış görevler ve yedekler (v1.2, yalnızca `admin`)
+
+- **`/staff/scheduled-jobs`** — tüm periyodik işler (SLA kontrolü, otomatik kapatma,
+  e-posta çekme, retention kontrolü, yedekleme, restore provası) tek listede: cron /
+  saat dilimi düzenleme, duraklatma, elle tetikleme, çalışma geçmişi ve hata bildirimi.
+- **`/staff/backups`** — uzak yedek hedefleri (rclone): tanım, bağlantı testi, GFS
+  saklama adetleri, hedefteki yedek listesi. **Geri yükleme bilinçli olarak web'den
+  yapılmaz** — `scripts/restore.sh` + operatör onayı gerekir.
+
 ### Raporlar — `/staff/reports` (`admin`, `it_manager`)
 
 Ticket dağılımı, personel performansı, kategori kırılımı, genel bakış, SLA trendleri ve
@@ -356,8 +365,8 @@ Kurumsal şifreleri (sunucu, lisans, servis hesapları) saklamak için. Hash'len
    belirle.
 4. **SMTP'yi test et** — global SMTP'yi doğrula, gerekiyorsa şirket bazlı SMTP tanımla ve
    panelden test maili gönder. E-posta çalışmazsa talep edenler erişim linklerini alamaz.
-5. **Personeli ekle ve şirket kapsamlarını ata** — kapsam atamazsan `it_staff` tüm şirketleri
-   görür.
+5. **Personeli ekle ve şirket kapsamlarını ata** — kapsam atamazsan personel **hiçbir şey
+   görmez** (fail-closed): kapsamı `Şirketler` sekmesinden atayana kadar liste boş gelir.
 6. **E-posta şablonlarını düzenle** — varsayılanlar çalışır ama kurumunun diline göre gözden
    geçir.
 7. **`CREDENTIALS_ENC_KEY`'i yedekle** — şifre kasasını kullanacaksan.

@@ -1,6 +1,14 @@
 import { expect, test } from '@playwright/test';
 
+// Testler Türkçe UI metnine (label/placeholder) dayanır; tarayıcı dili
+// makineden makineye değişebildiği için dil bilinçli olarak TR'ye sabitlenir.
+async function forceTurkish(page: import('@playwright/test').Page) {
+  await page.addInitScript(() => localStorage.setItem('lang', 'tr'));
+}
+
+
 test('MFA giriş akışı challenge ve altı haneli kodla tamamlanır', async ({ page }) => {
+  await forceTurkish(page);
   await page.route('**/api/**', (route) => route.fulfill({
     contentType: 'application/json',
     body: JSON.stringify({ success: true, data: {} }),
@@ -36,7 +44,7 @@ test('MFA giriş akışı challenge ve altı haneli kodla tamamlanır', async ({
   });
 
   await page.goto('/staff/login');
-  await page.getByLabel('Email').fill('admin@example.com');
+  await page.getByLabel('E-posta').fill('admin@example.com');
   await page.getByLabel('Şifre').fill('correct-password');
   await page.getByRole('button', { name: 'Giriş Yap' }).click();
 
@@ -50,13 +58,17 @@ test('MFA giriş akışı challenge ve altı haneli kodla tamamlanır', async ({
 });
 
 test('kasa parolası yalnızca açık reveal etkileşimiyle gösterilir', async ({ page }) => {
+  await forceTurkish(page);
+  // Genel yakalayıcı EN İLK kaydedilir: Playwright route eşleşmesinde son
+  // kayıt önceliklidir — genel `{ data: {} }` yanıtı aşağıdaki spesifik
+  // mock'ları (companies/admin/all dahil) ezmişti ve sayfa çöküyordu.
+  await page.route('**/api/**', (route) => route.fulfill({
+    contentType: 'application/json', body: JSON.stringify({ success: true, data: {} }),
+  }));
   await page.route('**/api/companies/admin/all', (route) => route.fulfill({
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify({ success: true, data: [] }),
-  }));
-  await page.route('**/api/**', (route) => route.fulfill({
-    contentType: 'application/json', body: JSON.stringify({ success: true, data: {} }),
   }));
   await page.route('**/api/auth/staff/login', (route) => route.fulfill({
     contentType: 'application/json',
@@ -103,7 +115,7 @@ test('kasa parolası yalnızca açık reveal etkileşimiyle gösterilir', async 
   });
 
   await page.goto('/staff/login');
-  await page.getByLabel('Email').fill('admin@example.com');
+  await page.getByLabel('E-posta').fill('admin@example.com');
   await page.getByLabel('Şifre').fill('correct-password');
   await page.getByRole('button', { name: 'Giriş Yap' }).click();
   await page.getByLabel('Doğrulama kodu').fill('123456');
@@ -115,7 +127,9 @@ test('kasa parolası yalnızca açık reveal etkileşimiyle gösterilir', async 
     window.dispatchEvent(new PopStateEvent('popstate'));
   });
   await expect(page).toHaveURL(/\/staff\/passwords$/);
-  await expect(page.getByText('Sunucu')).toBeVisible();
+  // Lazy route chunk + sorgu yüklenmesi paralel koşuda 5 saniyeyi aşabildiğinden
+  // bekleme bilinçli olarak esnetilir (mutlu yolda görünür görünmez döner).
+  await expect(page.getByText('Sunucu')).toBeVisible({ timeout: 10_000 });
   expect(revealCalls).toBe(0);
   await page.getByTitle('Şifreyi göster (denetim kaydına yazılır)').click();
   await expect(page.getByText('very-secret-password')).toBeVisible();
@@ -123,6 +137,7 @@ test('kasa parolası yalnızca açık reveal etkileşimiyle gösterilir', async 
 });
 
 test('public ticket yaşam döngüsü yanıt, dosya ve yetkili indirme linkini korur', async ({ page }) => {
+  await forceTurkish(page);
   const token = 'public-token-1234567890';
   await page.route('**/api/**', (route) => route.fulfill({
     contentType: 'application/json', body: JSON.stringify({ success: true, data: {} }),

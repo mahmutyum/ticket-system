@@ -201,8 +201,12 @@ async function main() {
     { companyId: null, name: 'Diğer', sortOrder: 99 },
   ];
 
+  // Category/CustomField/CannedResponse'ta bileşik unique kısıtı yoktur;
+  // upsert yapılamaz. Idempotensi findFirst ile sağlanır — seed tekrar
+  // çalıştırıldığında kopya kayıt oluşmaz (staff/company zaten upsert'li).
   for (const cat of [...catCallCenter, ...catCorporate, ...catGlobal]) {
-    await prisma.category.create({ data: cat });
+    const existing = await prisma.category.findFirst({ where: { companyId: cat.companyId, name: cat.name }, select: { id: true } });
+    if (!existing) await prisma.category.create({ data: cat });
   }
   console.log('Categories created');
 
@@ -222,7 +226,8 @@ async function main() {
   ];
 
   for (const field of customFields) {
-    await prisma.customField.create({ data: field });
+    const existing = await prisma.customField.findFirst({ where: { companyId: field.companyId, fieldName: field.fieldName }, select: { id: true } });
+    if (!existing) await prisma.customField.create({ data: field });
   }
   console.log('Custom fields created');
 
@@ -489,7 +494,8 @@ async function main() {
   ];
 
   for (const cr of cannedResponses) {
-    await prisma.cannedResponse.create({ data: cr });
+    const existing = await prisma.cannedResponse.findFirst({ where: { title: cr.title }, select: { id: true } });
+    if (!existing) await prisma.cannedResponse.create({ data: cr });
   }
   console.log('Canned responses created');
 

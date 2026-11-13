@@ -11,6 +11,7 @@ import {
   LineChart, Line,
 } from 'recharts';
 import api from '../../api/client';
+import { qk } from '../../api/query-keys';
 import type { Category, Company, DashboardStats, Staff } from '../../types';
 import ReportFiltersPanel from './reports/ReportFilters';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -31,15 +32,15 @@ export default function ReportsPage() {
 
   // Dropdown verileri
   const { data: companies } = useQuery<Company[]>({
-    queryKey: ['companies-list'],
+    queryKey: qk.companies.active,
     queryFn: async () => (await api.get('/companies')).data.data,
   });
   const { data: categories } = useQuery<Category[]>({
-    queryKey: ['categories-list'],
+    queryKey: qk.categories.global,
     queryFn: async () => (await api.get('/categories')).data.data,
   });
   const { data: staffList } = useQuery<Staff[]>({
-    queryKey: ['staff-list'],
+    queryKey: qk.staff.list,
     queryFn: async () => (await api.get('/staff')).data.data,
   });
 

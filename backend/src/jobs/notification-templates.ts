@@ -191,8 +191,37 @@ export const SURVEY_EMAIL_TEMPLATES = [
   },
 ];
 
+// ==================== ZAMANLANMIŞ GÖREV HATASI (v1.2) ====================
+// Bir periyodik görev başarısız olduğunda tüm admin'lere gider. Alıcıya özel
+// isim/URL içermez — yöneticiye teknik özet yeterlidir (ayrıntı: Zamanlanmış
+// Görevler panelinde çalışma kaydı).
+export const JOB_FAILURE_EMAIL_TEMPLATES = [
+  {
+    slug: 'scheduled_job_failed',
+    locale: 'tr',
+    subject: 'Zamanlanmış görev başarısız: {{jobKey}}',
+    bodyHtml: `<h2>Zamanlanmış Görev Başarısız</h2>
+<p><strong>{{jobKey}}</strong> görevi son çalışmasında hata verdi.</p>
+<pre style="background:#f5f5f5;padding:12px;border-radius:6px;white-space:pre-wrap;">{{errorMessage}}</pre>
+<p>Ayrıntılı çalışma geçmişi için yönetim panelindeki <strong>Zamanlanmış Görevler</strong> sayfasına bakın.</p>`,
+    bodyText: 'Zamanlanmış görev başarısız: {{jobKey}}\nHata: {{errorMessage}}\nAyrıntı: Yönetim paneli → Zamanlanmış Görevler.',
+    variables: ['jobKey', 'errorMessage'],
+  },
+  {
+    slug: 'scheduled_job_failed',
+    locale: 'en',
+    subject: 'Scheduled job failed: {{jobKey}}',
+    bodyHtml: `<h2>Scheduled Job Failed</h2>
+<p>The scheduled job <strong>{{jobKey}}</strong> failed on its last run.</p>
+<pre style="background:#f5f5f5;padding:12px;border-radius:6px;white-space:pre-wrap;">{{errorMessage}}</pre>
+<p>See the <strong>Scheduled Jobs</strong> page in the admin panel for the run history.</p>`,
+    bodyText: 'Scheduled job failed: {{jobKey}}\nError: {{errorMessage}}\nDetails: Admin panel → Scheduled Jobs.',
+    variables: ['jobKey', 'errorMessage'],
+  },
+];
+
 export async function ensureSystemEmailTemplates(prisma: Pick<PrismaClient, 'emailTemplate'>) {
-  for (const tmpl of [...SLA_EMAIL_TEMPLATES, ...AUTO_CLOSE_EMAIL_TEMPLATES, ...MERGE_EMAIL_TEMPLATES, ...SURVEY_EMAIL_TEMPLATES]) {
+  for (const tmpl of [...SLA_EMAIL_TEMPLATES, ...AUTO_CLOSE_EMAIL_TEMPLATES, ...MERGE_EMAIL_TEMPLATES, ...SURVEY_EMAIL_TEMPLATES, ...JOB_FAILURE_EMAIL_TEMPLATES]) {
     await prisma.emailTemplate.upsert({
       where: { slug_locale: { slug: tmpl.slug, locale: tmpl.locale } },
       update: {},

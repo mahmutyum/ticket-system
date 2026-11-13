@@ -5,7 +5,8 @@ import { Prisma } from '@prisma/client';
 import { createAuditLog } from '../../middleware/audit.js';
 import { commonErrorResponses, errorResponseSchema, successResponseSchema } from '../../utils/api-schema.js';
 import { csvRecords } from '../../utils/csv-parse.js';
-import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
+import { companyScopeChecker } from '../../utils/route-scope.js';
+import { isCompanyInScope } from '../../utils/staff-scope.js';
 import { t } from '../../i18n/index.js';
 
 /**
@@ -40,13 +41,6 @@ const include = { company: { select: { name: true } }, location: { select: { nam
 
 export const assetRoutes: FastifyPluginAsyncZod = async (app) => {
   const writers = [app.requireRole('admin', 'it_manager')];
-  const scopeOf = (request: FastifyRequest) => getStaffCompanyScope(app.prisma, request.staffUser!.id, request.staffUser!.role);
-
-  async function inScope(request: FastifyRequest, reply: FastifyReply, companyId: string): Promise<boolean> {
-    if (isCompanyInScope(await scopeOf(request), companyId)) return true;
-    reply.status(403).send({ success: false, error: t(request, 'assets.forbidden') });
-    return false;
-  }
 
   async function validLocation(request: FastifyRequest, reply: FastifyReply, companyId: string, locationId?: string | null) {
     if (!locationId) return true;
@@ -76,12 +70,13 @@ export const assetRoutes: FastifyPluginAsyncZod = async (app) => {
       response: { 200: z.object({ success: z.literal(true), data: z.array(assetSchema) }), ...commonErrorResponses },
     },
   }, async (request, reply) => {
-    const scope = await scopeOf(request);
+    const scope = companyScopeChecker(app.prisma, request);
     const { companyId, q, assignedToEmail } = request.query;
+    const companyIds = await scope.of();
     // companyId filtresi kapsamla KESİŞTİRİLİR.
-    if (companyId && !isCompanyInScope(scope, companyId)) return reply.send({ success: true, data: [] });
+    if (companyId && !isCompanyInScope(companyIds, companyId)) return reply.send({ success: true, data: [] });
     const where: Prisma.AssetWhereInput = {
-      ...(companyId ? { companyId } : scope ? { companyId: { in: scope } } : {}),
+      ...(companyId ? { companyId } : companyIds ? { companyId: { in: companyIds } } : {}),
       ...(assignedToEmail ? { assignedToEmail: assignedToEmail.toLowerCase() } : {}),
       ...(q && q.trim().length >= 2
         ? { OR: ['tag', 'name', 'serialNumber', 'assignedToEmail', 'assetType'].map(f => ({ [f]: { contains: q.trim(), mode: 'insensitive' } })) }
@@ -115,7 +110,7 @@ export const assetRoutes: FastifyPluginAsyncZod = async (app) => {
         tickets: { select: { id: true, ticketNumber: true, subject: true, status: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 50 },
       },
     });
-    if (!asset || !isCompanyInScope(await scopeOf(request), asset.companyId)) {
+    if (!asset || !isCompanyInScope(await companyScopeChecker(app.prisma, request).of(), asset.companyId)) {
       return reply.status(404).send({ success: false, error: t(request, 'assets.not_found') });
     }
     reply.send({ success: true, data: asset });
@@ -126,7 +121,7 @@ export const assetRoutes: FastifyPluginAsyncZod = async (app) => {
     schema: { tags: ['Assets'], summary: 'Varlık ekler', body: assetBody, response: { 200: z.object({ success: z.literal(true), data: assetSchema }), ...commonErrorResponses, 409: errorResponseSchema } },
   }, async (request, reply) => {
     const body = request.body;
-    if (!(await inScope(request, reply, body.companyId)) || !(await validLocation(request, reply, body.companyId, body.locationId))) return;
+    if (!(await companyScopeChecker(app.prisma, request).inScope(reply, body.companyId, t(request, 'assets.forbidden'))) || !(await validLocation(request, reply, body.companyId, body.locationId))) return;
     try {
       const asset = await app.prisma.asset.create({ data: toData(body), include });
       await createAuditLog({ entityType: 'asset', entityId: asset.id, action: 'create', changes: { tag: body.tag, companyId: body.companyId }, performedBy: request.staffUser!.email, ipAddress: request.ip });
@@ -148,7 +143,7 @@ export const assetRoutes: FastifyPluginAsyncZod = async (app) => {
     const body = request.body;
     // Şirket değiştirilemez: bağlı ticket'lar eski şirkete ait olurdu.
     if (body.companyId !== existing.companyId) return reply.status(400).send({ success: false, error: t(request, 'assets.company_immutable') });
-    if (!(await inScope(request, reply, existing.companyId)) || !(await validLocation(request, reply, existing.companyId, body.locationId))) return;
+    if (!(await companyScopeChecker(app.prisma, request).inScope(reply, existing.companyId, t(request, 'assets.forbidden'))) || !(await validLocation(request, reply, existing.companyId, body.locationId))) return;
     try {
       const asset = await app.prisma.asset.update({ where: { id: existing.id }, data: toData(body), include });
       await createAuditLog({ entityType: 'asset', entityId: asset.id, action: 'update', changes: { tag: body.tag, isActive: body.isActive }, performedBy: request.staffUser!.email, ipAddress: request.ip });
@@ -167,7 +162,7 @@ export const assetRoutes: FastifyPluginAsyncZod = async (app) => {
   }, async (request, reply) => {
     const existing = await app.prisma.asset.findUnique({ where: { id: request.params.id } });
     if (!existing) return reply.status(404).send({ success: false, error: t(request, 'assets.not_found') });
-    if (!(await inScope(request, reply, existing.companyId))) return;
+    if (!(await companyScopeChecker(app.prisma, request).inScope(reply, existing.companyId, t(request, 'assets.forbidden')))) return;
     await app.prisma.asset.delete({ where: { id: existing.id } });
     await createAuditLog({ entityType: 'asset', entityId: existing.id, action: 'delete', changes: { tag: existing.tag }, performedBy: request.staffUser!.email, ipAddress: request.ip });
     reply.send({ success: true });
@@ -191,7 +186,7 @@ export const assetRoutes: FastifyPluginAsyncZod = async (app) => {
     },
   }, async (request, reply) => {
     const { companyId, csv } = request.body;
-    if (!(await inScope(request, reply, companyId))) return;
+    if (!(await companyScopeChecker(app.prisma, request).inScope(reply, companyId, t(request, 'assets.forbidden')))) return;
     const records = csvRecords(csv);
     if (records.length > MAX_IMPORT_ROWS) {
       return reply.status(400).send({ success: false, error: t(request, 'assets.import_too_large') });
@@ -200,9 +195,10 @@ export const assetRoutes: FastifyPluginAsyncZod = async (app) => {
     const locationByName = new Map(locations.map(l => [l.name.trim().toLowerCase(), l.id]));
     const pick = (v: Record<string, string>, ...keys: string[]) => keys.map(k => v[k]).find(x => x !== undefined && x !== '') ?? '';
 
-    let created = 0;
-    let updated = 0;
+    // Aşama 1 — doğrulama (DB yazmadan): her satır tek tek değerlendirilir,
+    // hatalı satırlar raporlanır; hiçbir kayıt henüz değişmez.
     const errors: Array<{ line: number; message: string }> = [];
+    const validRows = new Map<string, { line: number; data: ReturnType<typeof toData> }>();
     for (const { line, values } of records) {
       const locationName = pick(values, 'location', 'lokasyon');
       const parsed = assetBody.safeParse({
@@ -224,15 +220,35 @@ export const assetRoutes: FastifyPluginAsyncZod = async (app) => {
         continue;
       }
       const data = toData(parsed.data);
-      const existing = await app.prisma.asset.findUnique({ where: { companyId_tag: { companyId, tag: data.tag } }, select: { id: true } });
-      if (existing) {
-        await app.prisma.asset.update({ where: { id: existing.id }, data });
-        updated++;
-      } else {
-        await app.prisma.asset.create({ data });
-        created++;
-      }
+      // Aynı etiket dosya içinde tekrar ederse son satır kazanır — eski satır-
+      // satır akışın (create sonra update) nihai durumuyla birebir aynı.
+      validRows.set(data.tag, { line, data });
     }
+
+    // Aşama 2 — atomik uygulama: tüm geçerli satırlar TEK transaction'da
+    // yazılır. Orta yolda hata çıkarsa dosya kısmen işlenmiş bırakılmaz.
+    // Mevcut etiketler tek sorguda okunur (eski satır başına findUnique yerine).
+    let created = 0;
+    let updated = 0;
+    await app.prisma.$transaction(async (tx) => {
+      const tags = [...validRows.keys()];
+      const existing = await tx.asset.findMany({
+        where: { companyId, tag: { in: tags } },
+        select: { id: true, tag: true },
+      });
+      const idByTag = new Map(existing.map(a => [a.tag, a.id]));
+      for (const { data } of validRows.values()) {
+        const id = idByTag.get(data.tag);
+        if (id) {
+          await tx.asset.update({ where: { id }, data });
+          updated++;
+        } else {
+          await tx.asset.create({ data });
+          created++;
+        }
+      }
+    }, { timeout: 30_000 });
+
     await createAuditLog({ entityType: 'asset', entityId: companyId, action: 'import', changes: { created, updated, errors: errors.length }, performedBy: request.staffUser!.email, ipAddress: request.ip });
     reply.send({ success: true, data: { created, updated, errors: errors.slice(0, 100) } });
   });

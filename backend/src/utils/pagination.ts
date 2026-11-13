@@ -28,7 +28,27 @@ export const paginationSchema = z.object({
 
 export type PaginationParams = z.infer<typeof paginationSchema>;
 
-export function paginate(params: PaginationParams) {
+/**
+ * Ticket dışı listeler için ortak sayfalama girdisi. Ticket listesindeki
+ * `sortBy`/`sortOrder` ticket alanlarına özel beyaz listeye bağlıdır; diğer
+ * listeler sıralamayı uç bazında sabitler, yalnızca sayfa/limit alır.
+ */
+export const pageParamsSchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(20),
+});
+
+export type PageParams = z.infer<typeof pageParamsSchema>;
+
+/** Yanıt şemalarında yeniden kullanılan `pagination` bloğu. */
+export const paginationMetaSchema = z.object({
+  page: z.number().int(),
+  limit: z.number().int(),
+  total: z.number().int(),
+  totalPages: z.number().int(),
+});
+
+export function paginate(params: PageParams) {
   const { page, limit } = params;
   return {
     skip: (page - 1) * limit,
@@ -36,7 +56,7 @@ export function paginate(params: PaginationParams) {
   };
 }
 
-export function paginatedResponse<T>(data: T[], total: number, params: PaginationParams) {
+export function paginatedResponse<T>(data: T[], total: number, params: PageParams) {
   const { page, limit } = params;
   return {
     success: true as const,

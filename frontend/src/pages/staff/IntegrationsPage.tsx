@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Copy, Pencil, Plus, RefreshCw, Send, Trash2, Webhook as WebhookIcon, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
+import { qk } from '../../api/query-keys';
 import { dateLocale } from '../../i18n/format';
 import { getApiError } from '../../utils/api-error';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -61,7 +62,7 @@ export default function IntegrationsPage() {
     queryFn: async () => (await api.get('/webhooks')).data.data,
   });
   const { data: companies = [] } = useQuery<Company[]>({
-    queryKey: ['companies-admin'],
+    queryKey: qk.companies.admin,
     queryFn: async () => (await api.get('/companies/admin/all')).data.data,
   });
   const { data: deliveries = [] } = useQuery<Delivery[]>({

@@ -102,8 +102,9 @@ panelden yönetirsin — kod değişikliği gerekmez.
 
 > **`CREDENTIALS_ENC_KEY` hakkında:** Şifre kasasındaki (`/staff/passwords`) kayıtları
 > AES-256-GCM ile şifreler. **Bu anahtarı kaybedersen veya değiştirirsen kasadaki tüm
-> şifreler kalıcı olarak çözülemez hale gelir.** Ayrıca doğrulama yalnızca uzunluğa bakar,
-> hex karakter kümesini de açılışta doğrular. Değeri `openssl rand -hex 32` ile üret.
+> şifreler kalıcı olarak çözülemez hale gelir.** Doğrulama açılışta **tam 64 hex karakter**
+> zorlar (`/^[0-9a-fA-F]{64}$/`); değeri `openssl rand -hex 32` ile üret. Anahtar döndürme
+> için `npm run db:rotate-credentials-key` script'i vardır (`prisma/scripts/`).
 
 > **`REDIS_PASSWORD` neden iki yerde?** Hem `redis` container'ı `--requirepass` ile
 > başlatılırken hem de `REDIS_URL` içinde kullanılır. İkisi farklıysa backend Redis'e
@@ -127,6 +128,25 @@ panelden yönetirsin — kod değişikliği gerekmez.
 | `MAX_FILE_SIZE` | `26214400` (25 MB) | Dosya ekleme üst sınırı |
 | `UPLOAD_DIR` | `/app/uploads` | Container içi yükleme dizini (volume'a bağlı) |
 | `SMS_GATEWAY_URL` `SMS_GATEWAY_API_KEY` `SMS_SENDER` | — | Opsiyonel. Boşsa SMS gönderilmez. |
+| `TRUST_PROXY` | `1` | Güvenilen reverse-proxy hop sayısı (bkz. "Production" bölümü) |
+| `METRICS_TOKEN` | — (kapalı) | En az 24 karakter; tanımlıysa `/metrics` Bearer ile açılır (v1.1) |
+| `ENABLE_API_DOCS` | `true` | İnternete açık kurulumlarda `false` yapın (v1.1) |
+| `ALLOW_PRIVATE_INTEGRATION_HOSTS` | `false` | `true`: kurum içi SMTP/IMAP/LDAP/OIDC/webhook hedeflerine izin (v1.1) |
+| `BACKUP_TZ` `BACKUP_CRON` `BACKUP_VERIFY_CRON` | `UTC` · `0 3 * * *` · `0 5 * * 0` | Yedekleme ve restore provası varsayılanları — ilk açılışta DB'ye yazılır, panel tercihi önceliklidir (v1.2) |
+| `BACKUP_RETENTION_DAILY/WEEKLY/MONTHLY` | `7` / `4` / `6` | Yedek hedefi bazlı GFS saklama adetleri (v1.2) |
+| `BACKUP_ENCRYPTION_RECIPIENT` | — | age açık anahtarı; **uzak hedef varsa zorunlu** — arşiv yüklenmeden şifrelenir (v1.2) |
+
+### Otomatik yedekleme profili (v1.2)
+
+Yedekleme servisi opsiyoneldir; ayrı bir profil ile çalışır:
+
+```bash
+docker compose --profile backup up -d
+```
+
+Hedef tanımlama, zamanlama ve çalışma geçmişi panelden (`/staff/backups`,
+`/staff/scheduled-jobs`) yönetilir. Uzak hedeflerde `BACKUP_ENCRYPTION_RECIPIENT`
+zorunludur; ayrıntı: [operasyon](operasyon.md).
 
 ### Yalnızca Docker Compose'un kullandığı değişkenler
 
@@ -192,9 +212,10 @@ sırasında **self-signed** sertifika üretir — gerçek kurulumda kendi sertif
 4. `APP_URL`'e NPM'de tanımladığın FQDN'lerin **tamamını** virgülle ayırarak yaz — aksi halde
    CORS istekleri reddeder.
 
-Backend yalnızca `TRUST_PROXY` ile belirtilen hop sayısına güvenir. NPM/Coolify +
-frontend nginx topolojisinde tipik değer `2`'dir; topolojinizi
-[güvenlik kontrol listesine](../SECURITY.md#kurmadan-önce-kontrol-listesi) göre doğrulayın.
+Backend yalnızca `TRUST_PROXY` ile belirtilen hop sayısına güvenir — güvenilen her hop
+iç ağ/loopback adresi olmalıdır. NPM/Coolify + frontend nginx topolojisinde tipik değer
+`2`'dir; kurulumdan sonra audit log'daki client IP'lerin gerçek kullanıcı IP'leriyle
+örtüştüğünü kontrol edin (ikisi de uyuşmuyorsa hop sayınız farklıdır).
 
 ---
 
@@ -289,9 +310,10 @@ Zod doğrulaması başarısız. Log hangi değişkenin sorunlu olduğunu yazar. 
 `openssl rand -hex 32` ile üret. Tırnak veya boşluk kalmadığından emin ol.
 
 **Şifre kasasında `Invalid key length` / şifre çözülemiyor**
-`CREDENTIALS_ENC_KEY` 64 karakter ama geçerli hex değil (doğrulama sadece uzunluğa bakar),
-ya da kayıtlar farklı bir anahtarla şifrelenmiş. Eski anahtar kaybolduysa o kayıtlar
-kurtarılamaz.
+Açılışta geçersiz anahtar reddedildiği için (tam 64 hex zorlanır) bu hata pratikte
+kayıtların **farklı bir anahtarla** şifrelenmiş olduğunu gösterir: `CREDENTIALS_ENC_KEY`
+değiştirilmiş/kaybolmuş demektir. Eski anahtar kaybolduysa o kayıtlar kurtarılamaz;
+`npm run db:rotate-credentials-key` anahtar döndürmeye yarar (eski anahtar gerekir).
 
 **`P3005 The database schema is not empty`**
 [Mevcut veritabanını baseline'leme](#mevcut-veritabanını-baselineleme) bölümüne bak.

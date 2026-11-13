@@ -4,6 +4,8 @@ import { FormEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
+import { qk } from '../../api/query-keys';
+import { Modal } from '../../components/ui/Modal';
 import { getApiError } from '../../utils/api-error';
 
 type Category = {
@@ -51,7 +53,7 @@ export function CategoryManagementModal({ companyId, companyName, onClose }: {
   const [saving, setSaving] = useState(false);
 
   const { data: categories = [], isLoading } = useQuery<Category[]>({
-    queryKey: ['categories-admin', companyId],
+    queryKey: qk.categories.adminFor(companyId),
     queryFn: async () => (await api.get(`/categories/admin?companyId=${companyId}`)).data.data,
   });
 
@@ -66,8 +68,7 @@ export function CategoryManagementModal({ companyId, companyName, onClose }: {
 
   const refresh = async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['categories-admin', companyId] }),
-      queryClient.invalidateQueries({ queryKey: ['categories'] }),
+      queryClient.invalidateQueries({ queryKey: qk.categories.all }),
     ]);
   };
 
@@ -144,17 +145,22 @@ export function CategoryManagementModal({ companyId, companyName, onClose }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label={t('companyMgmt.category.dialogLabel', { name: companyName })} className="card max-h-[92vh] w-full max-w-4xl overflow-y-auto !p-0" onClick={(event) => event.stopPropagation()}>
-        <div className="flex items-start justify-between gap-4 border-b border-subtle px-6 py-5">
-          <div>
-            <h2 className="flex items-center gap-2 text-lg font-semibold"><Tags className="h-5 w-5 text-primary-500" /> {t('companyMgmt.category.title')}</h2>
-            <p className="mt-1 text-sm text-muted">{t('companyMgmt.category.subtitle', { name: companyName })}</p>
-          </div>
-          <button className="icon-button border-0" onClick={onClose} aria-label={t('common.close')}><X className="h-5 w-5" /></button>
+    <Modal
+      open
+      onClose={onClose}
+      ariaLabel={t('companyMgmt.category.dialogLabel', { name: companyName })}
+      size="max-w-4xl"
+      panelClassName="max-h-[92vh] overflow-y-auto !p-0"
+    >
+      <div className="flex items-start justify-between gap-4 border-b border-subtle px-6 py-5">
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-semibold"><Tags className="h-5 w-5 text-primary-500" /> {t('companyMgmt.category.title')}</h2>
+          <p className="mt-1 text-sm text-muted">{t('companyMgmt.category.subtitle', { name: companyName })}</p>
         </div>
+        <button className="icon-button border-0" onClick={onClose} aria-label={t('common.close')}><X className="h-5 w-5" /></button>
+      </div>
 
-        <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -224,7 +230,6 @@ export function CategoryManagementModal({ companyId, companyName, onClose }: {
             </div>
           </form>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { Pencil, Plus, Search, Trash2, Upload, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
+import { qk } from '../../api/query-keys';
+import { ErrorState } from '../../components/ui/AsyncState';
 import { useAuthStore } from '../../stores/auth.store';
 import { getApiError } from '../../utils/api-error';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -50,11 +52,11 @@ export default function AssetsPage() {
   const [importResult, setImportResult] = useState<{ created: number; updated: number; errors: Array<{ line: number; message: string }> } | null>(null);
 
   const { data: companies = [] } = useQuery<Company[]>({
-    queryKey: ['companies-admin'],
+    queryKey: qk.companies.admin,
     queryFn: async () => (await api.get('/companies/admin/all')).data.data,
     enabled: canEdit,
   });
-  const { data: assets = [] } = useQuery<Asset[]>({
+  const { data: assets = [], isError: assetsLoadFailed, refetch: refetchAssets } = useQuery<Asset[]>({
     queryKey: ['assets', companyId, q],
     queryFn: async () => (await api.get('/assets', { params: { ...(companyId ? { companyId } : {}), ...(q.trim().length >= 2 ? { q } : {}) } })).data.data,
   });
@@ -202,7 +204,8 @@ export default function AssetsPage() {
               </tr>
             </thead>
             <tbody>
-              {assets.length === 0 && <tr><td colSpan={6} className="py-4 text-center text-muted">{t('assets.empty')}</td></tr>}
+              {assetsLoadFailed && <tr><td colSpan={6} className="py-4"><ErrorState title={t('common.loadError')} retryLabel={t('common.retry')} onRetry={() => void refetchAssets()} /></td></tr>}
+              {!assetsLoadFailed && assets.length === 0 && <tr><td colSpan={6} className="py-4 text-center text-muted">{t('assets.empty')}</td></tr>}
               {assets.map(a => (
                 <tr key={a.id} className={`border-t ${a.isActive ? '' : 'opacity-60'}`}>
                   <td className="py-2 pr-3 font-mono text-xs"><button type="button" className="hover:underline" onClick={() => setDetailId(a.id)}>{a.tag}</button></td>

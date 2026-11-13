@@ -9,6 +9,9 @@ export const smsQueue = new Queue('sms', { connection: redisConnection });
 export const slaCheckQueue = new Queue('sla-check', { connection: redisConnection });
 export const mailFetchQueue = new Queue('mail-fetch', { connection: redisConnection });
 export const webhookQueue = new Queue('webhook', { connection: redisConnection });
+// Yedekleme kuyruğu — işçisi AYRI `backup` servisindedir (compose backup
+// profili): pg_dump/rclone/age araçları backend imajını şişirmesin.
+export const backupQueue = new Queue('backup', { connection: redisConnection });
 
 /** Webhook teslimatını kuyruğa atar: 5 deneme, üstel bekleme (10 sn → ~2.7 dk). */
 export async function queueWebhookDelivery(deliveryId: string) {
@@ -66,6 +69,7 @@ export async function closeQueues(): Promise<void> {
     slaCheckQueue.close(),
     mailFetchQueue.close(),
     webhookQueue.close(),
+    backupQueue.close(),
   ]);
   await redisConnection.quit();
 }

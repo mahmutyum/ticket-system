@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit2, Trash2, Mail, MessageSquare, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
+import { Modal } from '../../components/ui/Modal';
 import { getApiError } from '../../utils/api-error';
 import type { CannedResponse, EmailTemplate, SmsTemplate } from '../../types';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -162,11 +163,17 @@ export default function TemplatesPage() {
 
       {/* Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="card w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="dialog-title mb-4">
-              {editId ? t('common.edit') : t('common.new')} — {tabs.find(x => x.key === tab)?.label}
-            </h2>
+        <Modal
+          open
+          onClose={resetForms}
+          ariaLabel={`${editId ? t('common.edit') : t('common.new')} — ${tabs.find(x => x.key === tab)?.label ?? ''}`}
+          size="max-w-lg"
+          closeOnBackdrop={false}
+          panelClassName="max-h-[90vh] overflow-y-auto"
+        >
+          <h2 className="dialog-title mb-4">
+            {editId ? t('common.edit') : t('common.new')} — {tabs.find(x => x.key === tab)?.label}
+          </h2>
 
             {tab === 'email' && (
               <form onSubmit={handleSubmitEmail} className="space-y-3">
@@ -243,9 +250,8 @@ export default function TemplatesPage() {
                   <button type="button" onClick={resetForms} className="btn-secondary flex-1">{t('common.cancel')}</button>
                 </div>
               </form>
-            )}
-          </div>
-        </div>
+          )}
+        </Modal>
       )}
 
       {/* Content */}

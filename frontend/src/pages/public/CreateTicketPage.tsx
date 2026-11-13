@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle, ArrowLeft, ArrowRight, Building2, MapPin, Tag, FileText, Upload, Paperclip, XCircle, AlertTriangle } from 'lucide-react';
 import axios from 'axios';
+import { qk } from '../../api/query-keys';
 import { getApiError } from '../../utils/api-error';
 import toast from 'react-hot-toast';
 import type { Company, Location, Category, CustomField } from '../../types';
@@ -67,7 +68,7 @@ export default function CreateTicketPage() {
 
   // Fetch all companies
   const { data: allCompanies } = useQuery<Company[]>({
-    queryKey: ['companies'],
+    queryKey: qk.companies.active,
     queryFn: async () => (await axios.get('/api/companies')).data.data,
   });
 
@@ -135,7 +136,7 @@ export default function CreateTicketPage() {
 
   // Fetch categories for selected company
   const { data: categories } = useQuery<Category[]>({
-    queryKey: ['categories', form.companyId],
+    queryKey: qk.categories.forCompany(form.companyId),
     queryFn: async () => (await axios.get(`/api/companies/${form.companyId}/categories`)).data.data,
     enabled: !!form.companyId,
   });

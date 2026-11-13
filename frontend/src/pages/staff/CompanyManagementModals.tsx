@@ -1,6 +1,7 @@
 import type { Dispatch, FormEventHandler, SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Mail, Trash2 } from 'lucide-react';
+import { Modal } from '../../components/ui/Modal';
 import { useEnumLabels } from '../../i18n/labels';
 import { GROUP_TYPES, type CompanyForm, type LocationForm, type SmtpForm } from './company-management';
 
@@ -20,10 +21,16 @@ export function CompanyFormModal({
   const { t } = useTranslation();
   const labels = useEnumLabels();
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="dialog-surface p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <h2 className="dialog-title mb-4">{editId ? t('companyMgmt.editCompany') : t('companyMgmt.newCompany')}</h2>
-        <form onSubmit={onSubmit} className="space-y-3">
+    <Modal
+      open
+      onClose={onClose}
+      ariaLabel={editId ? t('companyMgmt.editCompany') : t('companyMgmt.newCompany')}
+      surface="dialog-surface"
+      closeOnBackdrop={false}
+      panelClassName="p-6 max-h-[90vh] overflow-y-auto"
+    >
+      <h2 className="dialog-title mb-4">{editId ? t('companyMgmt.editCompany') : t('companyMgmt.newCompany')}</h2>
+      <form onSubmit={onSubmit} className="space-y-3">
           <div>
             <label className="block text-sm font-medium mb-1">{t('companyMgmt.form.companyName')}</label>
             <input type="text" className="input-field" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
@@ -85,9 +92,8 @@ export function CompanyFormModal({
             <button type="submit" className="btn-primary flex-1">{t('common.save')}</button>
             <button type="button" onClick={onClose} className="btn-secondary flex-1">{t('common.cancel')}</button>
           </div>
-        </form>
-      </div>
-    </div>
+    </form>
+    </Modal>
   );
 }
 
@@ -108,10 +114,16 @@ export function LocationFormModal({
 }: LocationFormModalProps) {
   const { t } = useTranslation();
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="dialog-surface p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <h2 className="dialog-title mb-4">{editId ? t('companyMgmt.editLocation') : t('companyMgmt.newLocation')}</h2>
-        <form onSubmit={onSubmit} className="space-y-3">
+    <Modal
+      open
+      onClose={onClose}
+      ariaLabel={editId ? t('companyMgmt.editLocation') : t('companyMgmt.newLocation')}
+      surface="dialog-surface"
+      closeOnBackdrop={false}
+      panelClassName="p-6 max-h-[90vh] overflow-y-auto"
+    >
+      <h2 className="dialog-title mb-4">{editId ? t('companyMgmt.editLocation') : t('companyMgmt.newLocation')}</h2>
+      <form onSubmit={onSubmit} className="space-y-3">
           <div>
             <label className="block text-sm font-medium mb-1">{t('companyMgmt.location.name')}</label>
             <input type="text" className="input-field" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
@@ -138,9 +150,8 @@ export function LocationFormModal({
             <button type="submit" className="btn-primary flex-1">{editId ? t('common.update') : t('common.add')}</button>
             <button type="button" onClick={onClose} className="btn-secondary flex-1">{t('common.cancel')}</button>
           </div>
-        </form>
-      </div>
-    </div>
+    </form>
+    </Modal>
   );
 }
 
@@ -160,11 +171,18 @@ export function SmtpConfigModal({
 }: SmtpConfigModalProps) {
   const { t } = useTranslation();
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="dialog-surface p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <h2 className="dialog-title flex items-center gap-2 mb-4">
-          <Mail className="w-5 h-5" /> {t('companyMgmt.smtp.title', { name: companyName })}
-        </h2>
+    <Modal
+      open
+      onClose={onClose}
+      ariaLabel={t('companyMgmt.smtp.title', { name: companyName })}
+      size="max-w-lg"
+      surface="dialog-surface"
+      closeOnBackdrop={false}
+      panelClassName="p-6 max-h-[90vh] overflow-y-auto"
+    >
+      <h2 className="dialog-title flex items-center gap-2 mb-4">
+        <Mail className="w-5 h-5" /> {t('companyMgmt.smtp.title', { name: companyName })}
+      </h2>
         <p className="text-xs text-gray-500 mb-4">
           {t('companyMgmt.smtp.intro')}
         </p>
@@ -223,8 +241,7 @@ export function SmtpConfigModal({
             <button type="button" onClick={onSave} className="btn-primary flex-1">{t('common.save')}</button>
             <button type="button" onClick={onClose} className="btn-secondary flex-1">{t('common.cancel')}</button>
           </div>
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 }

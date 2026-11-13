@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import { dateLocale } from '../../i18n/format';
 import api from '../../api/client';
+import { qk } from '../../api/query-keys';
 import { useEnumLabels } from '../../i18n/labels';
 import type { CannedResponse, Staff, Ticket } from '../../types';
 import { downloadAttachment } from '../../utils/download';
@@ -42,7 +43,7 @@ export default function TicketDetailPage() {
 
   // Staff list filtered by ticket's company
   const { data: staffList } = useQuery<Staff[]>({
-    queryKey: ['staff-list', ticket?.companyId],
+    queryKey: qk.staff.listFor(ticket?.companyId),
     queryFn: async () => {
       const params = ticket?.companyId ? `?companyId=${ticket.companyId}` : '';
       return (await api.get(`/staff${params}`)).data.data;

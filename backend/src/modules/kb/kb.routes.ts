@@ -4,7 +4,9 @@ import { z } from 'zod';
 import { Prisma, StaffRole, type KbArticle } from '@prisma/client';
 import { createAuditLog } from '../../middleware/audit.js';
 import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
-import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
+import { pageParamsSchema, paginate, paginationMetaSchema, paginatedResponse } from '../../utils/pagination.js';
+import { companyScopeChecker } from '../../utils/route-scope.js';
+import { isCompanyInScope } from '../../utils/staff-scope.js';
 import { t } from '../../i18n/index.js';
 
 /**
@@ -68,19 +70,13 @@ const searchWhere = (q?: string): Prisma.KbArticleWhereInput =>
 export const kbRoutes: FastifyPluginAsyncZod = async (app) => {
   const include = { company: { select: { name: true } }, category: { select: { name: true } } } as const;
 
-  async function scopeOf(request: FastifyRequest) {
-    const staff = request.staffUser!;
-    return getStaffCompanyScope(app.prisma, staff.id, staff.role);
-  }
-
   /** Yazma yetkisi: global → yalnızca admin; şirkete özel → kapsam. */
   async function canWrite(request: FastifyRequest, reply: FastifyReply, companyId: string | null): Promise<boolean> {
     if (companyId === null && request.staffUser!.role !== StaffRole.admin) {
       reply.status(403).send({ success: false, error: t(request, 'kb.global_admin_only') });
       return false;
     }
-    if (companyId !== null && !isCompanyInScope(await scopeOf(request), companyId)) {
-      reply.status(403).send({ success: false, error: t(request, 'kb.forbidden') });
+    if (companyId !== null && !(await companyScopeChecker(app.prisma, request).inScope(reply, companyId, t(request, 'kb.forbidden')))) {
       return false;
     }
     return true;
@@ -102,25 +98,37 @@ export const kbRoutes: FastifyPluginAsyncZod = async (app) => {
     preValidation: [app.authenticate],
     schema: {
       tags: ['Knowledge Base'],
-      summary: 'Bilgi bankası makalelerini listeler',
-      querystring: z.object({ q: z.string().max(200).optional(), companyId: z.string().max(128).optional(), categoryId: z.string().max(128).optional() }),
-      response: { 200: z.object({ success: z.literal(true), data: z.array(staffArticleSchema) }), ...commonErrorResponses },
+      summary: 'Bilgi bankası makalelerini sayfalı listeler',
+      querystring: pageParamsSchema.extend({
+        q: z.string().max(200).optional(),
+        companyId: z.string().max(128).optional(),
+        categoryId: z.string().max(128).optional(),
+      }),
+      response: {
+        200: z.object({
+          success: z.literal(true),
+          data: z.array(staffArticleSchema),
+          pagination: paginationMetaSchema,
+        }),
+        ...commonErrorResponses,
+      },
     },
   }, async (request, reply) => {
-    const scope = await scopeOf(request);
+    const companyIds = await companyScopeChecker(app.prisma, request).of();
     const { q, companyId, categoryId } = request.query;
     // companyId filtresi kapsamla KESİŞTİRİLİR.
-    if (companyId && !isCompanyInScope(scope, companyId)) return reply.send({ success: true, data: [] });
+    if (companyId && !isCompanyInScope(companyIds, companyId)) {
+      return reply.send(paginatedResponse([], 0, request.query));
+    }
     const companyWhere: Prisma.KbArticleWhereInput = companyId
       ? { OR: [{ companyId }, { companyId: null }] }
-      : scope ? { OR: [{ companyId: { in: scope } }, { companyId: null }] } : {};
-    const articles = await app.prisma.kbArticle.findMany({
-      where: { AND: [companyWhere, searchWhere(q), categoryId ? { categoryId } : {}] },
-      include,
-      orderBy: { updatedAt: 'desc' },
-      take: 200,
-    });
-    reply.send({ success: true, data: articles });
+      : companyIds ? { OR: [{ companyId: { in: companyIds } }, { companyId: null }] } : {};
+    const where = { AND: [companyWhere, searchWhere(q), categoryId ? { categoryId } : {}] };
+    const [articles, total] = await Promise.all([
+      app.prisma.kbArticle.findMany({ where, include, orderBy: { updatedAt: 'desc' }, ...paginate(request.query) }),
+      app.prisma.kbArticle.count({ where }),
+    ]);
+    reply.send(paginatedResponse(articles, total, request.query));
   });
 
   app.get('/:id', {
@@ -128,7 +136,7 @@ export const kbRoutes: FastifyPluginAsyncZod = async (app) => {
     schema: { tags: ['Knowledge Base'], summary: 'Makale', params: idParams, response: { 200: z.object({ success: z.literal(true), data: staffArticleSchema }), ...commonErrorResponses } },
   }, async (request, reply) => {
     const article = await app.prisma.kbArticle.findUnique({ where: { id: request.params.id }, include });
-    if (!article || (article.companyId && !isCompanyInScope(await scopeOf(request), article.companyId))) {
+    if (!article || (article.companyId && !isCompanyInScope(await companyScopeChecker(app.prisma, request).of(), article.companyId))) {
       return reply.status(404).send({ success: false, error: t(request, 'kb.not_found') });
     }
     reply.send({ success: true, data: article });
@@ -203,6 +211,10 @@ export const kbPublicRoutes: FastifyPluginAsyncZod = async (app) => {
     config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
   }, async (request, reply) => {
     const { q, companyId, categoryId, locale: lang } = request.query;
+    // Bu uç public portal araması + sihirbaz önerisidir; her makale yalnızca
+    // özet döner. Sıralama yararlılığı yansıtır (en çok işe yarayan üstte) ve
+    // tavan bilinçlidir: portal arayüzü sayfalama göstermez, isabet kümesi
+    // küçük tutulur. Sayfalama personel listesinde (/kb) vardır.
     const articles = await app.prisma.kbArticle.findMany({
       where: { AND: [{ isPublished: true }, await companyFilter(companyId), searchWhere(q), categoryId ? { categoryId } : {}] },
       orderBy: [{ helpfulYes: 'desc' }, { viewCount: 'desc' }],

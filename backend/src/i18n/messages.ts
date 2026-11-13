@@ -24,6 +24,7 @@ import { staffMessages } from './messages/staff.js';
 import { webhooksMessages } from './messages/webhooks.js';
 import { kbMessages } from './messages/kb.js';
 import { assetsMessages } from './messages/assets.js';
+import { scheduledJobsMessages, backupsMessages } from './messages/scheduledJobs.js';
 
 export type AppLocale = 'tr' | 'en';
 
@@ -47,6 +48,8 @@ const modules = [
   webhooksMessages,
   kbMessages,
   assetsMessages,
+  scheduledJobsMessages,
+  backupsMessages,
 ];
 
 function merge(locale: AppLocale): Record<string, string> {

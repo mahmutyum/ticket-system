@@ -40,13 +40,13 @@ export default function TaskFilters(props: Props) {
         <input className="input-field !pl-8 w-full" placeholder={t('tasks.searchPlaceholder')} value={props.search} onChange={e => props.onSearchChange(e.target.value)} />
       </label>
 
-      {props.isManager && <select className="input-field w-auto" value={props.scope} onChange={e => props.onScopeChange(e.target.value as TaskScope)}><option value="all">{t('tasks.scopeAll')}</option><option value="assigned">{t('tasks.scopeAssigned')}</option><option value="created">{t('tasks.scopeCreated')}</option></select>}
+      {props.isManager && <select aria-label={t('tasks.scope')} className="input-field w-auto" value={props.scope} onChange={e => props.onScopeChange(e.target.value as TaskScope)}><option value="all">{t('tasks.scopeAll')}</option><option value="assigned">{t('tasks.scopeAssigned')}</option><option value="created">{t('tasks.scopeCreated')}</option></select>}
 
-      {props.isManager && props.scope === 'all' && <select className="input-field w-auto" value={props.assigneeId} onChange={e => props.onAssigneeChange(e.target.value)}><option value="">{t('tasks.allStaff')}</option>{(props.staff || []).filter(item => item.isActive).map(item => <option key={item.id} value={item.id}>{item.fullName}</option>)}</select>}
+      {props.isManager && props.scope === 'all' && <select aria-label={t('tasks.allStaff')} className="input-field w-auto" value={props.assigneeId} onChange={e => props.onAssigneeChange(e.target.value)}><option value="">{t('tasks.allStaff')}</option>{(props.staff || []).filter(item => item.isActive).map(item => <option key={item.id} value={item.id}>{item.fullName}</option>)}</select>}
 
-      <select className="input-field w-auto" value={props.status} onChange={e => props.onStatusChange(e.target.value)}><option value="">{t('tasks.allStatuses')}</option>{TASK_STATUS_KEYS.map(key => <option key={key} value={key}>{labels.taskStatus(key)}</option>)}</select>
-      <select className="input-field w-auto" value={props.priority} onChange={e => props.onPriorityChange(e.target.value)}><option value="">{t('tasks.allPriorities')}</option>{PRIORITY_KEYS.map(key => <option key={key} value={key}>{labels.priority(key)}</option>)}</select>
-      <select className="input-field w-auto" value={props.sort} onChange={e => props.onSortChange(e.target.value as TaskSortKey)}>{TASK_SORT_KEYS.map(key => <option key={key} value={key}>{t(`tasks.sort.${key}`)}</option>)}</select>
+      <select aria-label={t('tasks.allStatuses')} className="input-field w-auto" value={props.status} onChange={e => props.onStatusChange(e.target.value)}><option value="">{t('tasks.allStatuses')}</option>{TASK_STATUS_KEYS.map(key => <option key={key} value={key}>{labels.taskStatus(key)}</option>)}</select>
+      <select aria-label={t('tasks.allPriorities')} className="input-field w-auto" value={props.priority} onChange={e => props.onPriorityChange(e.target.value)}><option value="">{t('tasks.allPriorities')}</option>{PRIORITY_KEYS.map(key => <option key={key} value={key}>{labels.priority(key)}</option>)}</select>
+      <select aria-label={t('tasks.sortLabel')} className="input-field w-auto" value={props.sort} onChange={e => props.onSortChange(e.target.value as TaskSortKey)}>{TASK_SORT_KEYS.map(key => <option key={key} value={key}>{t(`tasks.sort.${key}`)}</option>)}</select>
 
       {props.active && <button onClick={props.onClear} className="text-sm text-muted hover:text-primary-600 inline-flex items-center gap-1"><X className="w-3.5 h-3.5" /> {t('common.clear')}</button>}
       <span className="text-sm text-muted ml-auto">{t('tasks.taskCount', { count: props.resultCount })}</span>

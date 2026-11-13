@@ -7,6 +7,7 @@
     "english": "English"
   },
   "common": {
+    "appTitle": "IT Destek Sistemi",
     "save": "Kaydet",
     "saving": "Kaydediliyor...",
     "cancel": "İptal",
@@ -58,6 +59,7 @@
     "error": "Bir hata oluştu",
     "success": "İşlem başarılı",
     "retry": "Tekrar dene",
+    "loadError": "Veri yüklenemedi.",
     "copy": "Kopyala",
     "copied": "Kopyalandı",
     "show": "Göster",
@@ -140,6 +142,8 @@
     "passwords": "Şifreler",
     "account": "Hesap ve Güvenlik",
     "integrations": "Entegrasyonlar",
+    "scheduledJobs": "Zamanlanmış Görevler",
+    "backups": "Yedekler",
     "kb": "Bilgi Bankası",
     "assets": "Varlıklar"
   },

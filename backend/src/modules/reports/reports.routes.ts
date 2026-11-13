@@ -1,6 +1,8 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { Prisma, Priority, TicketStatus } from '@prisma/client';
+import { Prisma, PrismaClient, Priority, TicketStatus } from '@prisma/client';
+import { PassThrough } from 'node:stream';
+import { once } from 'node:events';
 import { paginationSchema, paginate, paginatedResponse } from '../../utils/pagination.js';
 import { getStaffCompanyScope, resolveCompanyFilter } from '../../utils/staff-scope.js';
 import { commonErrorResponses } from '../../utils/api-schema.js';
@@ -117,8 +119,57 @@ export function csvEscape(value: string | null | undefined): string {
   return str;
 }
 
-export const reportRoutes: FastifyPluginAsyncZod = async (app) => {
-  // Ticket report with date filtering and aggregation
+/**
+ * Ticket kümesini sabit bir `take` tavanıyla DEĞİL, keyset (imleç) ile
+ * batch batch gezer. Eski `take: 50000` tavanı sessiz kesme yapıyordu:
+ * 50.001. ticket grafikte hiç görünmüyordu. Burada filtrelenen kümenin
+ * tamamı taranır; bellek batch boyutuyla sınırlı kalır (satırlar visit
+ * ile aggregate'e işlenir, tutulmaz).
+ *
+ * Sıralama `id` ile eşitlenir — aynı `createdAt`'li kayıtlar arasında
+ * imleç konumu deterministik olsun diye.
+ */
+const TICKET_SCAN_BATCH = 2000;
+
+type ReportScanRow = {
+  id: string;
+  createdAt: Date;
+  status: TicketStatus;
+  resolvedAt: Date | null;
+  slaResponseMet: boolean | null;
+  slaResolveMet: boolean | null;
+};
+
+const reportScanSelect = {
+  id: true,
+  createdAt: true,
+  status: true,
+  resolvedAt: true,
+  slaResponseMet: true,
+  slaResolveMet: true,
+} satisfies Prisma.TicketSelect;
+
+async function forEachTicketBatch(
+  prisma: Prisma.TransactionClient | PrismaClient,
+  where: Prisma.TicketWhereInput,
+  visit: (rows: ReportScanRow[]) => void,
+): Promise<void> {
+  let cursor: string | undefined;
+  for (;;) {
+    const rows: ReportScanRow[] = await prisma.ticket.findMany({
+      where,
+      select: reportScanSelect,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      take: TICKET_SCAN_BATCH,
+    });
+    if (rows.length === 0) return;
+    visit(rows);
+    cursor = rows[rows.length - 1].id;
+  }
+}
+
+export const reportRoutes: FastifyPluginAsyncZod = async (app) => {  // Ticket report with date filtering and aggregation
   app.get('/tickets', {
     preValidation: [app.requireRole('admin', 'it_manager')],
     schema: {
@@ -341,40 +392,81 @@ export const reportRoutes: FastifyPluginAsyncZod = async (app) => {
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     const where = buildTicketWhere(query, scopeCompanyIds);
 
-    const tickets = await app.prisma.ticket.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: 10000,
-      include: {
-        company: { select: { name: true } },
-        location: { select: { name: true } },
-        category: { select: { name: true } },
-        assignedTo: { select: { fullName: true } },
-      },
-    });
-
+    // Export akışlı: sabit `take: 10000` tavanı satır sessizce kesiyordu.
+    // Batch batch üretilip PassThrough'a yazılır — bellek sabit, küme tam.
     const BOM = '\ufeff';
     const headers = ['Talep No', 'Konu', 'Şirket', 'Lokasyon', 'Kategori', 'Durum', 'Öncelik', 'Atanan', 'Oluşturan Email', 'Oluşturma Tarihi', 'Çözüm Tarihi'];
-    const rows = tickets.map(t => [
-      csvEscape(t.ticketNumber),
-      csvEscape(t.subject),
-      csvEscape(t.company.name),
-      csvEscape(t.location?.name),
-      csvEscape(t.category.name),
-      csvEscape(t.status),
-      csvEscape(t.priority),
-      csvEscape(t.assignedTo?.fullName),
-      csvEscape(t.createdByEmail),
-      csvEscape(new Date(t.createdAt).toLocaleString('tr-TR')),
-      csvEscape(t.resolvedAt ? new Date(t.resolvedAt).toLocaleString('tr-TR') : ''),
-    ]);
 
-    const csv = BOM + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
-
+    const stream = new PassThrough();
+    // destroy(err) sonrası yazım denemeleri süreci düşürmesin — hata zaten
+    // loglanıyor ve yanıt başlıkları gönderilmiş durumda.
+    stream.on('error', () => {});
     reply
       .header('Content-Type', 'text/csv; charset=utf-8')
       .header('Content-Disposition', `attachment; filename="ticket-rapor-${new Date().toISOString().split('T')[0]}.csv"`)
-      .send(csv);
+      .send(stream);
+
+    // İstemci indirmeyi bırakırsa imleç döngüsünü durdur; aksi halde pump
+    // tamamlanana kadar boşuna DB sorgusu döner.
+    let aborted = false;
+    reply.raw.on('close', () => {
+      if (!reply.raw.writableEnded) {
+        aborted = true;
+        stream.destroy();
+      }
+    });
+    const writeChunk = async (chunk: string) => {
+      if (!stream.write(chunk)) await once(stream, 'drain');
+    };
+
+    const pump = (async () => {
+      await writeChunk(BOM + headers.join(';') + '\n');
+      let cursor: string | undefined;
+      for (;;) {
+        if (aborted) return;
+        const tickets = await app.prisma.ticket.findMany({
+          where,
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+          take: TICKET_SCAN_BATCH,
+          include: {
+            company: { select: { name: true } },
+            location: { select: { name: true } },
+            category: { select: { name: true } },
+            assignedTo: { select: { fullName: true } },
+          },
+        });
+        if (tickets.length === 0) break;
+        let chunk = '';
+        for (const t of tickets) {
+          chunk += [
+            csvEscape(t.ticketNumber),
+            csvEscape(t.subject),
+            csvEscape(t.company.name),
+            csvEscape(t.location?.name),
+            csvEscape(t.category.name),
+            csvEscape(t.status),
+            csvEscape(t.priority),
+            csvEscape(t.assignedTo?.fullName),
+            csvEscape(t.createdByEmail),
+            csvEscape(new Date(t.createdAt).toLocaleString('tr-TR')),
+            csvEscape(t.resolvedAt ? new Date(t.resolvedAt).toLocaleString('tr-TR') : ''),
+          ].join(';') + '\n';
+        }
+        await writeChunk(chunk);
+        cursor = tickets[tickets.length - 1].id;
+      }
+      stream.end();
+    })();
+
+    try {
+      await pump;
+    } catch (err) {
+      // Yanıt zaten akış halinde; kod 500 gönderilemez — kesilen indirme
+      // (istemci tarafında bozuk dosya) loglanır.
+      app.log.error({ err }, 'CSV export akışı yarıda kesildi');
+      stream.destroy();
+    }
   });
 
   // Zaman serisi overview: günlük / haftalık / aylık bucket'larda created/resolved/inProgress/overdue
@@ -394,17 +486,6 @@ export const reportRoutes: FastifyPluginAsyncZod = async (app) => {
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     const where = buildTicketWhere(query, scopeCompanyIds);
-
-    const tickets = await app.prisma.ticket.findMany({
-      where,
-      select: {
-        createdAt: true,
-        status: true,
-        resolvedAt: true,
-        slaResolveMet: true,
-      },
-      take: 50000,
-    });
 
     const bucketKey = (d: Date): string => {
       const x = new Date(d);
@@ -432,14 +513,16 @@ export const reportRoutes: FastifyPluginAsyncZod = async (app) => {
       return b;
     };
 
-    tickets.forEach((t) => {
-      const created = ensure(bucketKey(new Date(t.createdAt)));
-      created.created += 1;
-      if (t.status === 'in_progress') created.inProgress += 1;
-      if (t.slaResolveMet === false) created.overdue += 1;
-      if (t.resolvedAt) {
-        const r = ensure(bucketKey(new Date(t.resolvedAt)));
-        r.resolved += 1;
+    await forEachTicketBatch(app.prisma, where, (rows) => {
+      for (const t of rows) {
+        const created = ensure(bucketKey(new Date(t.createdAt)));
+        created.created += 1;
+        if (t.status === 'in_progress') created.inProgress += 1;
+        if (t.slaResolveMet === false) created.overdue += 1;
+        if (t.resolvedAt) {
+          const r = ensure(bucketKey(new Date(t.resolvedAt)));
+          r.resolved += 1;
+        }
       }
     });
 
@@ -464,16 +547,6 @@ export const reportRoutes: FastifyPluginAsyncZod = async (app) => {
 
     const scopeCompanyIds = await getStaffCompanyScope(app.prisma, staffUser.id, staffUser.role);
     const where = buildTicketWhere(query, scopeCompanyIds);
-
-    const tickets = await app.prisma.ticket.findMany({
-      where,
-      select: {
-        createdAt: true,
-        slaResponseMet: true,
-        slaResolveMet: true,
-      },
-      take: 50000,
-    });
 
     const bucketKey = (d: Date): string => {
       const x = new Date(d);
@@ -504,16 +577,18 @@ export const reportRoutes: FastifyPluginAsyncZod = async (app) => {
       return b;
     };
 
-    tickets.forEach((t) => {
-      const b = ensure(bucketKey(new Date(t.createdAt)));
-      b.total += 1;
-      if (t.slaResponseMet !== null) {
-        b.responseTotal += 1;
-        if (t.slaResponseMet) b.responseMet += 1;
-      }
-      if (t.slaResolveMet !== null) {
-        b.resolveTotal += 1;
-        if (t.slaResolveMet) b.resolveMet += 1;
+    await forEachTicketBatch(app.prisma, where, (rows) => {
+      for (const t of rows) {
+        const b = ensure(bucketKey(new Date(t.createdAt)));
+        b.total += 1;
+        if (t.slaResponseMet !== null) {
+          b.responseTotal += 1;
+          if (t.slaResponseMet) b.responseMet += 1;
+        }
+        if (t.slaResolveMet !== null) {
+          b.resolveTotal += 1;
+          if (t.slaResolveMet) b.resolveMet += 1;
+        }
       }
     });
 

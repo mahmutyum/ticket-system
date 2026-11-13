@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import { dateLocale } from '../../i18n/format';
 import api from '../../api/client';
+import { qk } from '../../api/query-keys';
 import {
   computeLayout, eventDurationMin, HOUR_HEIGHT, mondayOf, sameDay,
   startOfDay, STATUS_COLORS, TIMELINE_START_HOUR,
@@ -12,7 +13,9 @@ import {
   type CalendarEvent, type CalendarResponse,
 } from './onsite-calendar';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { Modal } from '../../components/ui/Modal';
 import { useEnumLabels } from '../../i18n/labels';
+import { ErrorState } from '../../components/ui/AsyncState';
 
 export default function OnsiteSupportPage() {
   const { t, i18n } = useTranslation();
@@ -25,7 +28,7 @@ export default function OnsiteSupportPage() {
 
   const weekStart = useMemo(() => mondayOf(selectedDate), [selectedDate]);
 
-  const { data } = useQuery<CalendarResponse>({
+  const { data, isError: calendarLoadFailed, refetch: refetchCalendar } = useQuery<CalendarResponse>({
     queryKey: ['onsite-calendar', weekStart.toISOString(), companyFilter],
     queryFn: async () => {
       const params = new URLSearchParams({ week: weekStart.toISOString() });
@@ -35,7 +38,7 @@ export default function OnsiteSupportPage() {
   });
 
   const { data: companies } = useQuery<Array<{ id: string; name: string }>>({
-    queryKey: ['companies-scoped'],
+    queryKey: qk.companies.admin,
     queryFn: async () => {
       const rows = (await api.get('/companies/admin/all')).data.data as Array<{ id: string; name: string }>;
       return rows.map(({ id, name }) => ({ id, name }));
@@ -207,7 +210,9 @@ export default function OnsiteSupportPage() {
           </h3>
         </div>
 
-        {selectedDayEvents.length === 0 ? (
+        {calendarLoadFailed ? (
+          <ErrorState title={t('common.loadError')} retryLabel={t('common.retry')} onRetry={() => void refetchCalendar()} />
+        ) : selectedDayEvents.length === 0 ? (
           <div className="px-4 py-12 text-center text-muted text-sm">
             {t('onsite.noAppointments')}
           </div>
@@ -392,14 +397,12 @@ export default function OnsiteSupportPage() {
           const fmt = (d: Date) =>
             d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
           return (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-              onClick={() => setSelectedEvent(null)}
+            <Modal
+              open
+              onClose={() => setSelectedEvent(null)}
+              ariaLabel={ev.ticket?.subject ?? t('onsite.title')}
+              panelClassName="!p-0 overflow-hidden shadow-overlay"
             >
-              <div
-                className="card w-full max-w-md !p-0 overflow-hidden shadow-overlay"
-                onClick={(e) => e.stopPropagation()}
-              >
                 <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-gray-200 dark:border-slate-800">
                   <div className="flex items-start gap-3 min-w-0">
                     <div
@@ -494,8 +497,7 @@ export default function OnsiteSupportPage() {
                     )}
                   </div>
                 )}
-              </div>
-            </div>
+            </Modal>
           );
         })()}
     </div>

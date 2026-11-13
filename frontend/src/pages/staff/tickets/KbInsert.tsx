@@ -12,7 +12,10 @@ export default function KbInsert({ companyId, onInsert }: { companyId: string; o
   const [q, setQ] = useState('');
   const { data: hits = [] } = useQuery<Hit[]>({
     queryKey: ['kb-insert', companyId, q],
-    queryFn: async () => (await api.get('/kb', { params: { companyId, ...(q.trim().length >= 2 ? { q } : {}) } })).data.data,
+    // /kb sayfalı: bu seçim listesi tek sayfada büyük limit ister (arayüz zaten
+    // ilk 8 yayını gösterir).
+    queryFn: async () =>
+      (await api.get('/kb', { params: { companyId, limit: 100, ...(q.trim().length >= 2 ? { q } : {}) } })).data.data,
     enabled: open,
   });
   const published = hits.filter(h => h.isPublished).slice(0, 8);

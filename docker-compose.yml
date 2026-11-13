@@ -67,15 +67,48 @@ services:
       - app-network
     restart: unless-stopped
 
+  # Otomatik yedekleme servisi (v1.2) — opsiyonel: `docker compose --profile backup up -d`.
+  # Tetikleme backend zamanlayıcısından `backup` kuyruğuyla gelir; pg_dump + uploads
+  # arşivi + env anlık görüntüsü + SHA256SUMS üretir, tanımlı hedeflere (rclone)
+  # şifreleyerek yükler, periyodik restore provası yapar.
+  backup:
+    build:
+      context: ./backup-service
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      # uploads SADECE OKUNUR — yedekleyen süreç veriyi asla değiştirmemeli.
+      - uploads:/src/uploads:ro
+      # .env anlık görüntü için (environment.snapshot) — okunur, tek dosya.
+      - ./.env:/src/.env:ro
+      - backups:/backups
+    networks:
+      - app-network
+    restart: unless-stopped
+    profiles:
+      - backup
+
   redis:
     image: redis:7-alpine
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    # Healthcheck parolayı komut satırına değil REDISCLI_AUTH env'ine yazar:
+    # `-a ...` konsol uyarısı basar ve parola `docker inspect` çıktısındaki
+    # Cmd dizisinde görünür kalırdı. `$$` compose interpolasyonundan kaçar,
+    # container içindeki kabuk genişletir.
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     expose:
       - "6379"
     volumes:
       - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping | grep -q PONG"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -108,7 +141,9 @@ services:
       - proxy
 
   pgadmin:
-    image: dpage/pgadmin4:latest
+    # Major pin: `latest` yükseltmeler panel davranışını sessizce değiştirebiliyor.
+    # Yeni major çıktığında bilinçli olarak yükselt.
+    image: dpage/pgadmin4:9
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@company.com}
       # Varsayılan YOK — tanımlı değilse pgadmin boş şifreyle açılmayı reddeder.
@@ -134,6 +169,7 @@ volumes:
   pgdata:
   redisdata:
   uploads:
+  backups:
 
 networks:
   app-network:

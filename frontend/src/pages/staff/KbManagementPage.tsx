@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
+import { qk } from '../../api/query-keys';
 import { useAuthStore } from '../../stores/auth.store';
 import { getApiError } from '../../utils/api-error';
+import { ErrorState } from '../../components/ui/AsyncState';
 import { PageHeader } from '../../components/ui/PageHeader';
 import Markdown from '../../components/Markdown';
 import type { Company } from '../../types';
@@ -46,22 +48,32 @@ export default function KbManagementPage() {
   const role = useAuthStore(s => s.user?.role);
   const canEdit = role === 'admin' || role === 'it_manager';
   const [q, setQ] = useState('');
+  const [page, setPage] = useState(1);
   const [form, setForm] = useState<FormState | null>(null);
   const [lang, setLang] = useState<'tr' | 'en'>('tr');
   const [preview, setPreview] = useState(false);
   const [saving, setSaving] = useState(false);
+  const pageSize = 20;
 
-  const { data: articles = [] } = useQuery<Article[]>({
-    queryKey: ['kb-admin', q],
-    queryFn: async () => (await api.get('/kb', { params: q.trim().length >= 2 ? { q } : {} })).data.data,
+  // /kb artık sayfalı ({ data, pagination }); sayfa değişince eski liste
+  // ekranda kalır (keepPreviousData) — listede zıplama olmaz.
+  const { data, isError: kbLoadFailed, refetch: refetchKb } = useQuery({
+    queryKey: ['kb-admin', q, page],
+    placeholderData: keepPreviousData,
+    queryFn: async () =>
+      (await api.get('/kb', {
+        params: { page, limit: pageSize, ...(q.trim().length >= 2 ? { q } : {}) },
+      })).data as { data: Article[]; pagination: { page: number; limit: number; total: number; totalPages: number } },
   });
+  const articles = data?.data ?? [];
+  const pagination = data?.pagination;
   const { data: companies = [] } = useQuery<Company[]>({
-    queryKey: ['companies-admin'],
+    queryKey: qk.companies.admin,
     queryFn: async () => (await api.get('/companies/admin/all')).data.data,
     enabled: canEdit,
   });
   const { data: categories = [] } = useQuery<Array<{ id: string; name: string }>>({
-    queryKey: ['company-categories', form?.companyId],
+    queryKey: qk.categories.forCompany(form?.companyId),
     queryFn: async () => (await api.get(`/companies/${form!.companyId}/categories`)).data.data,
     enabled: !!form?.companyId,
   });
@@ -172,9 +184,11 @@ export default function KbManagementPage() {
       <div className="card space-y-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input className="input-field pl-9" value={q} onChange={e => setQ(e.target.value)} placeholder={t('kb.staff.search')} aria-label={t('kb.staff.search')} />
+          <input className="input-field pl-9" value={q} onChange={e => { setQ(e.target.value); setPage(1); }} placeholder={t('kb.staff.search')} aria-label={t('kb.staff.search')} />
         </div>
-        {articles.length === 0 && <p className="text-sm text-muted">{t('kb.staff.empty')}</p>}
+        {kbLoadFailed ? (
+          <ErrorState title={t('common.loadError')} retryLabel={t('common.retry')} onRetry={() => void refetchKb()} />
+        ) : articles.length === 0 && <p className="text-sm text-muted">{t('kb.staff.empty')}</p>}
         <ul className="divide-y divide-gray-100 dark:divide-slate-800">
           {articles.map(a => (
             <li key={a.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
@@ -201,6 +215,36 @@ export default function KbManagementPage() {
             </li>
           ))}
         </ul>
+        {pagination && pagination.total > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 px-1 pt-3 dark:border-slate-800">
+            <span className="text-sm text-muted">
+              {t('kb.staff.showingSummary', {
+                total: pagination.total,
+                from: (pagination.page - 1) * pagination.limit + 1,
+                to: Math.min(pagination.page * pagination.limit, pagination.total),
+              })}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={pagination.page <= 1}
+                className="icon-button min-h-9 min-w-9 disabled:opacity-30"
+                aria-label={t('kb.staff.prevPage')}
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <span className="text-sm">{t('kb.staff.pageInfo', { page: pagination.page, totalPages: pagination.totalPages })}</span>
+              <button
+                onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
+                disabled={pagination.page >= pagination.totalPages}
+                className="icon-button min-h-9 min-w-9 disabled:opacity-30"
+                aria-label={t('kb.staff.nextPage')}
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

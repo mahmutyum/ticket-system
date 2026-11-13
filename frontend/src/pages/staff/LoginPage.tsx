@@ -14,6 +14,19 @@ type SsoInfo = { providers: SsoProvider[]; localLoginDisabled: boolean };
 
 const inputClass = 'input-field bg-gray-700 border-gray-600 text-white placeholder-gray-400 dark:bg-gray-700 dark:border-gray-600';
 
+/**
+ * Oturum düşen sayfadan devam: 401 interceptor'ı `?next=` taşır. Yalnızca
+ * site içi yol kabul edilir (`/` ile başlar ama `//` olmaz — protokol-
+ * göreceli dış adres) ve login sayfasının kendisi asla hedef olamaz.
+ */
+function loginTarget(searchParams: URLSearchParams): string {
+  const next = searchParams.get('next');
+  if (next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/staff/login')) {
+    return next;
+  }
+  return '/staff';
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -52,7 +65,7 @@ export default function LoginPage() {
     setCompletingSso(true);
     void initializeAuth().then((success) => {
       setCompletingSso(false);
-      if (success) navigate('/staff');
+      if (success) navigate(loginTarget(searchParams));
       else toast.error(t('auth.ssoErrors.session'));
     });
   }, [searchParams, setSearchParams, navigate, t]);
@@ -63,7 +76,7 @@ export default function LoginPage() {
       useAuthStore.getState().setMfaWarningEnabled(data.mfaWarningEnabled);
     }
     toast.success(t('auth.welcome', { name: data.user.fullName }));
-    navigate('/staff');
+    navigate(loginTarget(searchParams));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -89,8 +102,12 @@ export default function LoginPage() {
     }
   };
 
-  const redirectProviders = sso?.providers.filter(p => p.type !== 'ldap') ?? [];
-  const ldapProviders = sso?.providers.filter(p => p.type === 'ldap') ?? [];
+  // Array.isArray koruması: bozuk/eksik sağlayıcı yanıtı (mock veya hatalı
+  // backend) tüm giriş ekranını çökertmesin — ErrorBoundary'e düşmeden
+  // sağlayıcısız yerel giriş görünümüne düşer.
+  const ssoProviders = Array.isArray(sso?.providers) ? sso.providers : [];
+  const redirectProviders = ssoProviders.filter(p => p.type !== 'ldap');
+  const ldapProviders = ssoProviders.filter(p => p.type === 'ldap');
   // Yerel giriş kapalıysa form yalnızca "yönetici girişi" ile açılır (acil durum hesabı).
   const localHidden = !!sso?.localLoginDisabled && !showLocal && !ldap && !mfaChallenge;
 
@@ -104,7 +121,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex justify-end mb-3">
-          <LanguageSwitcher />
+          <LanguageSwitcher onDark />
         </div>
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-inset mb-4">

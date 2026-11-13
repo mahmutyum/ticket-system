@@ -6,12 +6,15 @@ import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import { dateLocale } from '../../i18n/format';
 import api from '../../api/client';
+import { qk } from '../../api/query-keys';
 import { useEnumLabels } from '../../i18n/labels';
 import { VALID_STATUSES } from '../../types';
 import type { Ticket, PaginatedResponse, Staff } from '../../types';
 
 const PRIORITY_KEYS = ['low', 'medium', 'high', 'critical'] as const;
 import { useStaffSSE } from '../../hooks/useSSE';
+import { useSearchParam } from '../../hooks/useSearchParam';
+import { ErrorState } from '../../components/ui/AsyncState';
 import { useSlaAlertToast } from '../../hooks/useSlaAlertToast';
 import { useAuthStore } from '../../stores/auth.store';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -31,11 +34,23 @@ export default function TicketListPage() {
   const role = useAuthStore(s => s.user?.role);
   const canBulk = role === 'admin' || role === 'it_manager';
 
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [priorityFilter, setPriorityFilter] = useState('');
+  // Filtreler URL'de yaşar (useSearchParam) — sayfa yenilenince korunur,
+  // filtrelenmiş görünüm link olarak paylaşılabilir. Geçici seçim state'i
+  // (bulk seçimi vb.) bileşende kalır.
+  const [pageParam, setPageParam] = useSearchParam('page', '1');
+  const [limitParam, setLimitParam] = useSearchParam('limit', '20');
+  const [search, setSearchParam] = useSearchParam('q', '');
+  const [statusFilter, setStatusParam] = useSearchParam('status', '');
+  const [priorityFilter, setPriorityParam] = useSearchParam('priority', '');
+  // Sayfa/limit sayısaldır; pagination kontrolleri fonksiyonel güncelleme
+  // kullanır — sayısal sarmalayıcılar bu arayüzü korur.
+  const page = Number(pageParam) || 1;
+  const pageSize = Number(limitParam) || 20;
+  const setPage = (value: number | ((current: number) => number)) =>
+    setPageParam(String(typeof value === 'function' ? value(page) : value));
+  const setPageSize = (value: number) => setLimitParam(String(value));
+  const setStatusFilter = (value: string) => { setStatusParam(value); };
+  const setPriorityFilter = (value: string) => { setPriorityParam(value); };
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState('');
   const [bulkPriority, setBulkPriority] = useState('');
@@ -51,7 +66,7 @@ export default function TicketListPage() {
     },
   });
 
-  const { data, isLoading } = useQuery<PaginatedResponse<Ticket>>({
+  const { data, isLoading, isError: ticketsLoadFailed, refetch: refetchTickets } = useQuery<PaginatedResponse<Ticket>>({
     queryKey: ['tickets', page, pageSize, search, statusFilter, priorityFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -65,7 +80,7 @@ export default function TicketListPage() {
   });
 
   const { data: staffList } = useQuery<Staff[]>({
-    queryKey: ['staff-list-bulk'],
+    queryKey: qk.staff.list,
     queryFn: async () => (await api.get('/staff')).data.data,
     enabled: canBulk,
   });
@@ -73,7 +88,8 @@ export default function TicketListPage() {
   const tickets = useMemo(() => data?.data || [], [data?.data]);
   const pagination = data?.pagination;
 
-  useEffect(() => setPage(1), [pageSize, search, statusFilter, priorityFilter]);
+  // setPageParam stabil (useCallback'li) — filtrenin değişmesi ilk sayfaya döner.
+  useEffect(() => setPageParam('1'), [pageSize, search, statusFilter, priorityFilter, setPageParam]);
 
   const allOnPageSelected = useMemo(
     () => tickets.length > 0 && tickets.every(t => selectedIds.has(t.id)),
@@ -138,7 +154,7 @@ export default function TicketListPage() {
   const hasFilters = Boolean(search || statusFilter || priorityFilter);
 
   const clearFilters = () => {
-    setSearch('');
+    setSearchParam('');
     setStatusFilter('');
     setPriorityFilter('');
     setPage(1);
@@ -163,11 +179,12 @@ export default function TicketListPage() {
                 className="input-field pl-10"
                 placeholder={t('ticketList.searchPlaceholder')}
                 value={search}
-                onChange={e => { setSearch(e.target.value); setPage(1); }}
+                onChange={e => { setSearchParam(e.target.value); setPage(1); }}
               />
             </div>
           </div>
           <select
+            aria-label={t('ticketList.allStatuses')}
             className="input-field"
             value={statusFilter}
             onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
@@ -178,6 +195,7 @@ export default function TicketListPage() {
             ))}
           </select>
           <select
+            aria-label={t('ticketList.allPriorities')}
             className="input-field"
             value={priorityFilter}
             onChange={e => { setPriorityFilter(e.target.value); setPage(1); }}
@@ -198,6 +216,7 @@ export default function TicketListPage() {
               {t('ticketList.selectedCount', { count: selectedIds.size })}
             </span>
             <select
+              aria-label={t('ticketList.changeStatus')}
               className="input-field w-auto text-sm"
               value={bulkStatus}
               onChange={e => setBulkStatus(e.target.value)}
@@ -208,6 +227,7 @@ export default function TicketListPage() {
               ))}
             </select>
             <select
+              aria-label={t('ticketList.changePriority')}
               className="input-field w-auto text-sm"
               value={bulkPriority}
               onChange={e => setBulkPriority(e.target.value)}
@@ -218,6 +238,7 @@ export default function TicketListPage() {
               ))}
             </select>
             <select
+              aria-label={t('ticketList.changeAssignee')}
               className="input-field w-auto text-sm"
               value={bulkAssignee}
               onChange={e => setBulkAssignee(e.target.value)}
@@ -251,6 +272,8 @@ export default function TicketListPage() {
       <div className="card p-0 overflow-hidden">
         {isLoading ? (
           <SkeletonRows rows={7} />
+        ) : ticketsLoadFailed ? (
+          <ErrorState title={t('common.loadError')} retryLabel={t('common.retry')} onRetry={() => void refetchTickets()} />
         ) : tickets.length === 0 ? (
           <EmptyState icon={TicketIcon} title={t('ticketList.noTicketsTitle')} description={hasFilters ? t('ticketList.noTicketsWithFilters') : t('ticketList.noTicketsEmpty')} />
         ) : (
@@ -357,7 +380,7 @@ export default function TicketListPage() {
             <div className="flex items-center gap-2">
               <label className="mr-2 flex items-center gap-2 text-sm text-muted">
                 {t('ticketList.perPage')}
-                <select className="input-field !w-auto !py-1.5 text-sm" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
+                <select aria-label={t('ticketList.perPage')} className="input-field !w-auto !py-1.5 text-sm" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
                   <option value={10}>10</option>
                   <option value={20}>20</option>
                   <option value={50}>50</option>

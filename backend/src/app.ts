@@ -40,11 +40,14 @@ import { attachmentRoutes, brandingRoutes } from './modules/attachments/attachme
 import { webhookRoutes } from './modules/webhooks/webhooks.routes.js';
 import { kbRoutes, kbPublicRoutes } from './modules/kb/kb.routes.js';
 import { assetRoutes } from './modules/assets/assets.routes.js';
+import { scheduledJobsRoutes } from './modules/scheduled-jobs/scheduled-jobs.routes.js';
+import { backupsRoutes } from './modules/backups/backups.routes.js';
 import { registerMutationAuditHook } from './middleware/audit.js';
 import { t } from './i18n/index.js';
-import { timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual, randomUUID } from 'node:crypto';
 import { httpDuration, httpErrors, registerCollectors, registry } from './services/metrics.js';
 import { emailQueue, mailFetchQueue, slaCheckQueue, smsQueue, webhookQueue } from './jobs/queue.js';
+import { API_VERSION } from './version.js';
 
 export async function buildApp() {
   const app = Fastify({
@@ -56,9 +59,28 @@ export async function buildApp() {
     trustProxy: buildTrustProxy(config.TRUST_PROXY),
     logger: {
       level: config.NODE_ENV === 'production' ? 'info' : 'debug',
+      // Access log'ları log toplayıcılarına/git'e düşer; Authorization ve
+      // Cookie başlıkları bearer token / refresh cookie taşıyabilir. Pino
+      // serileştirmeden önce maskeler — redaksiyon transport'a değil buraya
+      // konur ki production'ın düz JSON çıktısını da kapsasın.
+      redact: {
+        paths: ['req.headers.authorization', 'req.headers.cookie'],
+        censor: '[REDACTED]',
+      },
       transport: config.NODE_ENV === 'development'
         ? { target: 'pino-pretty', options: { colorize: true } }
         : undefined,
+    },
+    // İstek takibi: gelen x-request-id korunur (upstream nginx/istek izleme
+    // aynı kimliği görür), yoksa yeni üretilir. Yanıt başlığı onResponse
+    // hook'unda ayarlanır — böylece istemci hatasını log satırıyla
+    // eşleştirebilir (grep req.id).
+    genReqId: (req) => {
+      const incoming = req.headers['x-request-id'];
+      if (typeof incoming === 'string' && incoming.length >= 8 && incoming.length <= 128) {
+        return incoming;
+      }
+      return randomUUID();
     },
   });
 
@@ -124,6 +146,12 @@ export async function buildApp() {
   await app.register(authPlugin);
   registerMutationAuditHook(app);
 
+  // genReqId ile belirlenen istek kimliğini yanıta yaz — istemci/support,
+  // hata bildirimindeki bu kimliği log'larda aratarak ilgili satırı bulur.
+  app.addHook('onSend', async (request, reply) => {
+    reply.header('x-request-id', request.id);
+  });
+
   // NOT: /uploads ARTIK STATİK SERVİS EDİLMİYOR.
   //
   // @fastify/static ile servis edilirken ekler KİMLİKSİZ erişilebiliyordu: API
@@ -150,7 +178,7 @@ export async function buildApp() {
           description:
             'Endpoint listesi. Frontend bu API\'ye /api/* öneki ile erişir (nginx rewrite eder); ' +
             'buradaki yollar backend\'in gördüğü ham yollardır.',
-          version: '1.0.0',
+          version: API_VERSION,
         },
         components: {
           securitySchemes: {
@@ -289,6 +317,8 @@ export async function buildApp() {
   await app.register(kbRoutes, { prefix: '/kb' });
   await app.register(kbPublicRoutes, { prefix: '/public/kb' });
   await app.register(assetRoutes, { prefix: '/assets' });
+  await app.register(scheduledJobsRoutes, { prefix: '/scheduled-jobs' });
+  await app.register(backupsRoutes, { prefix: '/backups' });
 
 
   return app;

@@ -45,6 +45,25 @@ const envSchema = z.object({
   METRICS_TOKEN: z.string().min(24).optional().or(z.literal('').transform(() => undefined)),
 
   /**
+   * Zamanlanmış görev ve yedekleme varsayılanları (v1.2). Bunlar ENV
+   * VARSAYILANLIDIR: ScheduledJob tablosuna ilk kayıt sırasında yazılırlar;
+   * panelden yapılan değişiklik DB'de saklanır ve önceliklidir (yol haritası §v1.2-6).
+   */
+  BACKUP_TZ: z.string().default('UTC'),
+  BACKUP_CRON: z.string().default('0 3 * * *'),
+  BACKUP_VERIFY_CRON: z.string().default('0 5 * * 0'),
+  BACKUP_RETENTION_DAILY: z.coerce.number().int().min(1).max(365).default(7),
+  BACKUP_RETENTION_WEEKLY: z.coerce.number().int().min(1).max(104).default(4),
+  BACKUP_RETENTION_MONTHLY: z.coerce.number().int().min(1).max(120).default(6),
+  /**
+   * `age` açık anahtarı (age1...) — uzak yedek hedeflerine yüklemeden önce arşiv
+   * bununla şifrelenir. `environment.snapshot` sır içerdiği için uzak hedef
+   * tanımlıysa bu değer ZORUNLUDUR; şifreli arşivin çözüme anahtarı sistemde
+   * tutulmaz (özel anahtar operatördedir). Yerel-disk hedefinde opsiyonel.
+   */
+  BACKUP_ENCRYPTION_RECIPIENT: z.string().optional().or(z.literal('').transform(() => undefined)),
+
+  /**
    * Kaç reverse proxy hop'una güvenilecek. Rate limiting'in TAMAMI buna bağlıdır.
    *
    * Daha önce kodda sabit `trustProxy: true` vardı: bu, X-Forwarded-For zincirinin

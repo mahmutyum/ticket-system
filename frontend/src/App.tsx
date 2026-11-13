@@ -26,6 +26,8 @@ const TaskDetailPage = lazy(() => import('./pages/staff/TaskDetailPage'));
 const PasswordsPage = lazy(() => import('./pages/staff/PasswordsPage'));
 const AccountPage = lazy(() => import('./pages/staff/AccountPage'));
 const IntegrationsPage = lazy(() => import('./pages/staff/IntegrationsPage'));
+const ScheduledJobsPage = lazy(() => import('./pages/staff/ScheduledJobsPage'));
+const BackupsPage = lazy(() => import('./pages/staff/BackupsPage'));
 const KbPage = lazy(() => import('./pages/public/kb/KbPage'));
 const KbManagementPage = lazy(() => import('./pages/staff/KbManagementPage'));
 const AssetsPage = lazy(() => import('./pages/staff/AssetsPage'));
@@ -154,6 +156,22 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <IntegrationsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="scheduled-jobs"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <ScheduledJobsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="backups"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <BackupsPage />
               </ProtectedRoute>
             }
           />

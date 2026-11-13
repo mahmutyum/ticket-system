@@ -20,6 +20,30 @@ veriye dokunulmaz. Restore sırasında backend durdurulur ve işlem hata verse b
 yeniden başlatılır. `environment.snapshot` secret içerir ve otomatik olarak aktif
 `.env` üzerine yazılmaz; anahtarları operatör ayrıca karşılaştırmalıdır.
 
+## Otomatik yedekleme (v1.2)
+
+`backup` servisi (opsiyonel compose profili) yedeklemeyi zamanlar, uzak hedeflere
+yükler ve restore provası yapar. Elle script akışı (`backup.sh`/`restore.sh`) aynı
+formatta korunur ve her zaman geçerli bir kurtarma yoludur.
+
+```bash
+docker compose --profile backup up -d
+```
+
+- **Hedefler** panelden tanımlanır (`/staff/backups`, admin): hedef tipi (yerel disk,
+  S3-uyumlu, Google Drive, FTPS, SFTP, WebDAV, SMB), rclone config INI (şifreli
+  saklanır, API'den dönmez), hedef bazlı GFS saklama adetleri.
+- **Zamanlama ve saklama varsayılanları** `BACKUP_*` ortam değişkenlerinden gelir
+  (bkz. [kurulum](kurulum.md)); panelden yapılan değişiklik veritabanında saklanır ve
+  önceliklidir.
+- **Şifreleme:** uzak hedef varsa `BACKUP_ENCRYPTION_RECIPIENT` (age açık anahtarı)
+  ZORUNLUDUR — `environment.snapshot` sır içerdiği için şifresiz uzak kopya reddedilir.
+  Çözüm özel anahtarı sistemde tutulmaz; restore operatörün anahtarıyla yapılır.
+- **Zamanlanmış Görevler** sayfasından yedekleme, restore provası ve tüm periyodik
+  işler elle tetiklenebilir / duraklatılabilir; çalışma geçmişi kayıt altındadır.
+- **Geri yükleme hâlâ yalnızca CLI'dır** (`scripts/restore.sh`) — yıkıcı işlem web'den
+  tetiklenmez.
+
 ## Veri saklama
 
 Retention komutu varsayılan olarak yalnızca rapor üretir:
@@ -104,7 +128,9 @@ groups:
   içinde kontrollü kapatılır.
 
 Alarm başlangıçları: readiness 2 dakika başarısız, disk kullanımı yüzde 80, son başarılı
-backup 26 saatten eski ve failed notification sayısında olağan dışı artış.
+backup 26 saatten eski ve failed notification sayısında olağan dışı artış. "26 saatten
+eski backup" alarmı v1.2'den itibaren `ticket_backup_last_success_timestamp` metriğiyle
+otomatik izlenir (yedek hiç alınmadıysa değer 0'dır ve alarm yine tetiklenir).
 
 ## Deploy öncesi production kontrolü
 

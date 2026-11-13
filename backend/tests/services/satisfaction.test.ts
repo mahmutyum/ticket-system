@@ -25,13 +25,16 @@ describe('maybeSendSurvey', () => {
     expect(queueEmail).toHaveBeenCalledWith(expect.objectContaining({ to: 'u@acme.com', templateSlug: 'ticket_survey' }));
   });
 
+  // it.each nesne-case + $key interpolasyonu kullanır: printf (%o %s) biçimi
+  // karışık şekilli case'lerde vitest'in tuple overload'ıyla çakışıp
+  // typecheck:tests'i kırıyordu (bu hata main'de bir sürümdür vardı).
   it.each([
-    [{ status: 'in_progress' }, 'açık talep'],
-    [{ surveySentAt: new Date() }, 'zaten gönderilmiş'],
-    [{ satisfactionRating: 5 }, 'zaten puanlanmış'],
-    [{ mergedIntoId: 'x' }, 'birleştirilmiş'],
-    [{ company: { slaSettings: { satisfactionSurvey: false } } }, 'şirkette kapalı'],
-  ])('%o → gönderilmez (%s)', async (override) => {
+    { override: { status: 'in_progress' }, label: 'açık talep' },
+    { override: { surveySentAt: new Date() }, label: 'zaten gönderilmiş' },
+    { override: { satisfactionRating: 5 }, label: 'zaten puanlanmış' },
+    { override: { mergedIntoId: 'x' }, label: 'birleştirilmiş' },
+    { override: { company: { slaSettings: { satisfactionSurvey: false } } }, label: 'şirkette kapalı' },
+  ])('$label → gönderilmez', async ({ override }) => {
     const { prisma } = prismaWith({ ...base, ...override });
     const queueEmail = vi.fn();
     expect(await maybeSendSurvey(prisma, 't1', queueEmail)).toBe(false);

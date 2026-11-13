@@ -69,12 +69,15 @@ i18n
   });
 
 // `<html lang>` erişilebilirlik + tarayıcı çeviri ipuçları için dille senkron tutulur.
-// Ayrıca global axios `Accept-Language` — public sayfalar ham axios kullanır, böylece
-// onların da backend hata mesajları doğru dilde döner.
+// Sekme başlığı da (`common.appTitle`) dille değişir — index.html'deki sabit başlık
+// yerini ilk açılışta alır. Ayrıca global axios `Accept-Language` — public sayfalar
+// ham axios kullanır, böylece onların da backend hata mesajları doğru dilde döner.
 function syncLang(lng: string) {
   const short = lng.startsWith('tr') ? 'tr' : 'en';
   if (typeof document !== 'undefined') {
     document.documentElement.lang = short;
+    const title = i18n.t('common.appTitle', { defaultValue: 'IT Ticket System' });
+    if (typeof title === 'string' && title) document.title = title;
   }
   axios.defaults.headers.common['Accept-Language'] = short;
 }

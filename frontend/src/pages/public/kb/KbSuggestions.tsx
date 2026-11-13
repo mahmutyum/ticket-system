@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Lightbulb, X } from 'lucide-react';
+import { Lightbulb } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Modal } from '../../../components/ui/Modal';
 import { getKbArticle, searchKb, type KbArticle } from './kb-api';
 import KbArticleView from './KbArticleView';
 
@@ -37,19 +38,14 @@ export default function KbSuggestions({ companyId, categoryId }: { companyId: st
         ))}
       </ul>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setOpen(null)}>
-          <div role="dialog" aria-modal="true" aria-label={open.title} className="card max-h-[88vh] w-full max-w-2xl overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="mb-2 flex justify-end">
-              <button className="icon-button border-0" onClick={() => setOpen(null)} aria-label={t('kb.close')}><X className="h-5 w-5" /></button>
-            </div>
-            <KbArticleView
-              article={open}
-              solvedLabel={t('kb.solvedButton')}
-              onSolved={() => { toast.success(t('kb.solvedToast')); navigate('/'); }}
-              onNotSolved={() => setOpen(null)}
-            />
-          </div>
-        </div>
+        <Modal open onClose={() => setOpen(null)} ariaLabel={open.title} size="max-w-2xl" panelClassName="max-h-[88vh] overflow-y-auto">
+          <KbArticleView
+            article={open}
+            solvedLabel={t('kb.solvedButton')}
+            onSolved={() => { toast.success(t('kb.solvedToast')); navigate('/'); }}
+            onNotSolved={() => setOpen(null)}
+          />
+        </Modal>
       )}
     </div>
   );

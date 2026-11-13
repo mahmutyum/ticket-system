@@ -4,9 +4,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit2, UserX, UserCheck, Building2, KeyRound } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/client';
+import { qk } from '../../api/query-keys';
 import { getApiError } from '../../utils/api-error';
 import type { Company, Staff } from '../../types';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { ErrorState } from '../../components/ui/AsyncState';
+import { Modal } from '../../components/ui/Modal';
 import { useEnumLabels } from '../../i18n/labels';
 import { IdentityProvidersModal } from './IdentityProvidersModal';
 
@@ -38,8 +41,8 @@ export default function StaffManagementPage() {
   const [companyStaffName, setCompanyStaffName] = useState('');
   const [selectedCompanyIds, setSelectedCompanyIds] = useState<string[]>([]);
 
-  const { data: staffList } = useQuery<Staff[]>({
-    queryKey: ['staff'],
+  const { data: staffList, isError: staffLoadFailed, refetch: refetchStaff } = useQuery<Staff[]>({
+    queryKey: qk.staff.list,
     queryFn: async () => (await api.get('/staff')).data.data,
   });
 
@@ -62,7 +65,7 @@ export default function StaffManagementPage() {
         await api.post('/staff', form);
         toast.success(t('staffMgmt.toast.added'));
       }
-      queryClient.invalidateQueries({ queryKey: ['staff'] });
+      queryClient.invalidateQueries({ queryKey: qk.staff.all });
       setShowForm(false);
       setEditId(null);
       setForm(emptyForm);
@@ -93,7 +96,7 @@ export default function StaffManagementPage() {
         await api.put(`/staff/${id}`, { isActive: true });
         toast.success(t('staffMgmt.toast.activated'));
       }
-      queryClient.invalidateQueries({ queryKey: ['staff'] });
+      queryClient.invalidateQueries({ queryKey: qk.staff.all });
     } catch {
       toast.error(t('common.operationFailed'));
     }
@@ -111,7 +114,7 @@ export default function StaffManagementPage() {
   const handleSaveCompanies = async () => {
     try {
       await api.put(`/staff/${companyStaffId}/companies`, { companyIds: selectedCompanyIds });
-      queryClient.invalidateQueries({ queryKey: ['staff'] });
+      queryClient.invalidateQueries({ queryKey: qk.staff.all });
       setShowCompanyModal(false);
       toast.success(t('staffMgmt.toast.companiesUpdated'));
     } catch {
@@ -145,10 +148,14 @@ export default function StaffManagementPage() {
 
       {/* Staff Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="card w-full max-w-md">
-            <h2 className="dialog-title mb-4">{editId ? t('staffMgmt.editStaff') : t('staffMgmt.newStaff')}</h2>
-            <form onSubmit={handleSubmit} className="space-y-3">
+        <Modal
+          open
+          onClose={() => { setShowForm(false); setEditId(null); }}
+          ariaLabel={editId ? t('staffMgmt.editStaff') : t('staffMgmt.newStaff')}
+          closeOnBackdrop={false}
+        >
+          <h2 className="dialog-title mb-4">{editId ? t('staffMgmt.editStaff') : t('staffMgmt.newStaff')}</h2>
+          <form onSubmit={handleSubmit} className="space-y-3">
               {!editId && (
                 <div>
                   <label className="block text-sm font-medium mb-1">{t('common.email')} *</label>
@@ -183,22 +190,25 @@ export default function StaffManagementPage() {
                 <button type="submit" className="btn-primary flex-1">{t('common.save')}</button>
                 <button type="button" onClick={() => { setShowForm(false); setEditId(null); }} className="btn-secondary flex-1">{t('common.cancel')}</button>
               </div>
-            </form>
-          </div>
-        </div>
+          </form>
+        </Modal>
       )}
 
       {/* Company Assignment Modal */}
       {showCompanyModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="card w-full max-w-md">
-            <h2 className="dialog-title mb-2">{t('staffMgmt.companyModal.title')}</h2>
-            <p className="text-sm text-gray-500 mb-4">
-              <strong>{companyStaffName}</strong> {t('staffMgmt.companyModal.question')}
-            </p>
-            <p className="text-xs text-gray-400 mb-3">
-              {t('staffMgmt.companyModal.hint')}
-            </p>
+        <Modal
+          open
+          onClose={() => setShowCompanyModal(false)}
+          ariaLabel={t('staffMgmt.companyModal.title')}
+          closeOnBackdrop={false}
+        >
+          <h2 className="dialog-title mb-2">{t('staffMgmt.companyModal.title')}</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            <strong>{companyStaffName}</strong> {t('staffMgmt.companyModal.question')}
+          </p>
+          <p className="text-xs text-gray-400 mb-3">
+            {t('staffMgmt.companyModal.hint')}
+          </p>
 
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {allCompanies?.map(c => (
@@ -222,12 +232,11 @@ export default function StaffManagementPage() {
               ))}
             </div>
 
-            <div className="flex gap-3 pt-4 mt-4 border-t">
-              <button onClick={handleSaveCompanies} className="btn-primary flex-1">{t('common.save')}</button>
-              <button onClick={() => setShowCompanyModal(false)} className="btn-secondary flex-1">{t('common.cancel')}</button>
-            </div>
+          <div className="flex gap-3 pt-4 mt-4 border-t">
+            <button onClick={handleSaveCompanies} className="btn-primary flex-1">{t('common.save')}</button>
+            <button onClick={() => setShowCompanyModal(false)} className="btn-secondary flex-1">{t('common.cancel')}</button>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Staff table */}
@@ -245,6 +254,7 @@ export default function StaffManagementPage() {
             </tr>
           </thead>
           <tbody>
+            {staffLoadFailed && <tr><td colSpan={6} className="py-4"><ErrorState title={t('common.loadError')} retryLabel={t('common.retry')} onRetry={() => void refetchStaff()} /></td></tr>}
             {staffList?.map(staff => {
               const companyNames = (staff.assignedCompanies || []).map(ac => ac.company.name).filter(Boolean);
               return (

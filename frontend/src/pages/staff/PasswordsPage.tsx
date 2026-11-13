@@ -7,10 +7,12 @@ import {
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import api from '../../api/client';
+import { qk } from '../../api/query-keys';
 import { useAuthStore } from '../../stores/auth.store';
 import { getApiError } from '../../utils/api-error';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { ErrorState } from '../../components/ui/AsyncState';
+import { Modal } from '../../components/ui/Modal';
 
 type Entry = {
   id: string; title: string; category?: string | null; url?: string | null;
@@ -75,7 +77,7 @@ export default function PasswordsPage() {
   // şirketleri görmeli. Public /companies TÜM şirketleri döndürür ve burada
   // kullanılırsa yönetici kaydedemeyeceği şirketleri seçebilir.
   const { data: companies } = useQuery<CompanyOption[]>({
-    queryKey: ['companies-scoped'],
+    queryKey: qk.companies.admin,
     queryFn: async () => {
       const rows = (await api.get('/companies/admin/all')).data.data;
       return (rows as CompanyOption[]).map(({ id, name }) => ({ id, name }));
@@ -212,14 +214,6 @@ export default function PasswordsPage() {
     },
     onError: (err: unknown) => toast.error(getApiError(err, t('passwords.deleteFailed'))),
   });
-
-  // Escape ile kapat
-  useEffect(() => {
-    if (!showForm) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowForm(false); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [showForm]);
 
   // it_manager global (şirketsiz) kayıt oluşturamaz — sunucu da reddeder.
   const companyRequired = !isAdmin;
@@ -419,16 +413,13 @@ export default function PasswordsPage() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowForm(false)}>
-          <div
-            role="dialog" aria-modal="true" aria-label={editId ? t('passwords.editEntryAria') : t('passwords.newEntryAria')}
-            className="card w-full max-w-md space-y-3 max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">{editId ? t('passwords.editEntry') : t('passwords.newEntry')}</h3>
-              <button onClick={() => setShowForm(false)} aria-label={t('common.close')}><X className="w-5 h-5" /></button>
-            </div>
+        <Modal
+          open
+          onClose={() => setShowForm(false)}
+          ariaLabel={editId ? t('passwords.editEntryAria') : t('passwords.newEntryAria')}
+          title={editId ? t('passwords.editEntry') : t('passwords.newEntry')}
+          panelClassName="space-y-3 max-h-[90vh] overflow-y-auto"
+        >
 
             <form
               className="space-y-3"
@@ -500,8 +491,7 @@ export default function PasswordsPage() {
                 <button type="button" className="btn-secondary text-sm flex-1" onClick={() => setShowForm(false)}>{t('common.cancel')}</button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

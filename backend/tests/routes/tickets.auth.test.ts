@@ -122,12 +122,28 @@ function makeApp(ticketCompanyId: string) {
         closedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
-        company: { name: 'Test' },
-        location: { name: 'Merkez' },
-        category: { name: 'Donanım' },
+        // GET /:id include'ları tam model döner (Prisma include: true); yanıt
+        // şeması da tüm skaler alanları zorunlu tuttuğu için mock eksiksizdir.
+        company: {
+          id: ticketCompanyId, name: 'Test', groupType: 'corporate', logo: null,
+          primaryColor: null, allowedDomains: [], portalDomains: [], notificationEmail: null,
+          isActive: true, settings: {}, slaSettings: null, createdAt: new Date(), updatedAt: new Date(),
+        },
+        location: {
+          id: 'location-1', companyId: ticketCompanyId, name: 'Merkez', address: null,
+          phone: null, floor: null, itRoom: null, isActive: true, createdAt: new Date(),
+        },
+        category: {
+          id: 'category-1', companyId: ticketCompanyId, name: 'Donanım', description: null,
+          parentId: null, sortOrder: 1, isActive: true, slaResponseMinutes: null,
+          slaResolutionMinutes: null, autoAssignTo: null, createdAt: new Date(),
+        },
         assignedTo: null,
         createdBy: null,
-        attachments: [{ id: 'att1', filePath: 'ticket/a.txt', fileName: 'a.txt' }],
+        attachments: [{
+          id: 'att1', ticketId: TICKET_ID, filePath: 'ticket/a.txt', fileName: 'a.txt',
+          fileSize: 7, mimeType: 'text/plain', uploadedBy: 'admin@test.local', createdAt: new Date(),
+        }],
         customValues: [],
         notes: [],
         history: [],
