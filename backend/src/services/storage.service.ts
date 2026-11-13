@@ -1,5 +1,6 @@
-import { mkdir, writeFile, unlink, readdir } from 'fs/promises';
+import { mkdir, writeFile, unlink, readdir, stat } from 'fs/promises';
 import { join, extname, basename, resolve, sep } from 'path';
+import { Readable } from 'node:stream';
 import { nanoid } from 'nanoid';
 import { config } from '../config/index.js';
 
@@ -146,15 +147,21 @@ export async function saveFile(
   await mkdir(dir, { recursive: true });
 
   const fileName = buildStoredFilename(originalName, extension);
-  const filePath = join(dir, fileName);
+  const localPath = join(dir, fileName);
+  // DB'ye yazılan yol GÖRELİDİR — sürücüden bağımsız.
+  const filePath = `${ticketId}/${fileName}`;
 
-  await writeFile(filePath, buffer);
+  if (config.STORAGE_DRIVER === 's3') {
+    await s3Put(s3Key(filePath), buffer);
+  } else {
+    await writeFile(localPath, buffer);
+  }
 
   return {
     // Kullanıcıya gösterilecek ad — istemciden gelir, bu yüzden sınırlanır.
     // (Diskteki ad bu değil; yukarıdaki güvenli addır.)
     fileName: basename(originalName).substring(0, 255),
-    filePath: `${ticketId}/${fileName}`,
+    filePath,
     fileSize: buffer.length,
   };
 }
@@ -174,8 +181,14 @@ export async function saveLogo(
   await mkdir(dir, { recursive: true });
 
   const fileName = buildStoredFilename(originalName, extension);
-  const filePath = join(dir, fileName);
-  await writeFile(filePath, buffer);
+  const localPath = join(dir, fileName);
+  const filePath = `branding/${companyId}/${fileName}`;
+
+  if (config.STORAGE_DRIVER === 's3') {
+    await s3Put(s3Key(filePath), buffer);
+  } else {
+    await writeFile(localPath, buffer);
+  }
 
   // Eski logoyu sil. Dosya adı her yüklemede rastgele (nanoid) olduğu için yeni
   // logo eskisinin ÜZERİNE yazmaz — temizlenmezse her yeniden yükleme diskte bir
@@ -188,10 +201,17 @@ export async function saveLogo(
   // yok.
   await pruneDirectory(dir, fileName);
 
+  // Eski logo budama: yerelde klasör taraması, S3'te prefix listesi + toplu silme.
+  if (config.STORAGE_DRIVER === 's3') {
+    await s3DeleteByPrefix(`${S3_KEY_PREFIX}/branding/${companyId}/`, s3Key(filePath)).catch(() => {});
+  } else {
+    await pruneDirectory(dir, fileName);
+  }
+
   return {
     // Logo public bir uçtan inline servis edilir (ekler gibi indirilmez).
     url: `/branding/${companyId}/${fileName}`,
-    filePath: `branding/${companyId}/${fileName}`,
+    filePath,
   };
 }
 
@@ -218,12 +238,142 @@ async function pruneDirectory(dir: string, keep: string): Promise<void> {
  * sildirebilir. Bugün tüm çağıranlar sabit yollar veriyor; bu kontrol bunun
  * yarın da doğru kalmasını sağlar.
  */
+// ==================== DEPOLAMA SÜRÜCÜSÜ (v1.3: local | s3) ====================
+//
+// Ekler/logolar `config.STORAGE_DRIVER`'a göre yerel diske veya S3-uyumlu
+// object storage'a yazılır. DB'de saklanan `filePath` HER ZAMAN UPLOAD_DIR'e
+// göre GÖRELİDİR (`ticketId/name`, `branding/companyId/name`) — sürücüden
+// bağımsızdır, yani kayıtlar sürücü değişiminde okunur kalır.
+//
+// İndirme yetkilendirmesi HER İKİ SÜRÜCÜDE backend'dedir: S3 anahtarları hiçbir
+// zaman public bir bucket'a maruz kalmaz; okuma `/attachments` ve `/branding`
+// uçlarından stream olarak geçer.
+//
+// @aws-sdk/client-s3 SADECE sürücü s3 ise dinamik import edilir: yerel
+// kurulumlar SDK boyutunu/başlangıcını ödemez, birim testleri SDK'sız koşar.
+
+const S3_KEY_PREFIX = 'uploads';
+
+function s3Key(filePath: string): string {
+  const normalized = filePath.split(sep).join('/');
+  return `${S3_KEY_PREFIX}/${normalized.replace(/^\/+/, '')}`;
+}
+
+interface S3Context {
+  client: {
+    // Yalnızca kullanılan SDK yüzeyi — dinamik import tip karşılamak için yeterli.
+    send: (command: unknown) => Promise<unknown>;
+  };
+  bucket: string;
+}
+
+let s3Context: S3Context | null = null;
+
+async function getS3(): Promise<S3Context> {
+  // Bağlantı bilgisi her çağrıda yeniden denetlenir (cache olsa bile) —
+  // eksik yapı anlamlı hata verir, belirsiz bir SDK hatasına düşmez.
+  if (config.STORAGE_DRIVER !== 's3') {
+    throw new Error('S3 sürücüsü yalnızca STORAGE_DRIVER=s3 iken kullanılabilir');
+  }
+  if (!config.S3_BUCKET || !config.S3_ACCESS_KEY_ID || !config.S3_SECRET_ACCESS_KEY) {
+    throw new Error('STORAGE_DRIVER=s3 için S3_BUCKET / S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY zorunludur');
+  }
+  if (s3Context) return s3Context;
+  // Dinamik import: yerel sürücüde SDK hiç yüklenmez.
+  const { S3Client } = await import('@aws-sdk/client-s3');
+  const client = new S3Client({
+    region: config.S3_REGION,
+    ...(config.S3_ENDPOINT
+      ? {
+          endpoint: config.S3_ENDPOINT,
+          forcePathStyle: config.S3_FORCE_PATH_STYLE,
+        }
+      : {}),
+    credentials: {
+      accessKeyId: config.S3_ACCESS_KEY_ID,
+      secretAccessKey: config.S3_SECRET_ACCESS_KEY,
+    },
+  });
+  s3Context = { client: client as unknown as S3Context['client'], bucket: config.S3_BUCKET };
+  return s3Context;
+}
+
+async function s3Put(key: string, buffer: Buffer): Promise<void> {
+  const s3 = await getS3();
+  const { PutObjectCommand } = await import('@aws-sdk/client-s3');
+  await s3.client.send(new PutObjectCommand({ Bucket: s3.bucket, Key: key, Body: buffer }));
+}
+
+async function s3GetStream(key: string): Promise<Readable> {
+  const s3 = await getS3();
+  const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+  const out = (await s3.client.send(new GetObjectCommand({ Bucket: s3.bucket, Key: key }))) as {
+    Body: Readable;
+  };
+  return out.Body;
+}
+
+async function s3Delete(key: string): Promise<void> {
+  const s3 = await getS3();
+  const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+  await s3.client.send(new DeleteObjectCommand({ Bucket: s3.bucket, Key: key }));
+}
+
+async function s3DeleteByPrefix(prefix: string, keepKey: string): Promise<void> {
+  const s3 = await getS3();
+  const { ListObjectsV2Command, DeleteObjectsCommand } = await import('@aws-sdk/client-s3');
+  let continuationToken: string | undefined;
+  do {
+    const page = (await s3.client.send(new ListObjectsV2Command({
+      Bucket: s3.bucket, Prefix: prefix, ContinuationToken: continuationToken,
+    }))) as { Contents?: Array<{ Key?: string }>; IsTruncated?: boolean; NextContinuationToken?: string };
+    const keys = (page.Contents ?? []).map((c) => c.Key).filter((k): k is string => Boolean(k) && k !== keepKey);
+    if (keys.length > 0) {
+      await s3.client.send(new DeleteObjectsCommand({
+        Bucket: s3.bucket, Delete: { Objects: keys.map((Key) => ({ Key })) },
+      }));
+    }
+    continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (continuationToken);
+}
+
+/** `filePath` (göreli) için okuma stream'i açar; dosya yoksa hata fırlatır. */
+export async function readFileStream(filePath: string): Promise<Readable> {
+  if (config.STORAGE_DRIVER === 's3') {
+    try {
+      return await s3GetStream(s3Key(filePath));
+    } catch (err) {
+      // SDK NoSuchKey hatasını olduğu gibi bırakıyoruz — çağıran 404'e çevirir.
+      if ((err as { name?: string }).name === 'NoSuchKey') {
+        throw Object.assign(new Error('Dosya bulunamadı'), { code: 'ENOENT' });
+      }
+      throw err;
+    }
+  }
+  // Yerel sürücü: traversal koruması (deleteFile ile aynı kural).
+  const root = resolve(config.UPLOAD_DIR);
+  const fullPath = resolve(root, filePath);
+  if (fullPath !== root && !fullPath.startsWith(root + sep)) {
+    throw Object.assign(new Error('Geçersiz dosya yolu'), { code: 'ENOENT' });
+  }
+  // createReadStream olmayan dosyada hatayı ASYNC verir; burada senkron
+  // varlık kontrolü yapılmazsa çağıran 404 yerine kırık stream gönderir.
+  await stat(fullPath);
+  const { createReadStream } = await import('fs');
+  return createReadStream(fullPath);
+}
+
 export async function deleteFile(filePath: string): Promise<void> {
   const root = resolve(config.UPLOAD_DIR);
   const fullPath = resolve(root, filePath);
 
   if (fullPath !== root && !fullPath.startsWith(root + sep)) {
     throw new Error('Geçersiz dosya yolu: upload dizininin dışında');
+  }
+
+  if (config.STORAGE_DRIVER === 's3') {
+    await s3Delete(s3Key(filePath)).catch(() => {});
+    return;
   }
 
   try {

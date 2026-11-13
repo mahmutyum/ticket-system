@@ -29,6 +29,20 @@ const envSchema = z.object({
   APP_NAME: z.string().default('IT Destek Sistemi'),
   MAX_FILE_SIZE: z.coerce.number().default(26214400),
   UPLOAD_DIR: z.string().default('/app/uploads'),
+  /**
+   * Depolama sürücüsü (v1.3): ekler ve logolar yerel diske mi, S3-uyumlu object
+   * storage'a mı yazılır? İndirme yetkilendirmesi HER İKİSİNDE de backend'de
+   * kalır (public bucket yok). Sürücü globaldir — mevcut yerel dosyalar sürücü
+   * s3'e alındığında servis edilmez; geçişten önce dosyalar taşınmalıdır.
+   */
+  STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+  S3_ENDPOINT: z.string().optional().or(z.literal('').transform(() => undefined)),
+  S3_REGION: z.string().default('us-east-1'),
+  S3_BUCKET: z.string().optional().or(z.literal('').transform(() => undefined)),
+  S3_ACCESS_KEY_ID: z.string().optional().or(z.literal('').transform(() => undefined)),
+  S3_SECRET_ACCESS_KEY: z.string().optional().or(z.literal('').transform(() => undefined)),
+  /** MinIO/R2 gibi path-style endpoint'ler için true. */
+  S3_FORCE_PATH_STYLE: z.string().transform((v) => v === 'true').default('false'),
   CREDENTIALS_ENC_KEY: z.string().regex(/^[0-9a-fA-F]{64}$/, 'CREDENTIALS_ENC_KEY 64 karakterlik hex olmalı (32 byte)'),
   // Ayrıcalıklı hesaplarda (admin/it_manager) MFA kurulu değilse panelde uyarı
   // göster. Zorunluluk DEĞİL — sadece bilinçli bir hatırlatma. Kapatmak için
@@ -106,7 +120,19 @@ const envSchema = z.object({
   .refine((d) => d.JWT_SECRET !== d.JWT_REFRESH_SECRET, {
     message: 'JWT_SECRET ve JWT_REFRESH_SECRET birbirinden FARKLI olmalı',
     path: ['JWT_REFRESH_SECRET'],
-  });
+  })
+  // STORAGE_DRIVER=s3 seçilmişse S3 bağlantı bilgileri ZORUNLUDUR — eksikle
+  // açılış, ilk yüklemede belirsiz bir hata vermesin.
+  .refine(
+    (d) =>
+      d.STORAGE_DRIVER !== 's3' ||
+      Boolean(d.S3_BUCKET && d.S3_ACCESS_KEY_ID && d.S3_SECRET_ACCESS_KEY),
+    {
+      message:
+        'STORAGE_DRIVER=s3 için S3_BUCKET, S3_ACCESS_KEY_ID ve S3_SECRET_ACCESS_KEY zorunludur',
+      path: ['S3_BUCKET'],
+    },
+  );
 
 export type Env = z.infer<typeof envSchema>;
 

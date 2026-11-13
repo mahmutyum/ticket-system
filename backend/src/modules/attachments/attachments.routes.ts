@@ -1,8 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import { createReadStream } from 'fs';
-import { stat } from 'fs/promises';
-import { join, normalize } from 'path';
-import { config } from '../../config/index.js';
+import { readFileStream } from '../../services/storage.service.js';
 import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
 import { t } from '../../i18n/index.js';
 import { z } from 'zod';
@@ -80,18 +77,12 @@ export const attachmentRoutes: FastifyPluginAsync = async (app) => {
 
     // --- Dosyayı gönder ---
     //
-    // filePath DB'den gelir ve sunucu üretir, ama yine de normalize edilip
-    // UPLOAD_DIR içinde kaldığı doğrulanır: bir gün bu alana kullanıcı girdisi
-    // sızarsa yol kaçışı burada durur.
-    const fullPath = normalize(join(config.UPLOAD_DIR, attachment.filePath));
-    const root = normalize(config.UPLOAD_DIR);
-    if (!fullPath.startsWith(root + '/')) {
-      app.log.error({ filePath: attachment.filePath }, 'Ek yolu UPLOAD_DIR dışına çıkıyor');
-      return reply.status(404).send({ success: false, error: t(request, 'attachments.fileNotFound') });
-    }
-
+    // filePath DB'den gelir ve sunucu üretir; readFileStream sürücüden bağımsız
+    // okur (local fs | S3) ve yerel sürücüde traversal korumasını içerir. Dosya
+    // yoksa/yanlışsa hata 404'e çevrilir — varlık bilgisi sızdırılmaz.
+    let attachmentStream;
     try {
-      await stat(fullPath);
+      attachmentStream = await readFileStream(attachment.filePath);
     } catch {
       return reply.status(404).send({ success: false, error: t(request, 'attachments.fileNotFound') });
     }
@@ -111,7 +102,7 @@ export const attachmentRoutes: FastifyPluginAsync = async (app) => {
       // Kimlik doğrulamalı içerik ara cache'lerde kalmamalı.
       .header('Cache-Control', 'private, no-store');
 
-    return reply.send(createReadStream(fullPath));
+    return reply.send(attachmentStream);
   });
 };
 
@@ -129,15 +120,11 @@ export const brandingRoutes: FastifyPluginAsync = async (app) => {
   app.get('/:companyId/:file', { schema: { params: brandingParamsSchema, tags: ['Branding'], summary: 'Şirket logosunu getir' } }, async (request, reply) => {
     const { companyId, file } = request.params as { companyId: string; file: string };
 
-    // Yol bileşenleri istemciden geliyor — normalize edip kök içinde kal.
-    const fullPath = normalize(join(config.UPLOAD_DIR, 'branding', companyId, file));
-    const root = normalize(join(config.UPLOAD_DIR, 'branding'));
-    if (!fullPath.startsWith(root + '/')) {
-      return reply.status(404).send({ success: false, error: t(request, 'attachments.notFound') });
-    }
-
+    // `file` regex ile kısıtlıdır (harf/rakam/_/- + uzantı) ve readFileStream
+    // yerel sürücüde kök içinde kalınmayı garanti eder; S3'te Key prefix'tir.
+    let logoStream;
     try {
-      await stat(fullPath);
+      logoStream = await readFileStream(`branding/${companyId}/${file}`);
     } catch {
       return reply.status(404).send({ success: false, error: t(request, 'attachments.notFound') });
     }
@@ -160,6 +147,6 @@ export const brandingRoutes: FastifyPluginAsync = async (app) => {
       .header('Content-Security-Policy', "default-src 'none'; sandbox")
       .header('Cache-Control', 'public, max-age=604800');
 
-    return reply.send(createReadStream(fullPath));
+    return reply.send(logoStream);
   });
 };
