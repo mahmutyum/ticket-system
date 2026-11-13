@@ -1,6 +1,6 @@
 # Yol Haritası
 
-Projenin güncel olgunluğu ve planlanan işler. Durum: 2026-09-27.
+Projenin güncel olgunluğu ve planlanan işler. Durum: 2026-11-13 (v1.2.0).
 
 ## Olgunluk özeti
 
@@ -10,15 +10,15 @@ Projenin güncel olgunluğu ve planlanan işler. Durum: 2026-09-27.
 | Çok dillilik | 🟢 TR/EN (arayüz + API mesajları + e-posta/SMS şablonları) |
 | Kurulum / deploy | 🟢 Docker Compose, Coolify ve Nginx belgeli |
 | Migration | 🟢 Versiyonlu; gerçek PostgreSQL üzerinde doğrulanabilir |
-| Backend testleri | 🟢 408 birim/route/worker testi |
+| Backend testleri | 🟢 437 birim/route/worker testi |
 | Frontend testleri | 🟢 26 birim testi + 6 Playwright smoke/axe senaryosu |
-| Entegrasyon | 🟢 37 test — gerçek PostgreSQL + Redis; sahte OIDC sağlayıcısı, imzalı SAML yanıtı ve yerel webhook alıcısıyla uçtan uca |
+| Entegrasyon | 🟢 49 test — gerçek PostgreSQL + Redis; sahte OIDC sağlayıcısı, imzalı SAML yanıtı ve yerel webhook alıcısıyla uçtan uca |
 | API dokümantasyonu | 🟢 Kritik route'larda request/response sözleşmeleri (OpenAPI) |
 | Kod kalitesi | 🟢 Backend + frontend lint temiz, tipli |
 | SLA doğruluğu | 🟢 Duraklatma, mesai takvimi/tatiller, ihlal öncesi uyarı, eskalasyon (v1.1) |
 | Kanallar ve entegrasyon | 🟢 E-postayla yanıt (IMAP/M365/Gmail), SSO (OIDC/SAML/LDAP), webhook + Teams/Slack (v1.1) |
 | Gözlemlenebilirlik | 🟢 Prometheus `/metrics` + örnek alarm kuralları (v1.1) |
-| Yedekleme | 🟡 Elle çalıştırılan script; zamanlama ve uzak hedef yok (v1.2) |
+| Yedekleme | 🟢 Otomatik (backup profili): rclone uzak hedefler, age şifreleme, GFS, restore provası (v1.2) |
 | Yönetilebilirlik | 🟡 Durum, öncelik, şirket türü vb. kodda sabit enum; panelden eklenemiyor (v1.3) |
 
 ## Sürüm planı
@@ -26,7 +26,7 @@ Projenin güncel olgunluğu ve planlanan işler. Durum: 2026-09-27.
 | Sürüm | Tema |
 |---|---|
 | **v1.1** ✅ | SLA doğruluğu, talep yaşam döngüsü, kurumsal entegrasyon, ürün olgunluğu, gözlemlenebilirlik |
-| **v1.2** | Otomatik yedekleme, merkezi zamanlanmış görev (cron) altyapısı, uzak yedek hedefleri |
+| **v1.2** ✅ | Otomatik yedekleme, merkezi zamanlanmış görev (cron) altyapısı, uzak yedek hedefleri |
 | **v1.3** | DB'den yönetilen sözlükler (şirket türü, durum, öncelik…), "Taleplerim", S3 depolama, Docker Hub imajları, sürüm otomasyonu |
 
 ---
@@ -154,7 +154,18 @@ zamanı karşılaştırır. Bu, raporlardaki SLA oranlarını yanıltıcı hâle
 
 ---
 
-## v1.2 — Otomatik yedekleme ve zamanlanmış görevler
+## v1.2 — ✅ tamamlandı
+
+Aşağıdaki maddelerin tamamı uygulandı (ayrıntı: [CHANGELOG](../CHANGELOG.md)).
+Uygulamada plandan ayrılan kararlar:
+
+- **Görev hatası webhook'u bu sürümde e-posta ile sınırlı:** webhook olay modeli
+  ticket merkezlidir; ticket'sız olay için ayrı tasarıma bırakıldı.
+- **Yedekleme işçisi ayrı konteynerdedir** (`backup` compose profili): pg_dump/rclone/age
+  araçları backend imajına konmaz; tetikleme `backup` kuyruğuyla gelir, çalışma kaydı
+  işçi tarafından `scheduled_job_runs`'a yazılır.
+- **Restore provası aynı Postgres örneğinde geçici veritabanıyla** yapılır
+  (`restore_drill_*`) — docker socket gerektirmez.
 
 Bugün yedekleme `scripts/backup.sh` ile **elle** alınır ve yalnızca yerel diske yazılır
 (`database.dump` + `uploads.tar.gz` + `environment.snapshot` + `SHA256SUMS`). Zamanlama

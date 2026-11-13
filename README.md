@@ -5,11 +5,11 @@
 **Şirket içi IT destek için, Docker ile kurulan çok şirketli ticket sistemi.**
 Talep edenler için şifresiz public portal · IT ekibi için rollü yönetim paneli · **Türkçe / İngilizce çift dil.**
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Stack](https://img.shields.io/badge/stack-Fastify%20%2B%20React%20%2B%20Postgres-blue)
 ![i18n](https://img.shields.io/badge/i18n-TR%20%2F%20EN-green)
-![Tests](https://img.shields.io/badge/tests-261%20passing-success)
+![Tests](https://img.shields.io/badge/tests-437%20passing-success)
 
 🇹🇷 **Türkçe** · [🇬🇧 English](README.en.md)
 

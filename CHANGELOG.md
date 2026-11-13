@@ -8,6 +8,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Planned work is tracked in [docs/yol-haritasi.md](docs/yol-haritasi.md)._
 
+## [1.2.0] - 2026-11-13
+
+Automatic backups, central scheduled-job (cron) infrastructure and repo-wide quality
+hardening.
+
+### Upgrade notes
+- Run migrations (`prisma migrate deploy`, automatic on container start): new tables
+  `scheduled_jobs`, `scheduled_job_runs`, `backup_targets`.
+- Backup is **opt-in**: start the separate service with
+  `docker compose --profile backup up -d`. The backend image stays unchanged; the backup
+  container carries pg_dump/rclone/age. Restore remains CLI-only
+  (`scripts/restore.sh`) by design — destructive operations are never exposed on the web.
+- Scheduled jobs pick up their cron/timezone/enabled values from the `ScheduledJob` table
+  (seeded from `BACKUP_*` env defaults on first boot; panel overrides take precedence).
+  The legacy hard-coded intervals are replaced by the registry; existing behaviour
+  (SLA 5 min, auto-close 15 min, mail 2 min) is preserved.
+- Remote backup targets **require encryption**: uploads happen only after `age`
+  encryption (`BACKUP_ENCRYPTION_RECIPIENT`). Unencrypted remote upload is refused —
+  `environment.snapshot` contains secrets.
+- `ticket_backup_last_success_timestamp` now exists on `/metrics`; the "backup older than
+  26h" sample alert in `docs/operasyon.md` becomes automatically monitorable.
+
+### Added
+- **Central scheduled-job registry** (`Zamanlanmış Görevler` admin page): cron /
+  timezone / pause per job, next-run preview, run history, manual trigger. Redis
+  single-run lock prevents overlap and multi-replica double runs; every run is recorded
+  (`ScheduledJobRun`) and failures email the admins. Retention **apply** is deliberately
+  never schedulable.
+- **Automatic backup service** (optional compose profile): `pg_dump` + uploads archive +
+  environment snapshot + `SHA256SUMS` — same format as `scripts/backup.sh`, restore
+  compatibility preserved. Disk-space pre-check and suspiciously-small dump detection.
+- **Remote backup targets** (rclone-based): local, S3-compatible, Google Drive, FTPS,
+  SFTP, WebDAV, SMB. Credentials stored AES-256-GCM encrypted, write-only in the API;
+  connection test (write/read/delete probe), post-upload verification, per-target GFS
+  retention (default 7/4/6), per-target result reporting, SSRF guard on target hosts.
+- **Periodic restore drills**: the latest backup is restored into a temporary database,
+  table count and latest migration are verified, then everything is cleaned up.
+- **Admin `Backups` page**: target management (masked secret), test connection, backup
+  listing per target, last upload result.
+- `retention-check` as a scheduled job (report only; apply stays manual).
+- `ticket_backup_last_success_timestamp` Prometheus gauge.
+
+### Quality (repo-wide)
+- Backend: KB list pagination; streaming/keyset report exports (removed silent 10k/50k
+  caps); atomic CSV import (single transaction); shared route scope helper; request-ID
+  propagation + `X-Request-Id`; Pino log redaction for `Authorization`/`Cookie`; startup
+  warnings for disabled metrics/docs in production; seed idempotency; coverage
+  measurement with thresholds; Swagger version read from `package.json`.
+- Frontend: shared `Modal` (focus trap, Escape, a11y roles) replacing 15 copied overlays;
+  visible error states on list pages; single-flight 401 refresh with return-URL
+  preservation; central query keys (stale cross-page data fixed); URL-persisted ticket/task
+  filters; dead legacy label maps removed; axe accessibility coverage extended to the staff
+  panel; component tests for `Modal`.
+- Docs/web: documentation drift fixes (trustProxy semantics, attachment topology, scope
+  contradictions, dead links); public wiki synced to the release with a content-version
+  gate that breaks the site build on drift.
+- Fixed a pre-existing `typecheck:tests` failure (`it.each` typing) and hardened a flaky
+  vault e2e scenario.
+
+### Deliberate decisions
+- Job-failure notifications are email-only for now: the webhook event model is
+  ticket-centric; ticketless webhook events need a separate design.
+- `retention-check` is schedulable; `retention-apply` is not — human approval stays
+  mandatory.
+
 ## [1.1.0] - 2026-09-27
 
 SLA accuracy, ticket lifecycle, enterprise integrations, knowledge base, assets, CSAT and
