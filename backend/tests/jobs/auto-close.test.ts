@@ -41,7 +41,9 @@ function ticket(overrides: Row = {}): Row {
 function makePrisma(opts: { slaSettings?: unknown; resolved?: Row[]; waiting?: Row[]; reminderDue?: Row[] }) {
   const update = vi.fn(async () => ({}));
   const findMany = vi.fn(async ({ where }: { where: Row }) => {
-    if (where.status === 'resolved') return opts.resolved ?? [];
+    // v1.3: resolved çağrısı artık sınıf tabanlıdır — status: { in: [...keys] }
+    const statusIn = (where.status as { in?: string[] } | undefined)?.in;
+    if (Array.isArray(statusIn) && statusIn.includes('resolved')) return opts.resolved ?? [];
     if ('autoCloseReminderAt' in where) return opts.reminderDue ?? [];
     return opts.waiting ?? [];
   });

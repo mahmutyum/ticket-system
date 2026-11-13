@@ -8,6 +8,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Planned work is tracked in [docs/yol-haritasi.md](docs/yol-haritasi.md)._
 
+## [1.3.0] - 2026-11-14
+
+DB-managed dictionaries ("Sözlükler"), "Taleplerim" unified requester view, S3-compatible
+storage driver and accessibility/UX hardening. The Docker Hub publishing pipeline is
+deliberately deferred (see docs/yol-haritasi.md).
+
+### Upgrade notes
+- Run migrations (`prisma migrate deploy`, automatic on container start): new `dict_*`
+  dictionary tables with system rows seeded from the previous enum values (same keys —
+  data conversion is lossless). `StatusClass` (new/active/waiting/resolved/closed) stays
+  in code: it is the behavior contract, not panel data.
+- Old Prisma enums (`TicketStatus`, `Priority`, `TaskStatus`, `OnsiteType`,
+  `OnsiteStatus`, `CompanyGroupType`) become TEXT columns with FK to the dictionary
+  tables (RESTRICT — in-use keys cannot be deleted, only deactivated).
+- S3 storage is opt-in (`STORAGE_DRIVER=local|s3`); the default remains local disk.
+  Driver is global — files stored locally are not served in s3 mode; migrate files
+  before switching (roadmap: bucket versioning alternative).
+
+### Added
+- **DB-managed dictionaries** ("Sözlükler" admin page): statuses, priorities, task
+  statuses, onsite types/statuses and company types are manageable from the panel —
+  bilingual labels, color token, sort order, deactivate, merge (usage rows are moved to
+  the target key). Guard: at least one ACTIVE status per behavior class.
+- **Behavior by status CLASS**: SLA pausing keys off the `waiting` class, auto-close off
+  the `resolved` class, escalation off dictionary `weight` — panel-added statuses
+  inherit correct behavior without code changes.
+- **`GET /lookups`** (staff) and **`GET /lookups/public`** (portal): dictionary entries
+  consumed by the frontend with long staleTime; unknown keys fall back to raw value.
+- **"Taleplerim"** (`/my`): passwordless requester view — email in, short-lived (15 min)
+  magic link out, all tickets of that email in one list. Enumeration-safe: unknown
+  addresses receive the same generic response (and an empty-list mail).
+- **S3-compatible storage driver** (`STORAGE_DRIVER=local|s3`): attachments and logos on
+  AWS S3 / MinIO / R2; downloads stay backend-authorized; logo pruning by prefix;
+  SDK loaded only when the driver is s3.
+- Zod validation for dictionary keys is driven by the cached ACTIVE key set
+  (`zLookupKey`); unknown/passive keys are rejected.
+
+### Quality
+- ESLint rule bans behavioral dictionary-key literals in src (class-based lookups are
+  the only sanctioned path; tests and the constants shim are exempt).
+- Dictionary integration tests cover the roadmap acceptance criteria: panel-added
+  status usable without deploy, TR/EN display, SLA pause by class, merge, last-active
+  guard.
+
+### Deferred
+- Docker Hub images + auto-changelog (v1.3 items 3–4): verified free (~half a day) via
+  public-repo Actions with free arm64 runners; postponed for prioritization. CHANGELOG
+  stays hand-maintained.
+
 ## [1.2.0] - 2026-11-13
 
 Automatic backups, central scheduled-job (cron) infrastructure and repo-wide quality

@@ -1,6 +1,6 @@
 # Yol Haritası
 
-Projenin güncel olgunluğu ve planlanan işler. Durum: 2026-11-13 (v1.2.0).
+Projenin güncel olgunluğu ve planlanan işler. Durum: 2026-11-14 (v1.3.0).
 
 ## Olgunluk özeti
 
@@ -10,16 +10,16 @@ Projenin güncel olgunluğu ve planlanan işler. Durum: 2026-11-13 (v1.2.0).
 | Çok dillilik | 🟢 TR/EN (arayüz + API mesajları + e-posta/SMS şablonları) |
 | Kurulum / deploy | 🟢 Docker Compose, Coolify ve Nginx belgeli |
 | Migration | 🟢 Versiyonlu; gerçek PostgreSQL üzerinde doğrulanabilir |
-| Backend testleri | 🟢 437 birim/route/worker testi |
+| Backend testleri | 🟢 444 birim/route/worker testi |
 | Frontend testleri | 🟢 26 birim testi + 6 Playwright smoke/axe senaryosu |
-| Entegrasyon | 🟢 49 test — gerçek PostgreSQL + Redis; sahte OIDC sağlayıcısı, imzalı SAML yanıtı ve yerel webhook alıcısıyla uçtan uca |
+| Entegrasyon | 🟢 61 test — gerçek PostgreSQL + Redis; sahte OIDC sağlayıcısı, imzalı SAML yanıtı ve yerel webhook alıcısıyla uçtan uca |
 | API dokümantasyonu | 🟢 Kritik route'larda request/response sözleşmeleri (OpenAPI) |
 | Kod kalitesi | 🟢 Backend + frontend lint temiz, tipli |
 | SLA doğruluğu | 🟢 Duraklatma, mesai takvimi/tatiller, ihlal öncesi uyarı, eskalasyon (v1.1) |
 | Kanallar ve entegrasyon | 🟢 E-postayla yanıt (IMAP/M365/Gmail), SSO (OIDC/SAML/LDAP), webhook + Teams/Slack (v1.1) |
 | Gözlemlenebilirlik | 🟢 Prometheus `/metrics` + örnek alarm kuralları (v1.1) |
 | Yedekleme | 🟢 Otomatik (backup profili): rclone uzak hedefler, age şifreleme, GFS, restore provası (v1.2) |
-| Yönetilebilirlik | 🟡 Durum, öncelik, şirket türü vb. kodda sabit enum; panelden eklenemiyor (v1.3) |
+| Yönetilebilirlik | 🟢 Sözlükler panelden yönetilir; davranış durum SINIFINA bağlıdır (v1.3) |
 
 ## Sürüm planı
 

@@ -171,13 +171,17 @@ export const lookupsRoutes: FastifyPluginAsyncZod = async (app) => {
     const hasWeight = kind === 'priorities';
     const columns = ['key', 'label_tr', 'label_en', 'color', 'sort_order',
       ...(hasClass ? ['status_class'] : []), ...(hasWeight ? ['weight'] : []),
-      'is_active', 'is_system', 'created_at', 'updated_at'];
+      'is_active', 'is_system'];
     const values: unknown[] = [body.key, body.labelTr, body.labelEn, body.color, body.sortOrder,
       ...(hasClass ? [body.statusClass] : []), ...(hasWeight ? [body.weight] : []),
       body.isActive, false];
-    const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
+    const placeholders = columns
+      .map((column, i) => (column === 'status_class' ? `$${i + 1}::"StatusClass"` : `$${i + 1}`))
+      .join(', ');
+    // created_at/updated_at SQL now() ile verilir (updated_at NOT NULL,
+    // default yoktur — boş satır NOT NULL ihlaline yol açar).
     await app.prisma.$executeRawUnsafe(
-      `INSERT INTO ${table} (${columns.map((c) => `"${c}"`).join(', ')}) VALUES (${placeholders})`,
+      `INSERT INTO ${table} (${columns.map((c) => `"${c}"`).join(', ')}, "created_at", "updated_at") VALUES (${placeholders}, now(), now())`,
       ...values,
     );
 
@@ -220,16 +224,16 @@ export const lookupsRoutes: FastifyPluginAsyncZod = async (app) => {
     const table = KIND_TO_TABLE[kind];
     const setFragments: string[] = [];
     const values: unknown[] = [];
-    const add = (column: string, value: unknown) => {
+    const add = (column: string, value: unknown, cast?: string) => {
       values.push(value);
-      setFragments.push(`"${column}" = $${values.length}`);
+      setFragments.push(`"${column}" = $${values.length}${cast ? `::"${cast}"` : ''}`);
     };
     add('label_tr', body.labelTr);
     add('label_en', body.labelEn);
     add('color', body.color);
     add('sort_order', body.sortOrder);
     add('is_active', body.isActive);
-    if (kind === 'ticketStatuses') add('status_class', body.statusClass ?? null);
+    if (kind === 'ticketStatuses') add('status_class', body.statusClass ?? null, 'StatusClass');
     if (kind === 'priorities') add('weight', body.weight ?? null);
     add('updated_at', new Date());
     values.push(key);

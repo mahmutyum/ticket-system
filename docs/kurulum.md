@@ -135,6 +135,8 @@ panelden yönetirsin — kod değişikliği gerekmez.
 | `BACKUP_TZ` `BACKUP_CRON` `BACKUP_VERIFY_CRON` | `UTC` · `0 3 * * *` · `0 5 * * 0` | Yedekleme ve restore provası varsayılanları — ilk açılışta DB'ye yazılır, panel tercihi önceliklidir (v1.2) |
 | `BACKUP_RETENTION_DAILY/WEEKLY/MONTHLY` | `7` / `4` / `6` | Yedek hedefi bazlı GFS saklama adetleri (v1.2) |
 | `BACKUP_ENCRYPTION_RECIPIENT` | — | age açık anahtarı; **uzak hedef varsa zorunlu** — arşiv yüklenmeden şifrelenir (v1.2) |
+| `STORAGE_DRIVER` | `local` | `s3`: ekler/logolar S3-uyumlu depoya yazılır (v1.3) — sürücü GLOBALDİR, geçişten önce dosyaları taşıyın |
+| `S3_ENDPOINT` `S3_REGION` `S3_BUCKET` `S3_ACCESS_KEY_ID` `S3_SECRET_ACCESS_KEY` `S3_FORCE_PATH_STYLE` | — | `STORAGE_DRIVER=s3` için bucket/anahtarlar zorunlu; MinIO/R2'de endpoint + force-path-style (v1.3) |
 
 ### Otomatik yedekleme profili (v1.2)
 

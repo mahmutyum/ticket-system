@@ -104,6 +104,12 @@ Bu sayfada talep eden:
 
 ### Geçmiş talepler — `/track`
 
+### Tüm talepler — `/my` (v1.3)
+
+E-posta adresinizi girin; kısa ömürlü (15 dk) bağlantı e-postanıza gelir ve o adrese
+ait tüm taleplerinizi tek listede görürsünüz. Parola yoktur — e-posta sahipliği
+doğrulanır. Parola istemeyen bir "talep geçmişi" arıyorsanız en hızlı yol budur.
+
 Ticket numarası + e-posta ile sorgulama. Alternatif olarak sadece e-posta ile o adrese ait
 tüm ticket'lar listelenir (dakikada 10 istek ile sınırlı).
 
@@ -262,6 +268,13 @@ değiştirilebilir.
   randevu planlandı, SLA ihlali, SLA yaklaşıyor, SLA eskalasyonu.
 - **SMS şablonları:** SMS gateway tanımlıysa.
 - **Hazır yanıtlar (canned responses):** ticket detayında tek tıkla eklenen kalıp metinler.
+
+### Sözlükler — `/staff/dictionaries` (v1.3, yalnızca `admin`)
+
+Durum, öncelik, görev durumu, yerinde destek türü/durumu ve şirket türleri panelden
+yönetilir: çift dil etiket, renk tokenı, sıra, pasifleştirme ve birleştirme.
+Davranış durum SINIFINA bağlıdır (yeni/aktif/bekleme/çözüldü/kapalı) — yeni bir
+bekleme durumu eklediğinizde SLA onu otomatik duraklatır; deploy gerekmez.
 
 ### Zamanlanmış görevler ve yedekler (v1.2, yalnızca `admin`)
 

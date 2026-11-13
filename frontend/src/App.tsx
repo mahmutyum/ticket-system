@@ -28,6 +28,7 @@ const AccountPage = lazy(() => import('./pages/staff/AccountPage'));
 const IntegrationsPage = lazy(() => import('./pages/staff/IntegrationsPage'));
 const ScheduledJobsPage = lazy(() => import('./pages/staff/ScheduledJobsPage'));
 const BackupsPage = lazy(() => import('./pages/staff/BackupsPage'));
+const DictionariesPage = lazy(() => import('./pages/staff/DictionariesPage'));
 const KbPage = lazy(() => import('./pages/public/kb/KbPage'));
 const MyTicketsPage = lazy(() => import('./pages/public/my/MyTicketsPage'));
 const KbManagementPage = lazy(() => import('./pages/staff/KbManagementPage'));
@@ -174,6 +175,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <BackupsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="dictionaries"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <DictionariesPage />
               </ProtectedRoute>
             }
           />

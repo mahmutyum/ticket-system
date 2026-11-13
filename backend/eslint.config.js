@@ -71,6 +71,31 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-assignment': 'off',
     },
   },
+  {
+    // Sözlük anahtarları (v1.3): SLA duraklatan davranış anahtarları string
+    // LITERAL olarak kullanılamaz — davranış sınıf tabanlıdır
+    // (services/lookups.ts: keysWithClass/isClassStatus). 'open'/'closed'/
+    // 'resolved'/'in_progress' serbesttir (sistem karşılıklar; default'lar,
+    // görünümler). constants.ts shim tanımı ve lookups servisi muaf; testler
+    // (fixture verisi) kapsam dışıdır.
+    files: ['src/**/*.ts'],
+    ignores: ['src/config/constants.ts', 'src/services/lookups.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'Literal[value=/^(waiting_user_response|waiting_other_department|topic_transferred|process_outside_it|on_hold)$/u]',
+          message:
+            "Sözlük anahtarı literal olarak kullanılmaz: davranış sınıf tabanlıdır — services/lookups.ts'ten keysWithClass('ticketStatuses', 'waiting') vb. kullanın.",
+        },
+      ],
+    },
+  },
+  {
+    files: ['tests/**'],
+    rules: { 'no-restricted-syntax': 'off' },
+  },
   // EN SONDA: Prettier ile çakışan tüm biçim kurallarını kapatır.
   prettier,
 );
+

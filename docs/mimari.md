@@ -124,7 +124,10 @@ içindedir (`script-src 'self'`, unsafe-inline/eval yok — Vite build'i inline 
 | `/kb`, `/public/kb` | Bilgi bankası (personel CRUD, public arama/okuma/geri bildirim) |
 | `/assets` | Varlık envanteri + CSV içe aktarma |
 | `/scheduled-jobs` | Zamanlanmış görevler — kayıt defteri, cron/aktiflik, çalışma geçmişi (v1.2) |
+| `services/lookups.ts` | Sözlük önbekesi — sınıf tabanlı davranış sorguları (v1.3) |
 | `/backups` | Yedek hedefleri — rclone tanımı (şifreli, write-only), bağlantı testi (v1.2) |
+| `/lookups` | Sözlükler — personel görünümü + public aktif girdiler; admin ekle/güncelle/birleştir (v1.3) |
+| `/public/my-tickets` | Taleplerim — e-posta doğrulamalı birleşik liste (v1.3) |
 | `/metrics` | Prometheus (yalnızca `METRICS_TOKEN` ile) |
 
 ### API sözleşmesi
