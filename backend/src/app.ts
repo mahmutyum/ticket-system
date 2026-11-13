@@ -42,6 +42,7 @@ import { kbRoutes, kbPublicRoutes } from './modules/kb/kb.routes.js';
 import { assetRoutes } from './modules/assets/assets.routes.js';
 import { scheduledJobsRoutes } from './modules/scheduled-jobs/scheduled-jobs.routes.js';
 import { myTicketsRoutes } from './modules/tickets/my-tickets.routes.js';
+import { lookupsRoutes } from './modules/lookups/lookups.routes.js';
 import { backupsRoutes } from './modules/backups/backups.routes.js';
 import { registerMutationAuditHook } from './middleware/audit.js';
 import { t } from './i18n/index.js';
@@ -321,6 +322,7 @@ export async function buildApp() {
   await app.register(scheduledJobsRoutes, { prefix: '/scheduled-jobs' });
   await app.register(backupsRoutes, { prefix: '/backups' });
   await app.register(myTicketsRoutes, { prefix: '/public/my-tickets' });
+  await app.register(lookupsRoutes, { prefix: '/lookups' });
 
 
   return app;

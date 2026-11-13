@@ -1,8 +1,10 @@
+import { zLookupKey } from '../../services/lookups.js';
+import { TicketStatus, Priority } from '../../config/constants.js';
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { paginationSchema, paginate, paginatedResponse } from '../../utils/pagination.js';
 import { requiredText, optionalText, phoneSchema, emailSchema, LIMITS, ATTACHMENT_LIMITS } from '../../utils/validation.js';
-import { Prisma, TicketStatus, Priority } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { queueEmail, queueSms } from '../../jobs/queue.js';
 import { saveFile, isAllowedMimeType, isBufferConsistentWithMime } from '../../services/storage.service.js';
 import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.js';
@@ -35,7 +37,7 @@ const ticketCreateSchema = z.object({
   department: optionalText({ ...LIMITS.shortLabel, label: 'Departman' }),
   subject: requiredText({ ...LIMITS.ticketSubject, label: 'Konu' }),
   description: requiredText({ ...LIMITS.ticketDescription, label: 'Açıklama' }),
-  priority: z.nativeEnum(Priority).default(Priority.medium),
+  priority: zLookupKey('priority').default(Priority.medium),
   // Bildirim dili — public portalın diline göre yakalanır. Talep sahibinin
   // e-posta/SMS bildirimleri bu dilde gönderilir.
   locale: z.enum(['tr', 'en']).default('tr'),
@@ -55,16 +57,16 @@ const ticketCreateSchema = z.object({
 });
 
 const ticketUpdateSchema = z.object({
-  status: z.nativeEnum(TicketStatus).optional(),
-  priority: z.nativeEnum(Priority).optional(),
+  status: zLookupKey('ticketStatus').optional(),
+  priority: zLookupKey('priority').optional(),
   assignedToId: z.string().cuid().nullable().optional(),
   /** Durum değişikliğini alt ticket'lara da uygula (ör. yaygın arıza çözüldü). */
   applyToChildren: z.boolean().optional(),
 });
 
 const ticketFilterSchema = paginationSchema.extend({
-  status: z.nativeEnum(TicketStatus).optional(),
-  priority: z.nativeEnum(Priority).optional(),
+  status: zLookupKey('ticketStatus').optional(),
+  priority: zLookupKey('priority').optional(),
   companyId: z.string().optional(),
   categoryId: z.string().optional(),
   assignedToId: z.string().optional(),
@@ -76,9 +78,9 @@ const ticketFilterSchema = paginationSchema.extend({
 const ticketIdParamsSchema = z.object({ id: z.string().min(1).max(128) });
 const ticketBulkUpdateSchema = z.object({
   ticketIds: z.array(z.string().cuid()).min(1).max(100),
-  status: z.nativeEnum(TicketStatus).optional(),
+  status: zLookupKey('ticketStatus').optional(),
   assignedToId: z.string().cuid().nullable().optional(),
-  priority: z.nativeEnum(Priority).optional(),
+  priority: zLookupKey('priority').optional(),
 });
 const ticketSearchSchema = z.object({
   q: z.string().trim().max(200).optional(),
@@ -92,7 +94,7 @@ const ticketCreateResponseSchema = z.object({
     ticketNumber: z.string(),
     accessToken: z.string(),
     trackingUrl: z.string().url(),
-    status: z.nativeEnum(TicketStatus),
+    status: zLookupKey('ticketStatus'),
     subject: z.string(),
   }),
 });
@@ -112,8 +114,8 @@ const ticketSearchResponseSchema = z.object({
     id: z.string(),
     ticketNumber: z.string(),
     subject: z.string(),
-    status: z.nativeEnum(TicketStatus),
-    priority: z.nativeEnum(Priority),
+    status: zLookupKey('ticketStatus'),
+    priority: zLookupKey('priority'),
     createdAt: z.date(),
   })),
 });
@@ -122,7 +124,7 @@ const staffTicketBaseSchema = z.object({
   id: z.string(), ticketNumber: z.string(), companyId: z.string(), locationId: z.string(),
   categoryId: z.string(), createdByEmail: z.string().email(), createdByUserId: z.string().nullable(),
   assignedToId: z.string().nullable(), subject: z.string(), description: z.string(),
-  priority: z.nativeEnum(Priority), status: z.nativeEnum(TicketStatus),
+  priority: zLookupKey('priority'), status: zLookupKey('ticketStatus'),
   slaResponseDue: z.date().nullable(), slaResolveDue: z.date().nullable(),
   slaResponseMet: z.boolean().nullable(), slaResolveMet: z.boolean().nullable(),
   slaPausedAt: z.date().nullable(), slaPausedMinutes: z.number().int(), source: z.string(),
@@ -142,7 +144,7 @@ const ticketListItemSchema = staffTicketBaseSchema.pick({
   createdBy: z.object({ fullName: z.string(), phone: z.string().nullable() }).nullable(),
 });
 const relatedTicketSelect = { id: true, ticketNumber: true, subject: true, status: true } as const;
-const relatedTicketSchema = z.object({ id: z.string(), ticketNumber: z.string(), subject: z.string(), status: z.nativeEnum(TicketStatus) });
+const relatedTicketSchema = z.object({ id: z.string(), ticketNumber: z.string(), subject: z.string(), status: zLookupKey('ticketStatus') });
 const staffAttachmentSchema = z.object({
   id: z.string(), ticketId: z.string(), fileName: z.string(), fileSize: z.number().int(),
   mimeType: z.string(), uploadedBy: z.string(), createdAt: z.date(),

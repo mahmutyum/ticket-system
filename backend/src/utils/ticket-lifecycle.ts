@@ -1,7 +1,7 @@
-import { TicketStatus } from '@prisma/client';
 import type { BusinessCalendar } from './business-hours.js';
 import { isSlaMet, shiftAfterPause, slaMinutesBetween } from './sla.js';
-import { SLA_FINAL_STATUSES, SLA_PAUSING_STATUSES, PUBLIC_ACCESS_RETENTION_DAYS } from '../config/constants.js';
+import { PUBLIC_ACCESS_RETENTION_DAYS } from '../config/constants.js';
+import { isClassStatus, isFinalStatus, isPausingStatus } from '../services/lookups.js';
 
 /**
  * Ticket durum geçişlerinin SLA/yaşam döngüsü etkileri — TEK kaynak.
@@ -16,7 +16,8 @@ import { SLA_FINAL_STATUSES, SLA_PAUSING_STATUSES, PUBLIC_ACCESS_RETENTION_DAYS 
  */
 
 export interface TicketLifecycleState {
-  status: TicketStatus;
+  /** Sözlük anahtarı (string) — v1.3'te enum'dan string'e genişletildi. */
+  status: string;
   firstRespondedAt: Date | null;
   resolvedAt: Date | null;
   slaResponseDue: Date | null;
@@ -30,7 +31,7 @@ export interface TicketLifecycleState {
 }
 
 export interface LifecycleUpdate {
-  status?: TicketStatus;
+  status?: string;
   firstRespondedAt?: Date;
   resolvedAt?: Date;
   closedAt?: Date;
@@ -66,8 +67,11 @@ export interface LifecyclePlan {
   history: LifecycleHistory[];
 }
 
-const isPausing = (s: TicketStatus) => SLA_PAUSING_STATUSES.includes(s);
-const isFinal = (s: TicketStatus) => SLA_FINAL_STATUSES.includes(s);
+// Sınıf tabanlı bakış (v1.3): 'waiting' sınıfı SLA'yı durdurur, 'resolved'/'closed'
+// bitirir. Anahtarlar sözlükten geldiği için yeni bir bekleyen durum panelden
+// eklendiğinde davranış otomatik doğrudur.
+const isPausing = (s: string) => isPausingStatus(s);
+const isFinal = (s: string) => isFinalStatus(s);
 
 /**
  * İlk yanıtı işaretler (henüz işaretlenmemişse). Personelin durum değiştirmesi ya
@@ -84,7 +88,7 @@ export function planFirstResponse(ticket: TicketLifecycleState, now: Date): Life
 
 export function planStatusTransition(
   ticket: TicketLifecycleState,
-  to: TicketStatus,
+  to: string,
   now: Date,
   calendar: BusinessCalendar | null,
   actor: Actor = {},
@@ -125,16 +129,17 @@ export function planStatusTransition(
 
   // İlk yanıt: `open`'dan herhangi bir duruma geçiş (kullanıcıya soru sormak için
   // "yanıt bekleniyor"a almak da bir yanıttır).
-  if (to !== TicketStatus.open && !ticket.firstRespondedAt) {
+  // İlk yanıt: 'new' sınıfından çıkışta işaretlenir (v1.3 sınıf tabanlı).
+  if (!isClassStatus('ticketStatuses', to, 'new') && !ticket.firstRespondedAt) {
     Object.assign(data, planFirstResponse({ ...ticket, slaResponseDue: responseDue }, now));
   }
 
-  if (to === TicketStatus.resolved || (to === TicketStatus.closed && !ticket.resolvedAt)) {
+  if (isClassStatus('ticketStatuses', to, 'resolved') || (isClassStatus('ticketStatuses', to, 'closed') && !ticket.resolvedAt)) {
     data.resolvedAt = now;
     if (ticket.slaResolveMet === null) data.slaResolveMet = isSlaMet(resolveDue, now);
     data.slaResolveWarnAt = null;
   }
-  if (to === TicketStatus.closed) data.closedAt = now;
+  if (isClassStatus('ticketStatuses', to, 'closed')) data.closedAt = now;
 
   if (isPausing(to) && !ticket.slaPausedAt) {
     data.slaPausedAt = now;

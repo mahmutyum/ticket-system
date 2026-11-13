@@ -1,6 +1,7 @@
+import { zLookupKey } from '../../services/lookups.js';
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { Prisma, PrismaClient, Priority, TicketStatus } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { PassThrough } from 'node:stream';
 import { once } from 'node:events';
 import { paginationSchema, paginate, paginatedResponse } from '../../utils/pagination.js';
@@ -13,15 +14,15 @@ const reportFilterSchema = paginationSchema.extend({
   companyId: z.string().optional(),
   categoryId: z.string().optional(),
   assignedToId: z.string().optional(),
-  status: z.nativeEnum(TicketStatus).optional(),
-  priority: z.nativeEnum(Priority).optional(),
+  status: zLookupKey('ticketStatus').optional(),
+  priority: zLookupKey('priority').optional(),
 });
 const commonReportFilterSchema = reportFilterSchema.omit({ page: true, limit: true });
 const overviewFilterSchema = commonReportFilterSchema.extend({ period: z.enum(['daily', 'weekly', 'monthly']).optional() });
 const slaTrendFilterSchema = commonReportFilterSchema.extend({ period: z.enum(['weekly', 'monthly']).optional() });
 const reportTicketSchema = z.object({
-  id: z.string(), ticketNumber: z.string(), subject: z.string(), status: z.nativeEnum(TicketStatus),
-  priority: z.nativeEnum(Priority), createdByEmail: z.string().email(), createdAt: z.date(),
+  id: z.string(), ticketNumber: z.string(), subject: z.string(), status: zLookupKey('ticketStatus'),
+  priority: zLookupKey('priority'), createdByEmail: z.string().email(), createdAt: z.date(),
   resolvedAt: z.date().nullable(), slaResponseMet: z.boolean().nullable(), slaResolveMet: z.boolean().nullable(),
   company: z.object({ name: z.string() }), location: z.object({ name: z.string() }),
   category: z.object({ name: z.string() }), assignedTo: z.object({ fullName: z.string() }).nullable(),
@@ -63,8 +64,8 @@ type CommonFilters = {
   companyId?: string;
   categoryId?: string;
   assignedToId?: string;
-  priority?: Priority;
-  status?: TicketStatus;
+  priority?: string;
+  status?: string;
 };
 
 function buildTicketWhere(filters: CommonFilters, scopeCompanyIds: string[] | null): Prisma.TicketWhereInput {
@@ -134,7 +135,7 @@ const TICKET_SCAN_BATCH = 2000;
 type ReportScanRow = {
   id: string;
   createdAt: Date;
-  status: TicketStatus;
+  status: string;
   resolvedAt: Date | null;
   slaResponseMet: boolean | null;
   slaResolveMet: boolean | null;

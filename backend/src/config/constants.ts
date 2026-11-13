@@ -1,14 +1,8 @@
 import {
   StaffRole,
-  TicketStatus,
-  Priority,
-  TaskStatus,
-  OnsiteType,
-  OnsiteStatus,
   NotificationType,
   NotificationStatus,
   CustomFieldType,
-  CompanyGroupType,
 } from '@prisma/client';
 
 /**
@@ -25,6 +19,74 @@ import {
  * hiçbir yer import etmiyordu; her kontrol ham string literal'di. Değerler artık
  * tek kaynaktan geldiği için o durum tekrarlanamaz.
  */
+
+// ==================== SÖZLÜK ANAHTAR SHIM'LERİ (v1.3 geçişi) ====================
+//
+// Bu değerler artık DB'deki dict_* tablolarında yaşar (bkz. prisma migrations
+// v1_3_dictionaries). Buradaki nesneler:
+//   1) Tür düzeyinde geriye uyumluluk sağlar (Record<TicketStatus, string> vb.),
+//   2) Yalnızca ŞEMA-KAYNAKLI davranışlara (seed, geçiş) hizmet eder.
+// Davranış kodunda anahtar literal kullanımı yasaktır — services/lookups.ts
+// sınıf tabanlı sorguları kullanılır (bkz. ESLint no-restricted-syntax).
+
+export const TicketStatus = {
+  open: 'open',
+  in_progress: 'in_progress',
+  waiting_user_response: 'waiting_user_response',
+  waiting_other_department: 'waiting_other_department',
+  topic_transferred: 'topic_transferred',
+  process_outside_it: 'process_outside_it',
+  on_hold: 'on_hold',
+  resolved: 'resolved',
+  closed: 'closed',
+} as const;
+export type TicketStatus = (typeof TicketStatus)[keyof typeof TicketStatus];
+
+/** Sistem sözlük anahtar haritası — davranışta kapalılık/çözümlülük SINIFINA bakar; bu harita yalnızca isSystem karşılıklar içindir. */
+export const TICKET_STATUS_KEYS = TicketStatus;
+
+export const Priority = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  critical: 'critical',
+} as const;
+export type Priority = (typeof Priority)[keyof typeof Priority];
+
+export const TaskStatus = {
+  open: 'open',
+  in_progress: 'in_progress',
+  done: 'done',
+  cancelled: 'cancelled',
+} as const;
+export type TaskStatus = (typeof TaskStatus)[keyof typeof TaskStatus];
+
+export const OnsiteType = {
+  come_to_it_room: 'come_to_it_room',
+  meeting_room: 'meeting_room',
+  visit_employee: 'visit_employee',
+} as const;
+export type OnsiteType = (typeof OnsiteType)[keyof typeof OnsiteType];
+
+export const OnsiteStatus = {
+  scheduled: 'scheduled',
+  in_progress: 'in_progress',
+  completed: 'completed',
+  cancelled: 'cancelled',
+} as const;
+export type OnsiteStatus = (typeof OnsiteStatus)[keyof typeof OnsiteStatus];
+
+export const CompanyGroupType = {
+  call_center: 'call_center',
+  corporate: 'corporate',
+  warehouse: 'warehouse',
+  retail: 'retail',
+} as const;
+export type CompanyGroupType = (typeof CompanyGroupType)[keyof typeof CompanyGroupType];
+
+/** Davranış sınıfları — KODDA kalır (panelden eklenemez, davranış sözleşmesidir). */
+export const STATUS_CLASSES = ['new', 'active', 'waiting', 'resolved', 'closed'] as const;
+export type StatusClass = (typeof STATUS_CLASSES)[number];
 
 // ==================== ROLLER ====================
 
@@ -60,7 +122,7 @@ export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
  * girildiğinde `slaPausedAt` işaretlenir; çıkıldığında son tarihler duraklatılan
  * süre kadar ileri kaydırılır. (v1.3'te bu liste durum sınıfına taşınacak.)
  */
-export const SLA_PAUSING_STATUSES: readonly TicketStatus[] = [
+export const SLA_PAUSING_STATUSES: readonly string[] = [
   TicketStatus.waiting_user_response,
   TicketStatus.waiting_other_department,
   TicketStatus.process_outside_it,
@@ -68,7 +130,7 @@ export const SLA_PAUSING_STATUSES: readonly TicketStatus[] = [
 ];
 
 /** SLA'nın artık ölçülmediği son durumlar. */
-export const SLA_FINAL_STATUSES: readonly TicketStatus[] = [TicketStatus.resolved, TicketStatus.closed];
+export const SLA_FINAL_STATUSES: readonly string[] = [TicketStatus.resolved, TicketStatus.closed];
 
 /**
  * Public takip linkinin çözüm/kapanıştan sonra geçerli kaldığı gün sayısı.
@@ -77,7 +139,7 @@ export const SLA_FINAL_STATUSES: readonly TicketStatus[] = [TicketStatus.resolve
 export const PUBLIC_ACCESS_RETENTION_DAYS = 90;
 
 /** Öncelik yükseltme sırası (SLA ihlali eskalasyonunda kullanılır). */
-export const PRIORITY_ORDER: readonly Priority[] = [Priority.low, Priority.medium, Priority.high, Priority.critical];
+export const PRIORITY_ORDER: readonly string[] = [Priority.low, Priority.medium, Priority.high, Priority.critical];
 
 /** Ticket ve görevler için ORTAK öncelik sözlüğü. */
 export const PRIORITIES = Priority;

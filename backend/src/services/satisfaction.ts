@@ -1,4 +1,5 @@
-import { TicketStatus, type PrismaClient } from '@prisma/client';
+import { TicketStatus } from '../config/constants.js';
+import { type PrismaClient } from '@prisma/client';
 import type { EmailJobData } from '../jobs/queue.js';
 import { parseSlaSettings } from '../utils/sla-settings.js';
 import { trackingUrlFor } from './ticket-intake.js';

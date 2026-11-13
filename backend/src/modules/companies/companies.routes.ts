@@ -1,6 +1,7 @@
+import { zLookupKey } from '../../services/lookups.js';
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { Prisma, CompanyGroupType } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { testSmtpConnection, invalidateCompanyTransporter } from '../../services/email.service.js';
 import { config } from '../../config/index.js';
 import { createAuditLog } from '../../middleware/audit.js';
@@ -24,7 +25,7 @@ const smtpConfigSchema = z.object({
 
 const companyCreateSchema = z.object({
   name: z.string().min(1),
-  groupType: z.nativeEnum(CompanyGroupType),
+  groupType: zLookupKey('companyType'),
   logo: z.string().optional().nullable(),
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Geçerli hex renk değil').optional().nullable(),
   allowedDomains: z.array(z.string()).default([]),
@@ -41,7 +42,7 @@ const brandingQuerySchema = z.object({ host: z.string().min(1).max(253) });
 const publicCompanySchema = z.object({
   id: z.string(),
   name: z.string(),
-  groupType: z.nativeEnum(CompanyGroupType),
+  groupType: zLookupKey('companyType'),
   logo: z.string().nullable(),
   primaryColor: z.string().nullable(),
   allowedDomains: z.unknown(),

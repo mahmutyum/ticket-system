@@ -26,6 +26,7 @@ import { kbMessages } from './messages/kb.js';
 import { assetsMessages } from './messages/assets.js';
 import { scheduledJobsMessages, backupsMessages } from './messages/scheduledJobs.js';
 import { myTicketsMessages } from './messages/myTickets.js';
+import { lookupsMessages } from './messages/lookups.js';
 
 export type AppLocale = 'tr' | 'en';
 
@@ -52,6 +53,7 @@ const modules = [
   scheduledJobsMessages,
   backupsMessages,
   myTicketsMessages,
+  lookupsMessages,
 ];
 
 function merge(locale: AppLocale): Record<string, string> {

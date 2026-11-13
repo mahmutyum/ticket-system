@@ -6,6 +6,7 @@ import { warmTicketCounter } from './utils/ticket-number.js';
 import { ensureTaskEmailTemplates } from './modules/tasks/task-templates.js';
 import { ensureSystemEmailTemplates } from './jobs/notification-templates.js';
 import { prisma } from './db.js';
+import { loadDictionaries } from './services/lookups.js';
 
 // Import workers to start them
 import { emailWorker } from './jobs/email.worker.js';
@@ -75,6 +76,11 @@ async function start() {
     } catch (err) {
       app.log.warn({ err }, 'Failed to ensure task email templates');
     }
+
+    // Sözlükler (v1.3): dict_* tabloları belleğe yüklenir — davranış sınıf
+    // sorguları ve Zod doğrulaması bunları kullanır.
+    await loadDictionaries();
+    app.log.info('Dictionaries loaded');
 
     // Zamanlanmış görevler (v1.2): registry DB'den okunur, BullMQ
     // scheduler'ları upsert edilir. İlk açılışta ScheduledJob kayıtları

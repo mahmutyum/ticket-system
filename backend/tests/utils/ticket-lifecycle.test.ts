@@ -1,5 +1,5 @@
+import { TicketStatus } from '../../src/config/constants.js';
 import { describe, it, expect } from 'vitest';
-import { TicketStatus } from '@prisma/client';
 import { planStatusTransition, type TicketLifecycleState } from '../../src/utils/ticket-lifecycle.js';
 import { calculateSlaDueDates, shiftAfterPause } from '../../src/utils/sla.js';
 import type { BusinessCalendar } from '../../src/utils/business-hours.js';

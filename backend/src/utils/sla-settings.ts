@@ -1,5 +1,5 @@
+import { zLookupKey } from '../services/lookups.js';
 import { z } from 'zod';
-import { Priority } from '@prisma/client';
 import { WEEKDAYS, isValidTimezone, parseTime, type BusinessCalendar } from './business-hours.js';
 
 /**
@@ -36,7 +36,7 @@ export const slaSettingsSchema = z.object({
     .nullable()
     .default(null),
   /** Bu önceliklerde takvim yok sayılır, SLA 7/24 işler. */
-  alwaysOnPriorities: z.array(z.nativeEnum(Priority)).default([]),
+  alwaysOnPriorities: z.array(zLookupKey('priority')).default([]),
   /** SLA süresinin yüzde kaçı dolunca uyarı gönderilir. 0 → ihlal öncesi uyarı yok. */
   warningPercent: z.number().int().min(0).max(99).default(80),
   escalation: z
@@ -91,7 +91,7 @@ export function parseSlaSettings(raw: unknown): SlaSettings {
 export function resolveCalendar(
   settings: SlaSettings,
   holidays: string[],
-  priority: Priority,
+  priority: string,
 ): BusinessCalendar | null {
   const bh = settings.businessHours;
   if (!bh?.enabled) return null;

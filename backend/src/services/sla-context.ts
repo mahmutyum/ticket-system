@@ -1,4 +1,5 @@
-import type { Priority, PrismaClient } from '@prisma/client';
+import type { } from '../config/constants.js';
+import type { PrismaClient } from '@prisma/client';
 import type { BusinessCalendar } from '../utils/business-hours.js';
 import { parseSlaSettings, resolveCalendar, type SlaSettings } from '../utils/sla-settings.js';
 
@@ -27,7 +28,7 @@ export async function loadCompanySlaContext(prisma: SlaPrisma, companyId: string
   };
 }
 
-export function calendarFor(context: CompanySlaContext, priority: Priority): BusinessCalendar | null {
+export function calendarFor(context: CompanySlaContext, priority: string): BusinessCalendar | null {
   return resolveCalendar(context.settings, context.holidays, priority);
 }
 

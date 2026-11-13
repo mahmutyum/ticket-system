@@ -1,5 +1,6 @@
+import { TicketStatus } from '../config/constants.js';
 import { nanoid } from 'nanoid';
-import { TicketStatus, type Priority, type PrismaClient } from '@prisma/client';
+import { type PrismaClient } from '@prisma/client';
 import { config } from '../config/index.js';
 import type { EmailJobData, SmsJobData } from '../jobs/queue.js';
 import { priorityLabel } from '../i18n/labels.js';
@@ -35,7 +36,7 @@ export interface NewRequesterTicket {
   department?: string;
   subject: string;
   description: string;
-  priority: Priority;
+  priority: string;
   locale: 'tr' | 'en';
   customFields?: Array<{ fieldId: string; value: string }>;
   source?: 'portal' | 'email';
@@ -214,7 +215,7 @@ type ReplyTicket = Parameters<typeof planStatusTransition>[0] & {
   ticketNumber: string;
   companyId: string;
   createdByEmail: string;
-  priority: Priority;
+  priority: string;
   assignedTo: { email: string; fullName: string } | null;
 };
 

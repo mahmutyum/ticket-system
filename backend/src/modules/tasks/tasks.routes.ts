@@ -1,6 +1,8 @@
+import { zLookupKey } from '../../services/lookups.js';
+import { Priority} from '../../config/constants.js';
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { Prisma, Priority, TaskStatus } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { queueEmail } from '../../jobs/queue.js';
 import { config } from '../../config/index.js';
 import { broadcastToStaff } from '../../services/sse.service.js';
@@ -36,7 +38,7 @@ function taskScopeWhere(scope: string[] | null, staffId: string): Prisma.TaskWhe
 const taskCreateSchema = z.object({
   title: requiredText({ ...LIMITS.taskTitle, label: 'Başlık' }),
   description: requiredText({ ...LIMITS.taskDescription, label: 'Açıklama' }),
-  priority: z.nativeEnum(Priority).default(Priority.medium),
+  priority: zLookupKey('priority').default(Priority.medium),
   dueDate: z.string().datetime().optional().nullable(),
   assigneeIds: z.array(z.string().cuid()).min(1),
   locationId: z.string().cuid(),
@@ -45,8 +47,8 @@ const taskCreateSchema = z.object({
 const taskUpdateSchema = z.object({
   title: requiredText({ ...LIMITS.taskTitle, label: 'Başlık' }).optional(),
   description: requiredText({ ...LIMITS.taskDescription, label: 'Açıklama' }).optional(),
-  priority: z.nativeEnum(Priority).optional(),
-  status: z.nativeEnum(TaskStatus).optional(),
+  priority: zLookupKey('priority').optional(),
+  status: zLookupKey('taskStatus').optional(),
   dueDate: z.string().datetime().optional().nullable(),
   assigneeIds: z.array(z.string().cuid()).optional(),
   locationId: z.string().cuid().optional().nullable(),
@@ -57,11 +59,11 @@ const commentSchema = z.object({
 });
 const idParamsSchema = z.object({ id: z.string().min(1).max(128) });
 const taskListQuerySchema = z.object({
-  status: z.nativeEnum(TaskStatus).optional(),
+  status: zLookupKey('taskStatus').optional(),
   mine: z.literal('1').optional(),
   scope: z.enum(['created', 'assigned', 'all']).optional(),
 });
-const taskStatusSchema = z.object({ status: z.nativeEnum(TaskStatus) });
+const taskStatusSchema = z.object({ status: zLookupKey('taskStatus') });
 
 const TASK_SELECT = {
   id: true,
@@ -91,8 +93,8 @@ const TASK_SELECT = {
 } as const;
 
 const taskBaseSchema = z.object({
-  id: z.string(), title: z.string(), description: z.string(), priority: z.nativeEnum(Priority),
-  status: z.nativeEnum(TaskStatus), dueDate: z.date().nullable(), completedAt: z.date().nullable(),
+  id: z.string(), title: z.string(), description: z.string(), priority: zLookupKey('priority'),
+  status: zLookupKey('taskStatus'), dueDate: z.date().nullable(), completedAt: z.date().nullable(),
   createdAt: z.date(), updatedAt: z.date(),
 });
 const taskSelectSchema = taskBaseSchema.extend({

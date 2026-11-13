@@ -1,5 +1,5 @@
-import { Priority, StaffRole, type PrismaClient } from '@prisma/client';
-import { PRIORITY_ORDER, SLA_FINAL_STATUSES } from '../config/constants.js';
+import { StaffRole, type PrismaClient } from '@prisma/client';
+import { entriesOf, keysWithClass } from '../services/lookups.js';
 import { config } from '../config/index.js';
 import { formatDateTime, priorityLabel, slaTypeLabel, type SlaKind } from '../i18n/labels.js';
 import { createSlaContextCache } from '../services/sla-context.js';
@@ -46,7 +46,9 @@ function findCandidates(prisma: PrismaClient, where: object) {
     where: {
       ...where,
       slaPausedAt: null,
-      status: { notIn: [...SLA_FINAL_STATUSES] },
+      // Sınıf tabanlı (v1.3): 'resolved'/'closed' sınıfındaki AKTİF anahtarlar —
+      // panelden eklenen yeni bir bitmiş durum da otomatik dışlanır.
+      status: { notIn: [...keysWithClass('ticketStatuses', 'resolved'), ...keysWithClass('ticketStatuses', 'closed')] },
     },
     select: {
       id: true,
@@ -73,9 +75,11 @@ async function findManagers(prisma: PrismaClient, companyId: string): Promise<Re
   return prisma.staff.findMany({ where: { isActive: true, role: StaffRole.admin }, select });
 }
 
-function nextPriority(priority: Priority): Priority | null {
-  const i = PRIORITY_ORDER.indexOf(priority);
-  return i >= 0 && i < PRIORITY_ORDER.length - 1 ? PRIORITY_ORDER[i + 1] : null;
+/** Ağırlık tabanlı bir üst öncelik (v1.3): sözlük weight'ları sıralanır. */
+function nextPriority(priority: string): string | null {
+  const ordered = entriesOf('priorities').filter((entry) => entry.isActive).sort((a, b) => (a.weight ?? 0) - (b.weight ?? 0));
+  const index = ordered.findIndex((entry) => entry.key === priority);
+  return index >= 0 && index < ordered.length - 1 ? ordered[index + 1].key : null;
 }
 
 const staffTicketUrl = (id: string) => `${config.CANONICAL_URL}/staff/tickets/${id}`;

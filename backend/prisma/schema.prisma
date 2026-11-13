@@ -28,48 +28,9 @@ enum StaffRole {
   it_staff
 }
 
-enum TicketStatus {
-  open
-  in_progress
-  waiting_user_response
-  waiting_other_department
-  topic_transferred
-  process_outside_it
-  on_hold
-  resolved
-  closed
-}
-
 /// Ticket ve görevler için ORTAK öncelik sözlüğü.
 /// Görevler eskiden 'urgent' kullanıyordu; aynı kavramın iki sözcüğü olmasın
 /// diye 'critical'a hizalandı.
-enum Priority {
-  low
-  medium
-  high
-  critical
-}
-
-enum TaskStatus {
-  open
-  in_progress
-  done
-  cancelled
-}
-
-enum OnsiteType {
-  come_to_it_room
-  meeting_room
-  visit_employee
-}
-
-enum OnsiteStatus {
-  scheduled
-  in_progress
-  completed
-  cancelled
-}
-
 enum NotificationType {
   email
   sms
@@ -79,13 +40,6 @@ enum NotificationStatus {
   pending
   sent
   failed
-}
-
-enum CompanyGroupType {
-  call_center
-  corporate
-  warehouse
-  retail
 }
 
 enum IdentityProviderType {
@@ -119,21 +73,22 @@ enum CustomFieldType {
 // ==================== ŞİRKET & LOKASYON ====================
 
 model Company {
-  id                String           @id @default(cuid())
-  name              String           @unique
-  groupType         CompanyGroupType @map("group_type")
+  id                String                @id @default(cuid())
+  name              String                @unique
+  groupType         String                @map("group_type")
+  groupTypeDict     CompanyTypeDictionary @relation("CompanyGroupType", fields: [groupType], references: [key])
   logo              String?
-  primaryColor      String?          @map("primary_color") // hex, örn "#2563eb"
-  allowedDomains    Json             @default("[]") @map("allowed_domains") // ["company.com","abc.com.tr"] — email domain kısıtı
-  portalDomains     Json             @default("[]") @map("portal_domains") // ["ticket.abc.com.tr"] — erişim domain kilidi
-  notificationEmail String?          @map("notification_email") // IT grup maili: it-destek@abc.com.tr
-  isActive          Boolean          @default(true) @map("is_active")
-  settings          Json             @default("{}")
+  primaryColor      String?               @map("primary_color") // hex, örn "#2563eb"
+  allowedDomains    Json                  @default("[]") @map("allowed_domains") // ["company.com","abc.com.tr"] — email domain kısıtı
+  portalDomains     Json                  @default("[]") @map("portal_domains") // ["ticket.abc.com.tr"] — erişim domain kilidi
+  notificationEmail String?               @map("notification_email") // IT grup maili: it-destek@abc.com.tr
+  isActive          Boolean               @default(true) @map("is_active")
+  settings          Json                  @default("{}")
   /// SLA takvimi, uyarı eşiği ve eskalasyon ayarları. Biçim: `utils/sla-settings.ts`.
   /// Boş → varsayılanlar (7/24 SLA, %80 uyarı, ihlalde yöneticiye bildirim).
-  slaSettings       Json?            @map("sla_settings")
-  createdAt         DateTime         @default(now()) @map("created_at")
-  updatedAt         DateTime         @updatedAt @map("updated_at")
+  slaSettings       Json?                 @map("sla_settings")
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
 
   holidays          CompanyHoliday[]
   mailbox           CompanyMailbox?
@@ -383,61 +338,63 @@ model StaffCompany {
 // ==================== TİCKET SİSTEMİ ====================
 
 model Ticket {
-  id                   String       @id @default(cuid())
-  ticketNumber         String       @unique @map("ticket_number")
-  companyId            String       @map("company_id")
-  locationId           String       @map("location_id")
-  categoryId           String       @map("category_id")
-  createdByEmail       String       @map("created_by_email")
-  createdByUserId      String?      @map("created_by_user_id")
-  assignedToId         String?      @map("assigned_to_id")
+  id                   String                 @id @default(cuid())
+  ticketNumber         String                 @unique @map("ticket_number")
+  companyId            String                 @map("company_id")
+  locationId           String                 @map("location_id")
+  categoryId           String                 @map("category_id")
+  createdByEmail       String                 @map("created_by_email")
+  createdByUserId      String?                @map("created_by_user_id")
+  assignedToId         String?                @map("assigned_to_id")
   subject              String
   description          String
-  priority             Priority     @default(medium)
-  status               TicketStatus @default(open)
+  priority             String                 @default("medium")
+  priorityDict         PriorityDictionary     @relation("TicketPriority", fields: [priority], references: [key])
+  status               String                 @default("open")
+  statusDict           TicketStatusDictionary @relation("TicketStatus", fields: [status], references: [key])
   /// Talep sahibinin dili (talep oluştururken yakalanır). Bildirim e-posta/SMS
   /// şablonu bu değere göre seçilir; yoksa 'tr'.
-  locale               String       @default("tr")
-  accessToken          String       @unique @map("access_token")
+  locale               String                 @default("tr")
+  accessToken          String                 @unique @map("access_token")
   /// Public takip linkinin geçerlilik sonu.
   /// Ticket açıkken null (süresiz); resolved/closed olduğunda kapanış + saklama
   /// süresi olarak set edilir. Link nginx access_log'una, e-postalara ve tarayıcı
   /// geçmişine düştüğü için sonsuza dek geçerli kalmamalı.
-  accessTokenExpiresAt DateTime?    @map("access_token_expires_at")
-  slaResponseDue       DateTime?    @map("sla_response_due")
-  slaResolveDue        DateTime?    @map("sla_resolve_due")
-  slaResponseMet       Boolean?     @map("sla_response_met")
-  slaResolveMet        Boolean?     @map("sla_resolve_met")
+  accessTokenExpiresAt DateTime?              @map("access_token_expires_at")
+  slaResponseDue       DateTime?              @map("sla_response_due")
+  slaResolveDue        DateTime?              @map("sla_resolve_due")
+  slaResponseMet       Boolean?               @map("sla_response_met")
+  slaResolveMet        Boolean?               @map("sla_resolve_met")
   /// İhlal öncesi uyarı anları. Uyarı gönderilince / hedef tutturulunca null'lanır.
-  slaResponseWarnAt    DateTime?    @map("sla_response_warn_at")
-  slaResolveWarnAt     DateTime?    @map("sla_resolve_warn_at")
+  slaResponseWarnAt    DateTime?              @map("sla_response_warn_at")
+  slaResolveWarnAt     DateTime?              @map("sla_resolve_warn_at")
   /// Bekleme durumundayken SLA duraklatılır; çıkışta son tarihler kaydırılır.
-  slaPausedAt          DateTime?    @map("sla_paused_at")
+  slaPausedAt          DateTime?              @map("sla_paused_at")
   /// Toplam duraklatılmış SLA dakikası (raporlama için).
-  slaPausedMinutes     Int          @default(0) @map("sla_paused_minutes")
+  slaPausedMinutes     Int                    @default(0) @map("sla_paused_minutes")
   /// Son durum değişikliği anı — otomatik kapatma süreleri buradan sayılır.
-  statusChangedAt      DateTime?    @map("status_changed_at")
+  statusChangedAt      DateTime?              @map("status_changed_at")
   /// Ticket'ın geldiği kanal: portal | email
-  source               String       @default("portal")
+  source               String                 @default("portal")
   /// Memnuniyet anketi (CSAT): 1–5 puan, isteğe bağlı yorum.
-  satisfactionRating   Int?         @map("satisfaction_rating")
-  satisfactionComment  String?      @map("satisfaction_comment")
-  satisfactionAt       DateTime?    @map("satisfaction_at")
+  satisfactionRating   Int?                   @map("satisfaction_rating")
+  satisfactionComment  String?                @map("satisfaction_comment")
+  satisfactionAt       DateTime?              @map("satisfaction_at")
   /// Anket e-postası gönderildi mi (ticket başına bir kez).
-  surveySentAt         DateTime?    @map("survey_sent_at")
+  surveySentAt         DateTime?              @map("survey_sent_at")
   /// İlgili varlık (cihaz).
-  assetId              String?      @map("asset_id")
+  assetId              String?                @map("asset_id")
   /// Üst ticket (yaygın arıza). Tek seviye: üst ticket'ın kendi üstü olamaz.
-  parentId             String?      @map("parent_id")
+  parentId             String?                @map("parent_id")
   /// Bu ticket başka bir ticket'a birleştirildiyse hedef.
-  mergedIntoId         String?      @map("merged_into_id")
+  mergedIntoId         String?                @map("merged_into_id")
   /// "Kullanıcı yanıtı bekleniyor" hatırlatmasının gönderildiği an (durum değişince sıfırlanır).
-  autoCloseReminderAt  DateTime?    @map("auto_close_reminder_at")
-  firstRespondedAt     DateTime?    @map("first_responded_at")
-  resolvedAt           DateTime?    @map("resolved_at")
-  closedAt             DateTime?    @map("closed_at")
-  createdAt            DateTime     @default(now()) @map("created_at")
-  updatedAt            DateTime     @updatedAt @map("updated_at")
+  autoCloseReminderAt  DateTime?              @map("auto_close_reminder_at")
+  firstRespondedAt     DateTime?              @map("first_responded_at")
+  resolvedAt           DateTime?              @map("resolved_at")
+  closedAt             DateTime?              @map("closed_at")
+  createdAt            DateTime               @default(now()) @map("created_at")
+  updatedAt            DateTime               @updatedAt @map("updated_at")
 
   company       Company             @relation(fields: [companyId], references: [id])
   location      Location            @relation(fields: [locationId], references: [id])
@@ -685,18 +642,20 @@ model Attachment {
 // ==================== YERİNDE DESTEK ====================
 
 model OnsiteSupport {
-  id           String       @id @default(cuid())
-  ticketId     String       @map("ticket_id")
-  locationId   String       @map("location_id")
-  type         OnsiteType
-  scheduledAt  DateTime     @map("scheduled_at")
-  scheduledEnd DateTime?    @map("scheduled_end")
-  roomInfo     String?      @map("room_info")
-  floorInfo    String?      @map("floor_info")
+  id           String                 @id @default(cuid())
+  ticketId     String                 @map("ticket_id")
+  locationId   String                 @map("location_id")
+  type         String
+  typeDict     OnsiteTypeDictionary   @relation("OnsiteType", fields: [type], references: [key])
+  scheduledAt  DateTime               @map("scheduled_at")
+  scheduledEnd DateTime?              @map("scheduled_end")
+  roomInfo     String?                @map("room_info")
+  floorInfo    String?                @map("floor_info")
   notes        String?
-  status       OnsiteStatus @default(scheduled)
-  completedAt  DateTime?    @map("completed_at")
-  createdAt    DateTime     @default(now()) @map("created_at")
+  status       String                 @default("scheduled")
+  statusDict   OnsiteStatusDictionary @relation("OnsiteStatus", fields: [status], references: [key])
+  completedAt  DateTime?              @map("completed_at")
+  createdAt    DateTime               @default(now()) @map("created_at")
 
   ticket   Ticket   @relation(fields: [ticketId], references: [id])
   location Location @relation(fields: [locationId], references: [id])
@@ -728,13 +687,14 @@ model Notification {
 // ==================== ŞABLONLAR ====================
 
 model TicketTemplate {
-  id          String   @id @default(cuid())
-  categoryId  String   @map("category_id")
-  name        String
-  subject     String
-  description String
-  priority    Priority @default(medium)
-  createdAt   DateTime @default(now()) @map("created_at")
+  id           String             @id @default(cuid())
+  categoryId   String             @map("category_id")
+  name         String
+  subject      String
+  description  String
+  priority     String             @default("medium")
+  priorityDict PriorityDictionary @relation("TemplatePriority", fields: [priority], references: [key])
+  createdAt    DateTime           @default(now()) @map("created_at")
 
   category Category @relation(fields: [categoryId], references: [id])
 
@@ -784,17 +744,19 @@ model SmsTemplate {
 // ==================== GÖREVLER (TASKS) ====================
 
 model Task {
-  id          String     @id @default(cuid())
-  title       String
-  description String
-  priority    Priority   @default(medium)
-  status      TaskStatus @default(open)
-  dueDate     DateTime?  @map("due_date")
-  createdById String     @map("created_by_id")
-  locationId  String?    @map("location_id")
-  completedAt DateTime?  @map("completed_at")
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
+  id           String               @id @default(cuid())
+  title        String
+  description  String
+  priority     String               @default("medium")
+  priorityDict PriorityDictionary   @relation("TaskPriority", fields: [priority], references: [key])
+  status       String               @default("open")
+  statusDict   TaskStatusDictionary @relation("TaskStatus", fields: [status], references: [key])
+  dueDate      DateTime?            @map("due_date")
+  createdById  String               @map("created_by_id")
+  locationId   String?              @map("location_id")
+  completedAt  DateTime?            @map("completed_at")
+  createdAt    DateTime             @default(now()) @map("created_at")
+  updatedAt    DateTime             @updatedAt @map("updated_at")
 
   createdBy Staff          @relation("TaskCreator", fields: [createdById], references: [id])
   location  Location?      @relation(fields: [locationId], references: [id])
@@ -947,4 +909,128 @@ enum BackupTargetType {
   sftp
   webdav
   smb
+}
+
+// ==================== SÖZLÜKLER (v1.3) ====================
+//
+// Şirket türü, ticket durumu/önceliği, görev durumu ve yerinde destek
+// türü/durumu artık DB'den yönetilir: panelden eklenip düzenlenebilir,
+// kod değişikliği ve deploy gerektirmez. `isSystem` kayıtları (mevcut enum
+// değerlerinin karşılıkları) silinemez; kullanımdaki kayıtlar silinmez,
+// yalnızca pasifleştirilir.
+//
+// Davranış ANAHTARA değil SINIFA bağlanır: `statusClass` (new / active /
+// waiting / resolved / closed) — SLA duraklatma 'waiting' sınıfına, otomatik
+// kapatma 'resolved' sınıfına bakar. StatusClass bilinçli olarak KODDA kalır:
+// sınıflar sistemin davranış sözleşmesidir, panelden eklenemez.
+
+enum StatusClass {
+  new
+  active
+  waiting
+  resolved
+  closed
+}
+
+/// Ticket durum sözlüğü. `key` değişmez; ticket.status bu key'e FK ile bağlıdır.
+model TicketStatusDictionary {
+  key         String      @id
+  labelTr     String      @map("label_tr")
+  labelEn     String      @map("label_en")
+  /// Arayüz renk tokenı (blue/green/red/…) — hex değil, frontend sınıf haritası bu ada bakar.
+  color       String?
+  sortOrder   Int         @default(0) @map("sort_order")
+  statusClass StatusClass @map("status_class")
+  isActive    Boolean     @default(true) @map("is_active")
+  isSystem    Boolean     @default(false) @map("is_system")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  tickets Ticket[] @relation("TicketStatus")
+
+  @@map("dict_ticket_statuses")
+}
+
+/// Öncelik sözlüğü — ticket ve görevler ortak kullanır. `weight` sıralama
+/// ağırlığıdır (yüksek = önce; eskalasyon bir üst önceliği bulmak için bunu okur).
+model PriorityDictionary {
+  key       String   @id
+  labelTr   String   @map("label_tr")
+  labelEn   String   @map("label_en")
+  color     String?
+  weight    Int      @default(2)
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  isSystem  Boolean  @default(false) @map("is_system")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tickets         Ticket[]         @relation("TicketPriority")
+  ticketTemplates TicketTemplate[] @relation("TemplatePriority")
+  tasks           Task[]           @relation("TaskPriority")
+
+  @@map("dict_priorities")
+}
+
+model TaskStatusDictionary {
+  key       String   @id
+  labelTr   String   @map("label_tr")
+  labelEn   String   @map("label_en")
+  color     String?
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  isSystem  Boolean  @default(false) @map("is_system")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tasks Task[] @relation("TaskStatus")
+
+  @@map("dict_task_statuses")
+}
+
+model OnsiteTypeDictionary {
+  key       String   @id
+  labelTr   String   @map("label_tr")
+  labelEn   String   @map("label_en")
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  isSystem  Boolean  @default(false) @map("is_system")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  onsiteSupports OnsiteSupport[] @relation("OnsiteType")
+
+  @@map("dict_onsite_types")
+}
+
+model OnsiteStatusDictionary {
+  key       String   @id
+  labelTr   String   @map("label_tr")
+  labelEn   String   @map("label_en")
+  color     String?
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  isSystem  Boolean  @default(false) @map("is_system")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  onsiteSupports OnsiteSupport[] @relation("OnsiteStatus")
+
+  @@map("dict_onsite_statuses")
+}
+
+model CompanyTypeDictionary {
+  key       String   @id
+  labelTr   String   @map("label_tr")
+  labelEn   String   @map("label_en")
+  color     String?
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  isSystem  Boolean  @default(false) @map("is_system")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  companies Company[] @relation("CompanyGroupType")
+
+  @@map("dict_company_types")
 }

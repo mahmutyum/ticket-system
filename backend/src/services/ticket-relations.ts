@@ -1,4 +1,5 @@
-import { TicketStatus, type PrismaClient } from '@prisma/client';
+import { TicketStatus } from '../config/constants.js';
+import { type PrismaClient } from '@prisma/client';
 
 /**
  * Ticket ilişkileri: birleştirme, üst/alt, izleyiciler (CC).
@@ -10,7 +11,7 @@ import { TicketStatus, type PrismaClient } from '@prisma/client';
 export interface RelationTicket {
   id: string;
   companyId: string;
-  status: TicketStatus;
+  status: string;
   parentId: string | null;
   mergedIntoId: string | null;
 }

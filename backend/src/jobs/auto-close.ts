@@ -1,4 +1,6 @@
-import { TicketStatus, type Prisma, type PrismaClient } from '@prisma/client';
+import { TICKET_STATUS_KEYS } from '../config/constants.js';
+import { keysWithClass } from '../services/lookups.js';
+import { type Prisma, type PrismaClient } from '@prisma/client';
 import { config } from '../config/index.js';
 import { autoCloseReasonText, waitingCloseNote } from '../i18n/labels.js';
 import { calendarFor, createSlaContextCache } from '../services/sla-context.js';
@@ -69,9 +71,9 @@ export async function runAutoClose(prisma: PrismaClient, now: Date, deps: AutoCl
   const contextFor = createSlaContextCache(prisma);
   const companies = await prisma.company.findMany({ select: { id: true, slaSettings: true } });
 
-  const findOlderThan = (companyId: string, status: TicketStatus, days: number, extra: Prisma.TicketWhereInput = {}) =>
+  const findOlderThan = (companyId: string, statusKeys: string[], days: number, extra: Prisma.TicketWhereInput = {}) =>
     prisma.ticket.findMany({
-      where: { companyId, status, statusChangedAt: { lte: new Date(now.getTime() - days * DAY) }, ...extra },
+      where: { companyId, status: { in: statusKeys }, statusChangedAt: { lte: new Date(now.getTime() - days * DAY) }, ...extra },
       select: ticketSelect,
       orderBy: { statusChangedAt: 'asc' },
       take: BATCH,
@@ -79,7 +81,7 @@ export async function runAutoClose(prisma: PrismaClient, now: Date, deps: AutoCl
 
   const close = async (ticket: TicketRow, reason: Reason, days: number) => {
     const calendar = calendarFor(await contextFor(ticket.companyId), ticket.priority);
-    const plan = planStatusTransition(ticket, TicketStatus.closed, now, calendar);
+    const plan = planStatusTransition(ticket, TICKET_STATUS_KEYS.closed, now, calendar);
     await prisma.ticket.update({
       where: { id: ticket.id },
       data: {
@@ -88,7 +90,7 @@ export async function runAutoClose(prisma: PrismaClient, now: Date, deps: AutoCl
       },
     });
     result.closed++;
-    await emitTicketEvent(prisma, 'ticket.status_changed', ticket.id, { from: ticket.status, to: TicketStatus.closed, reason: `auto_${reason}` });
+    await emitTicketEvent(prisma, 'ticket.status_changed', ticket.id, { from: ticket.status, to: TICKET_STATUS_KEYS.closed, reason: `auto_${reason}` });
     await maybeSendSurvey(prisma, ticket.id, deps.queueEmail);
 
     for (const to of await requesterSideRecipients(prisma, ticket)) {
@@ -106,28 +108,33 @@ export async function runAutoClose(prisma: PrismaClient, now: Date, deps: AutoCl
         companyId: ticket.companyId,
       });
     }
-    deps.broadcastStaff('ticket_updated', { id: ticket.id, ticketNumber: ticket.ticketNumber, status: TicketStatus.closed }, ticket.companyId);
-    deps.broadcastTicket(ticket.accessToken, 'ticket_updated', { status: TicketStatus.closed, priority: ticket.priority });
+    deps.broadcastStaff('ticket_updated', { id: ticket.id, ticketNumber: ticket.ticketNumber, status: TICKET_STATUS_KEYS.closed }, ticket.companyId);
+    deps.broadcastTicket(ticket.accessToken, 'ticket_updated', { status: TICKET_STATUS_KEYS.closed, priority: ticket.priority });
   };
 
   for (const company of companies) {
     const { resolvedAfterDays, waitingReminderAfterDays, waitingCloseAfterDays } = parseSlaSettings(company.slaSettings).autoClose;
 
     if (resolvedAfterDays > 0) {
-      for (const ticket of await findOlderThan(company.id, TicketStatus.resolved, resolvedAfterDays)) {
+      // Sınıf tabanlı (v1.3): 'resolved' sınıfındaki tüm aktif anahtarlar —
+      // panelden eklenen yeni bir çözümlü durum da otomatik kapanmaya girer.
+      for (const ticket of await findOlderThan(company.id, keysWithClass('ticketStatuses', 'resolved'), resolvedAfterDays)) {
         await close(ticket, 'resolved', resolvedAfterDays);
       }
     }
 
     // Önce kapatma: kapatma eşiğini geçmiş ticket'a ayrıca hatırlatma gitmesin.
+    // NOT: buradaki `waiting_user_response` bilinçli olarak SİSTEM anahtarıdır —
+    // hatırlatma/kapatma yalnızca kullanıcı yanıtı bekleyenlere uygulanır; diğer
+    // 'waiting' durumları dış bağlılıklardır ve otomatik kapatılmaz.
     if (waitingCloseAfterDays > 0) {
-      for (const ticket of await findOlderThan(company.id, TicketStatus.waiting_user_response, waitingCloseAfterDays)) {
+      for (const ticket of await findOlderThan(company.id, [TICKET_STATUS_KEYS.waiting_user_response], waitingCloseAfterDays)) {
         await close(ticket, 'no_response', waitingCloseAfterDays);
       }
     }
 
     if (waitingReminderAfterDays > 0) {
-      const due = await findOlderThan(company.id, TicketStatus.waiting_user_response, waitingReminderAfterDays, {
+      const due = await findOlderThan(company.id, [TICKET_STATUS_KEYS.waiting_user_response], waitingReminderAfterDays, {
         autoCloseReminderAt: null,
       });
       for (const ticket of due) {

@@ -1,13 +1,14 @@
+import { zLookupKey } from '../../services/lookups.js';
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { Prisma, Priority, TicketStatus } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { getStaffCompanyScope, companyWhereClause, resolveCompanyFilter } from '../../utils/staff-scope.js';
 import { commonErrorResponses } from '../../utils/api-schema.js';
 
 const dashboardFilterSchema = z.object({
   companyId: z.string().optional(),
-  status: z.nativeEnum(TicketStatus).optional(),
-  priority: z.nativeEnum(Priority).optional(),
+  status: zLookupKey('ticketStatus').optional(),
+  priority: zLookupKey('priority').optional(),
   assignedToId: z.string().optional(),
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
@@ -17,8 +18,8 @@ const ticketCardSchema = z.object({
   id: z.string(),
   ticketNumber: z.string(),
   subject: z.string(),
-  status: z.nativeEnum(TicketStatus),
-  priority: z.nativeEnum(Priority),
+  status: zLookupKey('ticketStatus'),
+  priority: zLookupKey('priority'),
   createdAt: z.date(),
 });
 const dashboardStatsSchema = z.object({
@@ -31,8 +32,8 @@ const dashboardStatsSchema = z.object({
       slaViolations: z.number().int(),
       myOpen: z.number().int(),
     }),
-    byStatus: z.array(z.object({ status: z.nativeEnum(TicketStatus), count: z.number().int() })),
-    byPriority: z.array(z.object({ priority: z.nativeEnum(Priority), count: z.number().int() })),
+    byStatus: z.array(z.object({ status: zLookupKey('ticketStatus'), count: z.number().int() })),
+    byPriority: z.array(z.object({ priority: zLookupKey('priority'), count: z.number().int() })),
     byCompany: z.array(z.object({ companyId: z.string(), companyName: z.string(), count: z.number().int() })),
     recentTickets: z.array(ticketCardSchema.extend({
       company: z.object({ name: z.string() }),

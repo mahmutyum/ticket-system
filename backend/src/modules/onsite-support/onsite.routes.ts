@@ -1,6 +1,7 @@
+import { zLookupKey } from '../../services/lookups.js';
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { Prisma, OnsiteType, OnsiteStatus } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { queueEmail } from '../../jobs/queue.js';
 import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
 import { createAuditLog } from '../../middleware/audit.js';
@@ -11,7 +12,7 @@ import { onsiteTypeLabel, onsiteScheduledNote, onsiteCancelledTypeLabel, onsiteC
 const onsiteCreateSchema = z.object({
   ticketId: z.string().cuid(),
   locationId: z.string().cuid(),
-  type: z.nativeEnum(OnsiteType),
+  type: zLookupKey('onsiteType'),
   scheduledAt: z.string().datetime(),
   scheduledEnd: z.string().datetime().optional(),
   roomInfo: z.string().optional(),
@@ -22,13 +23,13 @@ const onsiteCreateSchema = z.object({
 const onsiteUpdateSchema = z.object({
   scheduledAt: z.string().datetime().optional(),
   scheduledEnd: z.string().datetime().optional(),
-  status: z.nativeEnum(OnsiteStatus).optional(),
+  status: zLookupKey('onsiteStatus').optional(),
   notes: z.string().optional(),
   roomInfo: z.string().optional(),
 });
 const idParamsSchema = z.object({ id: z.string().min(1).max(128) });
 const onsiteListQuerySchema = z.object({
-  status: z.nativeEnum(OnsiteStatus).optional(),
+  status: zLookupKey('onsiteStatus').optional(),
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
 });
@@ -38,9 +39,9 @@ const calendarQuerySchema = z.object({
 });
 const onsiteEntitySchema = z.object({
   id: z.string(), ticketId: z.string(), locationId: z.string(),
-  type: z.nativeEnum(OnsiteType), scheduledAt: z.date(), scheduledEnd: z.date().nullable(),
+  type: zLookupKey('onsiteType'), scheduledAt: z.date(), scheduledEnd: z.date().nullable(),
   roomInfo: z.string().nullable(), floorInfo: z.string().nullable(), notes: z.string().nullable(),
-  status: z.nativeEnum(OnsiteStatus), completedAt: z.date().nullable(), createdAt: z.date(),
+  status: zLookupKey('onsiteStatus'), completedAt: z.date().nullable(), createdAt: z.date(),
 });
 const locationEntitySchema = z.object({
   id: z.string(), companyId: z.string(), name: z.string(), address: z.string().nullable(),
@@ -222,7 +223,7 @@ export const onsiteRoutes: FastifyPluginAsyncZod = async (app) => {
       return reply.status(403).send({ success: false, error: t(request, 'onsite.forbidden') });
     }
 
-    const updateData: Prisma.OnsiteSupportUpdateInput = {
+    const updateData: Prisma.OnsiteSupportUncheckedUpdateInput = {
       status: body.status,
       notes: body.notes,
       roomInfo: body.roomInfo,
