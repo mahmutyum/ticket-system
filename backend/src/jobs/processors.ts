@@ -47,7 +47,11 @@ export async function processEmailJob(
   sender = sendEmailForCompany,
 ): Promise<void> {
   const { to, templateSlug, variables, ticketId, companyId } = data;
-  const { locale, isStaff } = await resolveRecipient(prisma, to, ticketId);
+  // Public ticketless maillerde istekteki dil önce gelir (ör. Taleplerim);
+  // personel/ticket çözümlemesi yalnızca verilmemişse devreye girer.
+  const { locale, isStaff } = data.locale
+    ? { locale: data.locale, isStaff: false }
+    : await resolveRecipient(prisma, to, ticketId);
   // Alıcının dilinde şablon; yoksa Türkçeye düş.
   const template =
     (await prisma.emailTemplate.findFirst({ where: { slug: templateSlug, locale } })) ??

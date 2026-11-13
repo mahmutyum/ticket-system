@@ -1,0 +1,30 @@
+{
+  "tr": {
+    "title": "Taleplerim",
+    "subtitle": "E-posta adresinizi girin; tüm taleplerinizi tek listede gösteren bağlantıyı e-postanıza gönderelim.",
+    "emailLabel": "E-posta adresi",
+    "emailHint": "Talepleri bu adrese gönderilir — bağlantı 15 dakika geçerlidir.",
+    "request": "Bağlantıyı Gönder",
+    "requestAgain": "Yeni bağlantı iste",
+    "sendFailed": "Bağlantı gönderilemedi — e-posta adresini kontrol edip tekrar deneyin.",
+    "sent": "Bağlantı {{email}} adresine gönderildi.",
+    "sentHint": "E-posta gelmezse spam klasörünü kontrol edin; bağlantı 15 dakika geçerlidir.",
+    "listIntro": "{{email}} adresine ait {{count}} talep bulundu:",
+    "noTickets": "Bu e-posta adresine ait talep bulunamadı.",
+    "expired": "Bağlantının süresi dolmuş — aşağıdan yeni bağlantı isteyebilirsiniz."
+  },
+  "en": {
+    "title": "My Tickets",
+    "subtitle": "Enter your email and we'll send you a link showing all your tickets in one list.",
+    "emailLabel": "Email address",
+    "emailHint": "The list will be sent to this address — the link is valid for 15 minutes.",
+    "request": "Send the Link",
+    "requestAgain": "Request a new link",
+    "sendFailed": "Could not send the link — check the email address and try again.",
+    "sent": "A link was sent to {{email}}.",
+    "sentHint": "If it doesn't arrive, check your spam folder; the link is valid for 15 minutes.",
+    "listIntro": "Found {{count}} tickets for {{email}}:",
+    "noTickets": "No tickets were found for this email address.",
+    "expired": "The link has expired — you can request a new one below."
+  }
+}

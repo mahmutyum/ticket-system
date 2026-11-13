@@ -29,6 +29,12 @@ export interface EmailJobData {
   variables: Record<string, string>;
   ticketId?: string;
   companyId?: string; // Used to resolve company-specific SMTP
+  /**
+   * Public ticketless maillerde (ör. Taleplerim bağlantısı) istek sahibinin
+   * arayüz dili — resolveLocale bu alanı personel/ticket aramasından ÖNCE
+   * kullanır. Verilmezse mevcut öncelik zinciri işler.
+   */
+  locale?: string;
 }
 
 export interface SmsJobData {

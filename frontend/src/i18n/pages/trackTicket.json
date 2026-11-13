@@ -12,7 +12,8 @@
     "emailPlaceholder": "Email adresinizi girin",
     "searching": "Aranıyor...",
     "submit": "Talebi Görüntüle",
-    "notFound": "Talep bulunamadı"
+    "notFound": "Talep bulunamadı",
+    "myTicketsLink": "Tüm taleplerinizi tek listede mi görmek istiyorsunuz? Taleplerim"
   },
   "en": {
     "heroTitle": "Return to your ticket",
@@ -27,6 +28,7 @@
     "emailPlaceholder": "Enter your email address",
     "searching": "Searching...",
     "submit": "View Ticket",
-    "notFound": "Ticket not found"
+    "notFound": "Ticket not found",
+    "myTicketsLink": "Want all your tickets in one list? My Tickets"
   }
 }

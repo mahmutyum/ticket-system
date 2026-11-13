@@ -220,8 +220,35 @@ export const JOB_FAILURE_EMAIL_TEMPLATES = [
   },
 ];
 
+// ==================== TALEPLERİM BAĞLANTISI (v1.3) ====================
+// Talep sahibi e-postasını girdiğinde kısa ömürlü liste bağlantısı bu şelle gider.
+export const MY_TICKETS_EMAIL_TEMPLATES = [
+  {
+    slug: 'my_tickets_link',
+    locale: 'tr',
+    subject: 'Talepleriniz - Bağlantı',
+    bodyHtml: `<h2>Talepleriniz</h2>
+<p>Aşağıdaki bağlantıdan <strong>{{ticketCount}}</strong> talebinizi tek listede görebilirsiniz.</p>
+<p><a href="{{myTicketsUrl}}">Taleplerimi Görüntüle</a></p>
+<p style="color:#888;font-size:12px;">Bağlantı 15 dakika geçerlidir. Bu e-postayı siz istemediyseniz yok sayabilirsiniz.</p>`,
+    bodyText: 'Talepleriniz ({{ticketCount}} adet): {{myTicketsUrl}}\nBağlantı 15 dakika geçerlidir.',
+    variables: ['myTicketsUrl', 'ticketCount'],
+  },
+  {
+    slug: 'my_tickets_link',
+    locale: 'en',
+    subject: 'Your Tickets - Link',
+    bodyHtml: `<h2>Your Tickets</h2>
+<p>Use the link below to see all <strong>{{ticketCount}}</strong> of your tickets in one list.</p>
+<p><a href="{{myTicketsUrl}}">View My Tickets</a></p>
+<p style="color:#888;font-size:12px;">The link is valid for 15 minutes. If you did not request this email, you can ignore it.</p>`,
+    bodyText: 'Your tickets ({{ticketCount}}): {{myTicketsUrl}}\nThe link is valid for 15 minutes.',
+    variables: ['myTicketsUrl', 'ticketCount'],
+  },
+];
+
 export async function ensureSystemEmailTemplates(prisma: Pick<PrismaClient, 'emailTemplate'>) {
-  for (const tmpl of [...SLA_EMAIL_TEMPLATES, ...AUTO_CLOSE_EMAIL_TEMPLATES, ...MERGE_EMAIL_TEMPLATES, ...SURVEY_EMAIL_TEMPLATES, ...JOB_FAILURE_EMAIL_TEMPLATES]) {
+  for (const tmpl of [...SLA_EMAIL_TEMPLATES, ...AUTO_CLOSE_EMAIL_TEMPLATES, ...MERGE_EMAIL_TEMPLATES, ...SURVEY_EMAIL_TEMPLATES, ...JOB_FAILURE_EMAIL_TEMPLATES, ...MY_TICKETS_EMAIL_TEMPLATES]) {
     await prisma.emailTemplate.upsert({
       where: { slug_locale: { slug: tmpl.slug, locale: tmpl.locale } },
       update: {},

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { KeyRound, LockKeyhole, Search } from 'lucide-react';
 import axios from 'axios';
@@ -92,6 +92,10 @@ export default function TrackTicketPage() {
             <Search className="w-4 h-4" />
             {loading ? t('trackTicket.searching') : t('trackTicket.submit')}
           </button>
+          {/* Tek sorguluk aramaya alternatif: e-posta doğrulamalı birleşik liste (v1.3). */}
+          <p className="text-center text-xs text-muted">
+            <Link to="/my" className="text-primary-600 hover:underline">{t('trackTicket.myTicketsLink')}</Link>
+          </p>
         </form>
       </div>
     </div>

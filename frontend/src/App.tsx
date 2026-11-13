@@ -29,6 +29,7 @@ const IntegrationsPage = lazy(() => import('./pages/staff/IntegrationsPage'));
 const ScheduledJobsPage = lazy(() => import('./pages/staff/ScheduledJobsPage'));
 const BackupsPage = lazy(() => import('./pages/staff/BackupsPage'));
 const KbPage = lazy(() => import('./pages/public/kb/KbPage'));
+const MyTicketsPage = lazy(() => import('./pages/public/my/MyTicketsPage'));
 const KbManagementPage = lazy(() => import('./pages/staff/KbManagementPage'));
 const AssetsPage = lazy(() => import('./pages/staff/AssetsPage'));
 
@@ -89,6 +90,7 @@ export default function App() {
           <Route path="/track" element={<TrackTicketPage />} />
           <Route path="/ticket/:accessToken" element={<TicketStatusPage />} />
           <Route path="/kb" element={<KbPage />} />
+          <Route path="/my" element={<MyTicketsPage />} />
           <Route path="/kb/:id" element={<KbPage />} />
         </Route>
 
