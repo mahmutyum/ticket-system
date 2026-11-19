@@ -58,7 +58,7 @@ const providerBodySchema = z.object({
   name: z.string().trim().min(1).max(100),
   type: z.nativeEnum(IdentityProviderType),
   isActive: z.boolean().default(true),
-  config: z.record(z.unknown()),
+  config: z.record(z.string(), z.unknown()),
   /** Boş bırakılırsa kayıtlı sır korunur. */
   secret: z.string().max(4000).optional(),
   jitProvisioning: z.boolean().default(false),

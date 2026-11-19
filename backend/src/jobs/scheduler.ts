@@ -32,7 +32,7 @@ import { backupQueue, mailFetchQueue, queueEmail, redisConnection, slaCheckQueue
  * şişirmesin diye). Çalışma kaydını da o servis kendi yazar.
  *
  * Retention **apply** bilinçli olarak registry'de YOKTUR — yıkıcı işlem insan
- * onayı olmadan otomatik çalıştırılamaz (bkz. docs/yol-haritasi.md).
+ * onayı olmadan otomatik çalıştırılamaz (bkz. docs/roadmap.md).
  */
 
 export interface JobDefinition {

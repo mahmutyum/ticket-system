@@ -31,7 +31,7 @@ const companyCreateSchema = z.object({
   allowedDomains: z.array(z.string()).default([]),
   portalDomains: z.array(z.string()).default([]),
   notificationEmail: z.string().email().nullable().optional(),
-  settings: z.record(z.unknown()).optional(),
+  settings: z.record(z.string(), z.unknown()).optional(),
 });
 
 const companyUpdateSchema = companyCreateSchema.partial().extend({

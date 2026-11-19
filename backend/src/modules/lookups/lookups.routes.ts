@@ -108,7 +108,7 @@ export const lookupsRoutes: FastifyPluginAsyncZod = async (app) => {
     },
   }, async (request, reply) => {
     const isAdmin = request.staffUser!.role === 'admin';
-    const data: Record<string, unknown> = {};
+    const data = {} as Record<Kind, z.infer<typeof entrySchema>[]>;
     for (const kind of KINDS) {
       const entries = entriesOf(kind);
       data[kind] = isAdmin ? entries : entries.filter((entry) => entry.isActive);

@@ -105,7 +105,7 @@ export const httpUrlSchema = z
  * Alan uzunluk sınırları — tek doğruluk kaynağı.
  *
  * Frontend `maxLength` değerleri bunlarla hizalı olmalı. Değiştirirken
- * `docs/kullanim.md`'deki tabloyu da güncelle.
+ * `docs/usage.md`'deki tabloyu da güncelle.
  */
 export const LIMITS = {
   /** Ticket konusu — kısa ve taranabilir olmalı. */

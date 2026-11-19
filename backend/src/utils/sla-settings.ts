@@ -46,7 +46,7 @@ export const slaSettingsSchema = z.object({
       /** Çözüm SLA'sı ihlalinde önceliği bir kademe yükselt. */
       bumpPriority: z.boolean().default(false),
     })
-    .default({}),
+    .default({ notifyManagers: true, bumpPriority: false }),
   /** Çözüm/kapanışta talep sahibine memnuniyet anketi (CSAT) gönderilsin mi. */
   satisfactionSurvey: z.boolean().default(true),
   /** Otomatik kapatma (gün). 0 → kapalı. */
@@ -59,7 +59,7 @@ export const slaSettingsSchema = z.object({
       /** `waiting_user_response`ta bu kadar gün yanıt gelmezse ticket kapatılır. */
       waitingCloseAfterDays: z.number().int().min(0).max(365).default(0),
     })
-    .default({})
+    .default({ resolvedAfterDays: 7, waitingReminderAfterDays: 0, waitingCloseAfterDays: 0 })
     .refine(
       a => a.waitingCloseAfterDays === 0 || a.waitingReminderAfterDays === 0 || a.waitingReminderAfterDays < a.waitingCloseAfterDays,
       { message: 'reminder < close', path: ['waitingReminderAfterDays'] },

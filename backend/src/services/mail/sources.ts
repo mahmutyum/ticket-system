@@ -110,7 +110,7 @@ export interface GraphConfig {
  * Uygulama izniyle (client credentials, `Mail.ReadWrite` application permission)
  * paylaşılan/servis posta kutusunu okur. Kullanıcı etkileşimi gerekmez.
  * Kurulumda Exchange "Application Access Policy" ile uygulama yalnızca bu posta
- * kutusuna kısıtlanmalıdır (bkz. docs/kullanim.md).
+ * kutusuna kısıtlanmalıdır (bkz. docs/usage.md).
  */
 export class GraphSource implements MailSource {
   private token: string | null = null;

@@ -15,7 +15,7 @@ const envSchema = z.object({
   REFRESH_TOKEN_EXPIRY: z.string().default('7d'),
   SMTP_HOST: z.string(),
   SMTP_PORT: z.coerce.number().default(587),
-  SMTP_SECURE: z.string().transform(v => v === 'true').default('false'),
+  SMTP_SECURE: z.string().default('false').transform(v => v === 'true'),
   SMTP_USER: z.string(),
   SMTP_PASS: z.string(),
   SMTP_FROM: z.string(),
@@ -42,18 +42,18 @@ const envSchema = z.object({
   S3_ACCESS_KEY_ID: z.string().optional().or(z.literal('').transform(() => undefined)),
   S3_SECRET_ACCESS_KEY: z.string().optional().or(z.literal('').transform(() => undefined)),
   /** MinIO/R2 gibi path-style endpoint'ler için true. */
-  S3_FORCE_PATH_STYLE: z.string().transform((v) => v === 'true').default('false'),
+  S3_FORCE_PATH_STYLE: z.string().default('false').transform((v) => v === 'true'),
   CREDENTIALS_ENC_KEY: z.string().regex(/^[0-9a-fA-F]{64}$/, 'CREDENTIALS_ENC_KEY 64 karakterlik hex olmalı (32 byte)'),
   // Ayrıcalıklı hesaplarda (admin/it_manager) MFA kurulu değilse panelde uyarı
   // göster. Zorunluluk DEĞİL — sadece bilinçli bir hatırlatma. Kapatmak için
   // MFA_WARNING_ENABLED=false.
-  MFA_WARNING_ENABLED: z.string().transform((v) => v !== 'false').default('true'),
+  MFA_WARNING_ENABLED: z.string().default('true').transform((v) => v !== 'false'),
   // Swagger UI (/docs) tüm endpoint listesini yayınlar. İç ağda kabul edilebilir;
   // internete açık bir kurulumda kapatılabilsin diye bayrağa bağlı.
-  ENABLE_API_DOCS: z.string().transform((v) => v !== 'false').default('true'),
+  ENABLE_API_DOCS: z.string().default('true').transform((v) => v !== 'false'),
   // SMTP/IMAP/LDAP/OIDC hedeflerinde kurum içi ağ adreslerine izin ver (şirket içi
   // Exchange, AD, Keycloak). Loopback ve bulut metadata her durumda engelli kalır.
-  ALLOW_PRIVATE_INTEGRATION_HOSTS: z.string().transform((v) => v === 'true').default('false'),
+  ALLOW_PRIVATE_INTEGRATION_HOSTS: z.string().default('false').transform((v) => v === 'true'),
   // Prometheus /metrics için Bearer token. Boşsa uç kapalıdır (404) — /api/* dış
   // proxy'den erişilebildiği için metrikler kimliksiz yayınlanmaz. En az 24 karakter.
   METRICS_TOKEN: z.string().min(24).optional().or(z.literal('').transform(() => undefined)),

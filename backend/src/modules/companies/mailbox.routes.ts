@@ -40,7 +40,7 @@ const mailboxBodySchema = z
   })
   .superRefine((b, ctx) => {
     const need = (field: keyof typeof b) => {
-      if (!b[field]) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [field], message: 'required' });
+      if (!b[field]) ctx.addIssue({ code: 'custom', path: [field], message: 'required' });
     };
     if (b.provider === MailboxProvider.imap) (['imapHost', 'imapPort', 'username'] as const).forEach(need);
     if (b.provider === MailboxProvider.microsoft365) (['tenantId', 'clientId'] as const).forEach(need);
