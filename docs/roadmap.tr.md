@@ -1,5 +1,7 @@
 # Yol Haritası
 
+[🇬🇧 English](roadmap.md) · 🇹🇷 **Türkçe**
+
 Projenin güncel olgunluğu ve planlanan işler. Durum: 2026-11-14 (v1.3.0).
 
 ## Olgunluk özeti
@@ -150,7 +152,7 @@ zamanı karşılaştırır. Bu, raporlardaki SLA oranlarını yanıltıcı hâle
 - Prometheus uyumlu `/metrics` (yalnızca dahili ağ): HTTP gecikme/hata, BullMQ kuyruk
   derinliği ve başarısız iş sayısı, gönderilemeyen bildirimler, açık SLA ihlalleri,
   SSE bağlantı sayısı.
-- `operasyon.md`'deki alarm başlangıçları için örnek alert kuralları.
+- `operations.tr.md`'deki alarm başlangıçları için örnek alert kuralları.
 
 ---
 
@@ -246,7 +248,7 @@ Birden fazla hedef aynı anda tanımlanabilir (ör. yerel + S3 + Google Drive).
 - Admin panelinde yedek listesi (tüm hedeflerden), boyut, süre, doğrulama durumu.
 - Uzak hedeften indirme + mevcut `restore.sh` akışıyla geri yükleme; restore web
   arayüzünden tetiklenmez (yıkıcı işlem, operatör onayıyla CLI'dan).
-- `operasyon.md` "26 saatten eski backup" alarmı `/metrics` üzerinden
+- `operations.tr.md` "26 saatten eski backup" alarmı `/metrics` üzerinden
   (`backup_last_success_timestamp`) otomatik izlenir.
 
 ### 6. Konfigürasyon (taslak)

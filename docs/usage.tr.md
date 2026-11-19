@@ -1,7 +1,9 @@
 # Kullanım Kılavuzu
 
+[🇬🇧 English](usage.md) · 🇹🇷 **Türkçe**
+
 Bu doküman sistemin **nasıl kullanıldığını** anlatır. Kurulum için
-[kurulum.md](kurulum.md), teknik detay için [mimari.md](mimari.md).
+[installation.tr.md](installation.tr.md), teknik detay için [architecture.tr.md](architecture.tr.md).
 
 - [Kimler ne yapabilir](#kimler-ne-yapabilir)
 - [Talep eden — public portal](#talep-eden--public-portal)

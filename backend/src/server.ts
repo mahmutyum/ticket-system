@@ -54,7 +54,7 @@ async function start() {
         app.log.warn('METRICS_TOKEN tanımsız — /metrics kapalı (404). Prometheus izlemesi sessizce veri almıyor olabilir.');
       }
       if (config.ENABLE_API_DOCS) {
-        app.log.warn('ENABLE_API_DOCS=true ve NODE_ENV=production — /docs internete açık kurulumlarda kapatılmalı (bkz. docs/operasyon.md).');
+        app.log.warn('ENABLE_API_DOCS=true ve NODE_ENV=production — /docs internete açık kurulumlarda kapatılmalı (bkz. docs/operations.md).');
       }
     }
 

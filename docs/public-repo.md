@@ -1,72 +1,76 @@
-# Public depo güvenliği
+# Public repository security
 
-Bu depo kaynak kodu, migration'ları, örnek yapılandırmayı ve kullanıcı/operasyon
-dokümantasyonunu yayınlar. Çalışan bir kuruluma ait veri veya kimlik bilgisi içermez.
+🇬🇧 **English** · [🇹🇷 Türkçe](public-repo.tr.md)
 
-## Repoda bulunması gerekenler
+This repository publishes the source code, migrations, example configuration and
+user/operations documentation. It contains no data or credentials belonging to a running
+installation.
 
-- Uygulama kaynak kodu ve testler
-- Prisma şeması ve tekrar üretilebilir migration SQL'leri
-- `package-lock.json` gibi kilit dosyaları
-- Gerçek değer içermeyen `.env.example`
-- Docker/Nginx yapılandırma şablonları
-- Kurulum, operasyon, güvenlik ve katkı belgeleri
-- Yalnızca sentetik veri üreten geliştirme seed'i
+## What belongs in the repository
 
-## Repoda bulunmaması gerekenler
+- Application source code and tests
+- Prisma schema and reproducible migration SQL
+- Lock files such as `package-lock.json`
+- `.env.example` with no real values
+- Docker/Nginx configuration templates
+- Installation, operations, security and contribution docs
+- A development seed that generates synthetic data only
 
-- `.env` dosyaları veya gerçek secret/token/API anahtarı
-- Özel anahtar, sertifika paketi veya keystore
-- Veritabanı dump'ı, yedek, SQLite dosyası
-- Kullanıcı yüklemeleri, loglar, hata dökümleri ve destek kayıtları
-- Gerçek müşteri/şirket/personel adı, e-posta, telefon, domain veya IP bilgisi
-- Üretim ekran görüntüsü ve gerçek ticket içeriği
-- IDE, işletim sistemi, AI-agent çalışma/talimat dosyaları
-- Geçici planlar, sohbet dökümleri ve iç ilerleme günlükleri
+## What must never be in the repository
 
-`.gitignore` bu sınıfların yaygın uzantılarını engeller; ancak ignore bir güvenlik
-sınırı değildir. `git add -f` veya daha önce takip edilmeye başlanmış dosyalar yine
-commitlenebilir.
+- `.env` files or real secrets/tokens/API keys
+- Private keys, certificate bundles or keystores
+- Database dumps, backups, SQLite files
+- User uploads, logs, crash dumps and support records
+- Real customer/company/staff names, emails, phone numbers, domains or IP addresses
+- Production screenshots and real ticket content
+- IDE, operating system, AI-agent working/instruction files
+- Scratch plans, chat transcripts and internal progress notes
 
-## Commit öncesi kontrol
+`.gitignore` blocks the common extensions of these classes; however, ignore is not a
+security boundary. `git add -f` or files that were once tracked can still end up
+committed.
+
+## Pre-commit check
 
 ```bash
 ./scripts/check-public-repo.sh
 git diff --cached
 ```
 
-GitHub Actions otomatik tetiklemeleri proje tercihi gereği kapalıdır. Actions
-ekranından `CI` workflow'u elle çalıştırıldığında `Public repo — secret ve veri
-dosyası kontrolü` işi aynı denetimi temiz bir clone üzerinde tekrarlar. Bu kontrol;
-özel anahtar, yaygın sağlayıcı token'ları, sertifika/keystore, arşiv/yedek,
-veritabanı ve yerel agent dosyalarını reddeder.
+GitHub Actions automatic triggers are disabled by project preference. When the `CI`
+workflow is run manually from the Actions tab, the `Public repo — secret ve veri dosyası
+kontrolü` job repeats the same audit on a clean clone. This check rejects private keys,
+common provider tokens, certificates/keystores, archives/backups, databases and local
+agent files.
 
-Varsa ayrıca tüm geçmişi Gitleaks veya eşdeğer bir secret scanner ile tara:
+If available, also scan the entire history with Gitleaks or an equivalent secret scanner:
 
 ```bash
 gitleaks git --redact
 ```
 
-Tarayıcı sonucu temiz olsa bile diff insan gözüyle incelenmelidir. Sentetik örnekler
-`company.com`, RFC 5737 dokümantasyon IP'leri ve açıkça `changeme_` ile başlayan
-değerler kullanmalıdır.
+Even if the scanner comes back clean, the diff must be reviewed by a human eye. Synthetic
+examples should use `company.com`, RFC 5737 documentation IPs and values explicitly
+prefixed with `changeme_`.
 
-Migration SQL dosyaları tekrar üretilebilir şema geçmişidir ve repoda tutulur;
-üretimden alınmış `.sql` export/dump dosyaları migration klasörüne konulmamalıdır.
+Migration SQL files are a reproducible schema history and stay in the repository;
+`.sql` exports/dumps taken from production must not be placed in the migrations folder.
 
-## Bir secret commitlendiyse
+## If a secret was committed
 
-1. Secret'ı derhal sağlayıcı tarafında iptal et veya döndür.
-2. Güncel daldan kaldır ve kullanıldığı sistemi denetle.
-3. Gerekliyse `git filter-repo` ile tüm geçmişten temizle.
-4. Force-push öncesi katkıda bulunanlarla koordine ol; tüm klonların yeniden
-   alınması gerekir.
+1. Revoke or rotate the secret immediately on the provider side.
+2. Remove it from the current branch and audit the systems where it was used.
+3. If necessary, purge it from the entire history with `git filter-repo`.
+4. Coordinate with contributors before force-pushing; all clones must be freshly
+   re-cloned.
 
-Geçmişten silmek tek başına yeterli değildir: fork, clone, cache ve loglarda kopya
-kalabilir. Bu nedenle ilk ve zorunlu müdahale her zaman anahtar rotasyonudur.
+Deleting from history alone is not enough: copies can remain in forks, clones, caches and
+logs. That is why the first and mandatory response is always key rotation.
 
-## Git yazar bilgisi
+## Git author information
 
-Commit adı ve e-postası Git nesnesinin parçasıdır ve public depoda görünür. Kişisel
-e-posta yayınlamak istemeyen katkıcılar commit atmadan önce GitHub `noreply` adresini
-yapılandırmalıdır. Eski commitlerdeki adres ancak geçmiş yeniden yazılarak değişir.
+The commit name and email are part of the Git object and visible in a public repository.
+Contributors who do not want to publish a personal email should configure the GitHub
+`noreply` address before committing. Addresses in old commits can only be changed by
+rewriting history.

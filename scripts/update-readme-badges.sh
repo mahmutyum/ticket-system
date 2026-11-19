@@ -21,7 +21,7 @@ if [ -z "$tests" ]; then
   tests="$(printf '%s' "$summary" | grep -oE '[0-9]+' | head -1)"
 fi
 
-for f in "$root/README.md" "$root/README.en.md"; do
+for f in "$root/README.md" "$root/README.tr.md"; do
   sed -i.bak \
     -e "s|badge/version-[0-9][0-9.]*-blue|badge/version-$version-blue|" \
     -e "s|badge/tests-[0-9][0-9]*%20passing|badge/tests-$tests%20passing|" \

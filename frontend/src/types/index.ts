@@ -320,7 +320,7 @@ export const VALID_STATUSES = [
 // PRIORITY_LABELS, ROLE_LABELS, GROUP_TYPE_LABELS, ONSITE_STATUS_LABELS).
 // Etiketler artık çeviri dosyalarından gelir — `i18n/labels.ts`'teki
 // `useEnumLabels()` kullanın. v1.3'te bunlar DB'deki sözlük tablolarından
-// okunacak (bkz. docs/yol-haritasi.md).
+// okunacak (bkz. docs/roadmap.md).
 
 export const STATUS_COLORS: Record<string, string> = {
   open: 'bg-blue-100 text-blue-800',

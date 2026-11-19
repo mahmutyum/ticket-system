@@ -1,4 +1,4 @@
-# Ekran Görüntüleri / Screenshots
+# Screenshots / Ekran Görüntüleri
 
 Çift dil (TR/EN) arayüzün otomatik üretilmiş ekran görüntüleri. Playwright
 (chromium) ile `frontend/scripts/screenshots.mjs` üzerinden, çalışan dev ortamına
@@ -15,27 +15,27 @@ Türkçe hem İngilizce yakalanır.
 
 ## Public Portal
 
-| Sayfa / Page | 🇹🇷 Türkçe | 🇬🇧 English |
+| Page / Sayfa | 🇹🇷 Türkçe | 🇬🇧 English |
 |---|---|---|
-| Ana sayfa / Home | ![](public-home-tr.png) | ![](public-home-en.png) |
-| Talep oluştur / Create ticket | ![](public-create-ticket-tr.png) | ![](public-create-ticket-en.png) |
-| Talep takip / Track | ![](public-track-tr.png) | ![](public-track-en.png) |
+| Home / Ana sayfa | ![](public-home-tr.png) | ![](public-home-en.png) |
+| Create ticket / Talep oluştur | ![](public-create-ticket-tr.png) | ![](public-create-ticket-en.png) |
+| Track / Talep takip | ![](public-track-tr.png) | ![](public-track-en.png) |
 
-## Yönetim Paneli / Admin Panel
+## Admin Panel / Yönetim Paneli
 
-| Sayfa / Page | 🇹🇷 Türkçe | 🇬🇧 English |
+| Page / Sayfa | 🇹🇷 Türkçe | 🇬🇧 English |
 |---|---|---|
-| Giriş / Login | ![](staff-login-tr.png) | ![](staff-login-en.png) |
-| Panel / Dashboard | ![](staff-dashboard-tr.png) | ![](staff-dashboard-en.png) |
-| Talepler / Tickets | ![](staff-tickets-tr.png) | ![](staff-tickets-en.png) |
-| Görevler / Tasks | ![](staff-tasks-tr.png) | ![](staff-tasks-en.png) |
-| Yerinde Destek / Onsite | ![](staff-onsite-tr.png) | ![](staff-onsite-en.png) |
-| Şirketler / Companies | ![](staff-companies-tr.png) | ![](staff-companies-en.png) |
+| Login / Giriş | ![](staff-login-tr.png) | ![](staff-login-en.png) |
+| Dashboard / Panel | ![](staff-dashboard-tr.png) | ![](staff-dashboard-en.png) |
+| Tickets / Talepler | ![](staff-tickets-tr.png) | ![](staff-tickets-en.png) |
+| Tasks / Görevler | ![](staff-tasks-tr.png) | ![](staff-tasks-en.png) |
+| On-site / Yerinde Destek | ![](staff-onsite-tr.png) | ![](staff-onsite-en.png) |
+| Companies / Şirketler | ![](staff-companies-tr.png) | ![](staff-companies-en.png) |
 | Personel / Staff | ![](staff-management-tr.png) | ![](staff-management-en.png) |
-| Raporlar / Reports | ![](staff-reports-tr.png) | ![](staff-reports-en.png) |
-| Şablonlar / Templates | ![](staff-templates-tr.png) | ![](staff-templates-en.png) |
-| Şifreler / Passwords | ![](staff-passwords-tr.png) | ![](staff-passwords-en.png) |
-| Hesap & Güvenlik / Account | ![](staff-account-tr.png) | ![](staff-account-en.png) |
+| Reports / Raporlar | ![](staff-reports-tr.png) | ![](staff-reports-en.png) |
+| Templates / Şablonlar | ![](staff-templates-tr.png) | ![](staff-templates-en.png) |
+| Passwords / Şifreler | ![](staff-passwords-tr.png) | ![](staff-passwords-en.png) |
+| Account / Hesap & Güvenlik | ![](staff-account-tr.png) | ![](staff-account-en.png) |
 
 > Not: Talep konuları, kategori ve şirket adları gibi **veritabanı içerikleri**
 > çevrilmez (kullanıcının girdiği veridir); yalnızca arayüz metinleri iki dillidir.

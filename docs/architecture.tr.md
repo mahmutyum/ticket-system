@@ -1,7 +1,9 @@
 # Mimari
 
-Teknik genel bakış. Kurulum için [kurulum.md](kurulum.md), kullanım için
-[kullanim.md](kullanim.md).
+[🇬🇧 English](architecture.md) · 🇹🇷 **Türkçe**
+
+Teknik genel bakış. Kurulum için [installation.tr.md](installation.tr.md), kullanım için
+[usage.tr.md](usage.tr.md).
 
 ---
 
@@ -213,7 +215,7 @@ hata verir. Zod şemaları `z.nativeEnum(...)` ile bağlıdır.
 
 `Notification.channel` bilinçli olarak `String`'dir (şablon slug'larıyla eşleşir, şablonlar
 DB'den yönetilir). Durum/öncelik/şirket türü gibi listelerin panelden yönetilebilir hâle
-gelmesi v1.3 planındadır ([yol-haritasi.md](yol-haritasi.md)).
+gelmesi v1.3 planındadır ([roadmap.tr.md](roadmap.tr.md)).
 
 **Çok şirketlilik:** `Company` → `Location`, `Category` (self-referencing hiyerarşi +
 kategori bazlı SLA dakikaları + otomatik atama), `CustomField`, `CompanySmtp` (1:1),

@@ -118,7 +118,7 @@ export function registerCollectors(prisma: PrismaClient, queues: Record<string, 
   });
 
   new Gauge({
-    // operasyon.md'deki "son başarılı backup 26 saatten eski" alarmı bu
+    // operations.md'deki "son başarılı backup 26 saatten eski" alarmı bu
     // metrikle otomatik izlenir (v1.2). Değer Unix saniye cinsinden son
     // başarılı yedek zamanı; hiç yedek yoksa 0 — `== 0` alarmı da yakalar.
     name: 'ticket_backup_last_success_timestamp',

@@ -1,0 +1,188 @@
+<div align="center">
+
+# 🎫 IT Ticket System
+
+**Şirket içi IT destek için, Docker ile kurulan çok şirketli ticket sistemi.**
+Talep edenler için şifresiz public portal · IT ekibi için rollü yönetim paneli · **Türkçe / İngilizce çift dil.**
+
+[![Version](https://img.shields.io/badge/version-1.3.1-blue.svg)](CHANGELOG.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Stack](https://img.shields.io/badge/stack-Fastify%20%2B%20React%20%2B%20Postgres-blue)
+![i18n](https://img.shields.io/badge/i18n-TR%20%2F%20EN-green)
+![Tests](https://img.shields.io/badge/tests-444%20passing-success)
+
+[🇬🇧 English](README.md) · 🇹🇷 **Türkçe**
+
+[Özellikler](#-özellikler) · [Ekran görüntüleri](#-ekran-görüntüleri) · [Hızlı başlangıç](#-hızlı-başlangıç) · [Dokümantasyon](#-dokümantasyon)
+
+</div>
+
+---
+
+## ✨ Özellikler
+
+**👤 Talep eden (public, giriş yok)**
+- Ticket oluşturur — şirket / lokasyon / kategori seçer, şirkete özel dinamik alanları doldurur, dosya ekler.
+- Aldığı **erişim linki** ile durumu canlı izler, yanıt yazar, ek gönderir.
+- Ticket numarası + e-posta ile geçmiş talebini sorgular.
+
+**🛠️ IT ekibi (yönetim paneli)**
+- **Dashboard** — açık/kapalı istatistikleri, SLA durumu, üzerine atanmış işler.
+- **Ticket yönetimi** — liste/filtre/arama, detay, durum & atama, iç not (talep edene görünmez) + public yanıt, toplu işlem.
+- **Yerinde destek takvimi** — randevu oluşturma, süre seçimi, takvim görünümü.
+- **Görevler** — ticket'tan bağımsız işler, çoklu atama, yorumlar.
+- **Raporlar** — dağılım, personel performansı, kategori kırılımı, SLA trendi, CSV export.
+
+**🔐 Yönetici (rol bazlı)**
+- `admin` + `it_manager` — şirket / lokasyon / kategori / özel alan, şirket bazlı SMTP, e-posta & SMS şablonları, hazır yanıtlar.
+- `admin` — personel yönetimi ve **şifre kasası** (AES-256-GCM, her görüntüleme audit'lenir).
+
+**⚙️ Arka planda**
+- E-posta / SMS bildirimleri BullMQ ile asenkron (3 deneme, exponential backoff).
+- **Varlıklar**: hafif envanter (etiket, tür, seri no, zimmet), CSV içe aktarma, talep–cihaz bağlantısı ve cihaz bazında talep geçmişi.
+- **Bilgi bankası**: Markdown makaleler (TR/EN), portalda arama, talep sihirbazında kategoriye göre öneri ve "talep açmadan çözüldü" metriği.
+- **Memnuniyet anketi (CSAT)**: çözümde tek seferlik 1–5 puan + yorum; raporda ortalama, yanıt oranı ve kırılımlar.
+- **Entegrasyonlar**: Microsoft Teams, Slack ve HMAC imzalı genel webhook'lar (talep ve SLA olayları).
+- **SSO**: personel girişi için OpenID Connect, SAML 2.0 ve LDAP/Active Directory; grup → rol/şirket eşlemesi, JIT, yerel girişi kapatma.
+- **E-postayla yanıt**: IMAP, Microsoft 365 veya Gmail posta kutusu; yanıtlar ticket'a düşer, eşleşmeyen e-postalardan talep açılabilir.
+- **Prometheus `/metrics`** (Bearer token): HTTP gecikme/hata, kuyruk derinliği, başarısız bildirimler, SLA ihlalleri, SSE; örnek alarm kuralları `docs/operations.tr.md`'de.
+- SLA kontrolü her 5 dakikada; kategori bazlı yanıt/çözüm süreleri, şirket bazlı mesai takvimi ve tatiller, bekleme durumlarında SLA duraklatma, ihlal öncesi uyarı ve yöneticiye eskalasyon.
+- SSE ile panelde canlı güncelleme; domain'e göre şirket branding (logo + tema).
+- **Çift dil**: arayüz tarayıcı diline göre açılır, düğmeyle anında geçilir; API mesajları `Accept-Language`'e, bildirimler alıcının diline göre.
+
+---
+
+## 📸 Ekran görüntüleri
+
+Her ekran hem Türkçe hem İngilizce yakalanmıştır — **[tam galeri: docs/screenshots →](docs/screenshots/)** (14 sayfa × TR/EN).
+
+| Public portal · TR | Yönetim paneli · EN |
+|:---:|:---:|
+| [<img src="docs/screenshots/public-home-tr.png" width="420">](docs/screenshots/public-home-tr.png) | [<img src="docs/screenshots/staff-dashboard-en.png" width="420">](docs/screenshots/staff-dashboard-en.png) |
+| Talep oluşturma sihirbazı · TR | Talep listesi · EN |
+| [<img src="docs/screenshots/public-create-ticket-tr.png" width="420">](docs/screenshots/public-create-ticket-tr.png) | [<img src="docs/screenshots/staff-tickets-en.png" width="420">](docs/screenshots/staff-tickets-en.png) |
+
+---
+
+## 🧰 Teknoloji
+
+| Katman | Teknoloji |
+|---|---|
+| Backend | Node.js 24 · Fastify 5 · TypeScript (ESM) · Prisma 6 · Zod |
+| Frontend | React 18 · Vite 6 · TailwindCSS 3 · TanStack Query 5 · Zustand 5 |
+| Veritabanı | PostgreSQL 16 |
+| Kuyruk / Cache | Redis 7 + BullMQ |
+| Realtime | SSE (Server-Sent Events) |
+| Çok dillilik | react-i18next · `Accept-Language` bazlı API mesajları |
+| Deploy | Docker Compose (Coolify + Nginx Proxy Manager uyumlu) |
+
+---
+
+## 🚀 Hızlı başlangıç
+
+> **Gereksinim:** Docker + Docker Compose. Başka bir şey kurmana gerek yok.
+
+**1. Klonla ve `.env` hazırla**
+
+```bash
+git clone https://github.com/mahmutyum/ticket-system.git
+cd ticket-system
+cp .env.example .env
+```
+
+**2. Zorunlu secret'ları üret** (hiçbirinin varsayılanı yok — boşsa backend açılmaz):
+
+```bash
+openssl rand -base64 48   # → JWT_SECRET
+openssl rand -base64 48   # → JWT_REFRESH_SECRET  (JWT_SECRET'tan farklı)
+openssl rand -hex 32      # → CREDENTIALS_ENC_KEY (tam 64 hex)
+```
+
+Ayrıca `DB_PASSWORD` ve `REDIS_PASSWORD` belirle; ikisini `DATABASE_URL` / `REDIS_URL` içinde de **aynı** değerle güncelle.
+
+**3. Başlat** (şema otomatik uygulanır):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
+**4. Örnek veriyi yükle:**
+
+```bash
+docker compose exec backend npx tsx prisma/seed.ts   # temel veri
+docker compose exec backend npm run db:seed:demo     # 36 talep, 24 görev, kasa vb. (opsiyonel)
+```
+
+Arayüz **http://localhost:1111** · API dokümanı **http://localhost:4000/docs**
+
+### Örnek giriş (seed)
+
+| Rol | E-posta | Şifre |
+|---|---|---|
+| admin | `admin@company.com` | `admin123` |
+| it_manager | `manager@company.com` | `staff123` |
+| it_staff | `it@company.com` | `staff123` |
+
+> ⚠️ Sadece geliştirme içindir. **`seed.ts`'i asla production'a karşı çalıştırma** — production'da ilk admin'i elle oluştur.
+
+---
+
+## 🌐 Production
+
+Detaylı anlatım: **[docs/installation.tr.md](docs/installation.tr.md)**. Kısaca, Coolify + Nginx Proxy Manager arkasında:
+
+```
+İnternet/VPN → NPM (SSL + FQDN) → frontend:1111 ─┬─ /              → SPA
+                                                  ├─ /api/*         → backend:4000
+                                                  ├─ /attachments/* → backend:4000  (yetki kontrollü)
+                                                  └─ /branding/*    → backend:4000  (public logolar)
+```
+
+Sadece `frontend` host'a açılır (`FRONTEND_PORT`, varsayılan `1111`); backend, Postgres ve Redis yalnızca dahili Docker network'ünde kalır. Ekler ve logolar diskten değil **backend üzerinden** servis edilir (token ve şirket kapsamı kontrolleri orada).
+
+> **Mevcut kurulumdan güncelliyorsan** proje `prisma db push` yerine versiyonlu migration'lara geçti; bir kereye mahsus baseline için [docs/installation.tr.md](docs/installation.tr.md#mevcut-veritabanını-baselineleme).
+
+---
+
+## 📚 Dokümantasyon
+
+| Doküman | İçerik |
+|---|---|
+| [docs/installation.tr.md](docs/installation.tr.md) | Kurulum: geliştirme, production, Coolify/NPM, env, migration, sorun giderme |
+| [docs/usage.tr.md](docs/usage.tr.md) | Kullanım: talep eden akışı, IT ekibi paneli, yönetici işlemleri |
+| [docs/architecture.tr.md](docs/architecture.tr.md) | Mimari: modüller, veri modeli, auth, kuyruk, SSE |
+| [docs/roadmap.tr.md](docs/roadmap.tr.md) | Olgunluk ve planlanan özellikler |
+| [docs/operations.tr.md](docs/operations.tr.md) | Yedekleme, geri dönüş, retention, sağlık kontrolleri |
+| [CHANGELOG.md](CHANGELOG.md) | Sürüm geçmişi (SemVer) |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Katkı rehberi ve kodlama kuralları (Türkçe: [CONTRIBUTING.tr.md](CONTRIBUTING.tr.md)) |
+| [SECURITY.md](SECURITY.md) | Güvenlik açığı bildirimi (Türkçe: [SECURITY.tr.md](SECURITY.tr.md)) |
+
+> Dokümantasyon İngilizce önceliktir; her belgenin `.tr.md` uzantılı Türkçe karşılığı vardır (ör. [README.md](README.md), [docs/installation.md](docs/installation.md)).
+
+---
+
+## 🔒 Kurmadan önce
+
+Bu sistem **iç ağ / VPN arkasında** çalışmak üzere tasarlandı. Public portal bilinçli olarak
+kimlik doğrulaması yapmaz (erişim, tahmin edilemez bağlantı token'larına dayanır). İnternete
+doğrudan açmadan önce kendi erişim kontrol katmanını (VPN, IP allowlist veya kimlik doğrulayan
+reverse proxy) ekle. Ayrıntı: [SECURITY.md](SECURITY.md).
+
+---
+
+## 🤝 Katkı
+
+Katkılar memnuniyetle karşılanır — [CONTRIBUTING.md](CONTRIBUTING.md) ile başla. Yeni route ve
+ekranlarda tipli sözleşme, kapsam/RBAC ve regresyon testi standardını koru.
+
+## 📄 Lisans
+
+[MIT](LICENSE) © Mahmut YUM
+
+---
+
+<div align="center">
+
+**🇬🇧 Looking for English? → [README.md](README.md)**
+
+</div>

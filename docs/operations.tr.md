@@ -1,5 +1,7 @@
 # Operasyon rehberi
 
+[🇬🇧 English](operations.md) · 🇹🇷 **Türkçe**
+
 ## Yedekleme ve geri dönüş
 
 PostgreSQL, `uploads` volume'u ve `.env` içindeki `CREDENTIALS_ENC_KEY` birlikte korunmalıdır.
@@ -34,7 +36,7 @@ docker compose --profile backup up -d
   S3-uyumlu, Google Drive, FTPS, SFTP, WebDAV, SMB), rclone config INI (şifreli
   saklanır, API'den dönmez), hedef bazlı GFS saklama adetleri.
 - **Zamanlama ve saklama varsayılanları** `BACKUP_*` ortam değişkenlerinden gelir
-  (bkz. [kurulum](kurulum.md)); panelden yapılan değişiklik veritabanında saklanır ve
+  (bkz. [kurulum](installation.tr.md)); panelden yapılan değişiklik veritabanında saklanır ve
   önceliklidir.
 - **Şifreleme:** uzak hedef varsa `BACKUP_ENCRYPTION_RECIPIENT` (age açık anahtarı)
   ZORUNLUDUR — `environment.snapshot` sır içerdiği için şifresiz uzak kopya reddedilir.

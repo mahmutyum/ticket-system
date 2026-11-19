@@ -37,7 +37,7 @@ describe('sürüm tutarlılığı', () => {
   });
 
   it('README rozetleri paket sürümüyle aynı', () => {
-    for (const file of ['README.md', 'README.en.md']) {
+    for (const file of ['README.md', 'README.tr.md']) {
       const readme = readFileSync(join(repoRoot, file), 'utf-8');
       expect(readme).toContain(`badge/version-${backendPkg.version}-blue`);
     }

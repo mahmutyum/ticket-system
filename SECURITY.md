@@ -1,5 +1,7 @@
 # Security Policy
 
+🇬🇧 **English** · [🇹🇷 Türkçe](SECURITY.tr.md)
+
 ## Reporting a vulnerability
 
 Please **do not open a public issue** for security vulnerabilities.
@@ -22,4 +24,4 @@ This system is designed to run **behind a VPN / on an internal network**. The pu
 request portal is intentionally passwordless — access is via unguessable token links — so
 **do not expose it directly to the internet** without your own access-control layer (VPN,
 IP allowlist, or an authenticating reverse proxy). Deployment and hardening guidance is in
-[docs/kurulum.md](docs/kurulum.md).
+[docs/installation.md](docs/installation.md).

@@ -2,87 +2,87 @@
 
 # 🎫 IT Ticket System
 
-**Şirket içi IT destek için, Docker ile kurulan çok şirketli ticket sistemi.**
-Talep edenler için şifresiz public portal · IT ekibi için rollü yönetim paneli · **Türkçe / İngilizce çift dil.**
+**A dockerized, multi-tenant ticket system for internal IT support.**
+Passwordless public portal for requesters · role-based admin panel for the IT team · **Turkish / English bilingual.**
 
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.3.1-blue.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Stack](https://img.shields.io/badge/stack-Fastify%20%2B%20React%20%2B%20Postgres-blue)
 ![i18n](https://img.shields.io/badge/i18n-TR%20%2F%20EN-green)
 ![Tests](https://img.shields.io/badge/tests-444%20passing-success)
 
-🇹🇷 **Türkçe** · [🇬🇧 English](README.en.md)
+🇬🇧 **English** · [🇹🇷 Türkçe](README.tr.md)
 
-[Özellikler](#-özellikler) · [Ekran görüntüleri](#-ekran-görüntüleri) · [Hızlı başlangıç](#-hızlı-başlangıç) · [Dokümantasyon](#-dokümantasyon)
+[Features](#-features) · [Screenshots](#-screenshots) · [Quick start](#-quick-start) · [Documentation](#-documentation)
 
 </div>
 
 ---
 
-## ✨ Özellikler
+## ✨ Features
 
-**👤 Talep eden (public, giriş yok)**
-- Ticket oluşturur — şirket / lokasyon / kategori seçer, şirkete özel dinamik alanları doldurur, dosya ekler.
-- Aldığı **erişim linki** ile durumu canlı izler, yanıt yazar, ek gönderir.
-- Ticket numarası + e-posta ile geçmiş talebini sorgular.
+**👤 Requester (public, no login)**
+- Creates a ticket — picks company / location / category, fills per-company dynamic fields, attaches files.
+- Tracks status live through an **access link**, posts replies, sends attachments.
+- Looks up a past ticket with its number + email.
 
-**🛠️ IT ekibi (yönetim paneli)**
-- **Dashboard** — açık/kapalı istatistikleri, SLA durumu, üzerine atanmış işler.
-- **Ticket yönetimi** — liste/filtre/arama, detay, durum & atama, iç not (talep edene görünmez) + public yanıt, toplu işlem.
-- **Yerinde destek takvimi** — randevu oluşturma, süre seçimi, takvim görünümü.
-- **Görevler** — ticket'tan bağımsız işler, çoklu atama, yorumlar.
-- **Raporlar** — dağılım, personel performansı, kategori kırılımı, SLA trendi, CSV export.
+**🛠️ IT team (admin panel)**
+- **Dashboard** — open/closed stats, SLA status, work assigned to you.
+- **Ticket management** — list / filter / search, detail, status & assignment, internal notes (hidden from the requester) + public replies, bulk actions.
+- **On-site support calendar** — create appointments, pick durations, calendar view.
+- **Tasks** — work independent of tickets, multi-assignee, comments.
+- **Reports** — distribution, staff performance, category breakdown, SLA trend, CSV export.
 
-**🔐 Yönetici (rol bazlı)**
-- `admin` + `it_manager` — şirket / lokasyon / kategori / özel alan, şirket bazlı SMTP, e-posta & SMS şablonları, hazır yanıtlar.
-- `admin` — personel yönetimi ve **şifre kasası** (AES-256-GCM, her görüntüleme audit'lenir).
+**🔐 Administrator (role-based)**
+- `admin` + `it_manager` — company / location / category / custom fields, per-company SMTP, email & SMS templates, canned responses.
+- `admin` — staff management and a **credential vault** (AES-256-GCM, every reveal is audited).
 
-**⚙️ Arka planda**
-- E-posta / SMS bildirimleri BullMQ ile asenkron (3 deneme, exponential backoff).
-- **Varlıklar**: hafif envanter (etiket, tür, seri no, zimmet), CSV içe aktarma, talep–cihaz bağlantısı ve cihaz bazında talep geçmişi.
-- **Bilgi bankası**: Markdown makaleler (TR/EN), portalda arama, talep sihirbazında kategoriye göre öneri ve "talep açmadan çözüldü" metriği.
-- **Memnuniyet anketi (CSAT)**: çözümde tek seferlik 1–5 puan + yorum; raporda ortalama, yanıt oranı ve kırılımlar.
-- **Entegrasyonlar**: Microsoft Teams, Slack ve HMAC imzalı genel webhook'lar (talep ve SLA olayları).
-- **SSO**: personel girişi için OpenID Connect, SAML 2.0 ve LDAP/Active Directory; grup → rol/şirket eşlemesi, JIT, yerel girişi kapatma.
-- **E-postayla yanıt**: IMAP, Microsoft 365 veya Gmail posta kutusu; yanıtlar ticket'a düşer, eşleşmeyen e-postalardan talep açılabilir.
-- **Prometheus `/metrics`** (Bearer token): HTTP gecikme/hata, kuyruk derinliği, başarısız bildirimler, SLA ihlalleri, SSE; örnek alarm kuralları `docs/operasyon.md`'de.
-- SLA kontrolü her 5 dakikada; kategori bazlı yanıt/çözüm süreleri, şirket bazlı mesai takvimi ve tatiller, bekleme durumlarında SLA duraklatma, ihlal öncesi uyarı ve yöneticiye eskalasyon.
-- SSE ile panelde canlı güncelleme; domain'e göre şirket branding (logo + tema).
-- **Çift dil**: arayüz tarayıcı diline göre açılır, düğmeyle anında geçilir; API mesajları `Accept-Language`'e, bildirimler alıcının diline göre.
+**⚙️ Behind the scenes**
+- Email / SMS notifications async via BullMQ (3 retries, exponential backoff).
+- **Assets**: lightweight inventory (tag, type, serial, assignee), CSV import, request–device linking and per-device request history.
+- **Knowledge base**: Markdown articles (TR/EN), portal search, category-based suggestions in the request wizard and a "solved without a ticket" metric.
+- **Satisfaction survey (CSAT)**: one-time 1–5 rating + comment on resolution; averages, response rate and breakdowns in reports.
+- **Integrations**: Microsoft Teams, Slack and HMAC-signed generic webhooks (ticket and SLA events).
+- **SSO**: OpenID Connect, SAML 2.0 and LDAP/Active Directory for staff sign-in; group → role/company mapping, JIT, optional local-login shutdown.
+- **Reply by email**: IMAP, Microsoft 365 or Gmail mailbox; replies land on the ticket, unmatched emails can open new tickets.
+- **Prometheus `/metrics`** (bearer token): HTTP latency/errors, queue depth, failed notifications, SLA breaches, SSE; sample alert rules in `docs/operations.md`.
+- SLA checks every 5 minutes; per-category response/resolution targets, per-company business hours and holidays, SLA pausing in waiting statuses, pre-breach warnings and escalation to managers.
+- Live panel updates over SSE; per-domain company branding (logo + theme).
+- **Bilingual**: UI follows the browser language and switches instantly; API messages by `Accept-Language`, notifications in the recipient's language.
 
 ---
 
-## 📸 Ekran görüntüleri
+## 📸 Screenshots
 
-Her ekran hem Türkçe hem İngilizce yakalanmıştır — **[tam galeri: docs/screenshots →](docs/screenshots/)** (14 sayfa × TR/EN).
+Every screen is captured in both Turkish and English — **[full gallery: docs/screenshots →](docs/screenshots/)** (14 pages × TR/EN).
 
-| Public portal · TR | Yönetim paneli · EN |
+| Public portal · TR | Admin panel · EN |
 |:---:|:---:|
 | [<img src="docs/screenshots/public-home-tr.png" width="420">](docs/screenshots/public-home-tr.png) | [<img src="docs/screenshots/staff-dashboard-en.png" width="420">](docs/screenshots/staff-dashboard-en.png) |
-| Talep oluşturma sihirbazı · TR | Talep listesi · EN |
+| Ticket creation wizard · TR | Ticket list · EN |
 | [<img src="docs/screenshots/public-create-ticket-tr.png" width="420">](docs/screenshots/public-create-ticket-tr.png) | [<img src="docs/screenshots/staff-tickets-en.png" width="420">](docs/screenshots/staff-tickets-en.png) |
 
 ---
 
-## 🧰 Teknoloji
+## 🧰 Tech stack
 
-| Katman | Teknoloji |
+| Layer | Technology |
 |---|---|
-| Backend | Node.js 22 · Fastify 5 · TypeScript (ESM) · Prisma 6 · Zod |
+| Backend | Node.js 24 · Fastify 5 · TypeScript (ESM) · Prisma 6 · Zod |
 | Frontend | React 18 · Vite 6 · TailwindCSS 3 · TanStack Query 5 · Zustand 5 |
-| Veritabanı | PostgreSQL 16 |
-| Kuyruk / Cache | Redis 7 + BullMQ |
+| Database | PostgreSQL 16 |
+| Queue / Cache | Redis 7 + BullMQ |
 | Realtime | SSE (Server-Sent Events) |
-| Çok dillilik | react-i18next · `Accept-Language` bazlı API mesajları |
-| Deploy | Docker Compose (Coolify + Nginx Proxy Manager uyumlu) |
+| i18n | react-i18next · `Accept-Language`-based API messages |
+| Deploy | Docker Compose (Coolify + Nginx Proxy Manager compatible) |
 
 ---
 
-## 🚀 Hızlı başlangıç
+## 🚀 Quick start
 
-> **Gereksinim:** Docker + Docker Compose. Başka bir şey kurmana gerek yok.
+> **Requirement:** Docker + Docker Compose. Nothing else to install.
 
-**1. Klonla ve `.env` hazırla**
+**1. Clone and prepare `.env`**
 
 ```bash
 git clone https://github.com/mahmutyum/ticket-system.git
@@ -90,90 +90,92 @@ cd ticket-system
 cp .env.example .env
 ```
 
-**2. Zorunlu secret'ları üret** (hiçbirinin varsayılanı yok — boşsa backend açılmaz):
+**2. Generate the required secrets** (none have defaults — the backend won't boot if they're empty):
 
 ```bash
 openssl rand -base64 48   # → JWT_SECRET
-openssl rand -base64 48   # → JWT_REFRESH_SECRET  (JWT_SECRET'tan farklı)
-openssl rand -hex 32      # → CREDENTIALS_ENC_KEY (tam 64 hex)
+openssl rand -base64 48   # → JWT_REFRESH_SECRET  (different from JWT_SECRET)
+openssl rand -hex 32      # → CREDENTIALS_ENC_KEY (exactly 64 hex)
 ```
 
-Ayrıca `DB_PASSWORD` ve `REDIS_PASSWORD` belirle; ikisini `DATABASE_URL` / `REDIS_URL` içinde de **aynı** değerle güncelle.
+Also set `DB_PASSWORD` and `REDIS_PASSWORD`; mirror both into `DATABASE_URL` / `REDIS_URL` with the **same** value.
 
-**3. Başlat** (şema otomatik uygulanır):
+**3. Start** (the schema is applied automatically):
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
-**4. Örnek veriyi yükle:**
+**4. Load sample data:**
 
 ```bash
-docker compose exec backend npx tsx prisma/seed.ts   # temel veri
-docker compose exec backend npm run db:seed:demo     # 36 talep, 24 görev, kasa vb. (opsiyonel)
+docker compose exec backend npx tsx prisma/seed.ts   # base data
+docker compose exec backend npm run db:seed:demo     # 36 tickets, 24 tasks, vault, etc. (optional)
 ```
 
-Arayüz **http://localhost:1111** · API dokümanı **http://localhost:4000/docs**
+UI at **http://localhost:1111** · API docs at **http://localhost:4000/docs**
 
-### Örnek giriş (seed)
+### Sample logins (seed)
 
-| Rol | E-posta | Şifre |
+| Role | Email | Password |
 |---|---|---|
 | admin | `admin@company.com` | `admin123` |
 | it_manager | `manager@company.com` | `staff123` |
 | it_staff | `it@company.com` | `staff123` |
 
-> ⚠️ Sadece geliştirme içindir. **`seed.ts`'i asla production'a karşı çalıştırma** — production'da ilk admin'i elle oluştur.
+> ⚠️ Development only. **Never run `seed.ts` against production** — create the first admin manually there.
 
 ---
 
 ## 🌐 Production
 
-Detaylı anlatım: **[docs/kurulum.md](docs/kurulum.md)**. Kısaca, Coolify + Nginx Proxy Manager arkasında:
+Full guide: **[docs/installation.md](docs/installation.md)**. In short, behind Coolify + Nginx Proxy Manager:
 
 ```
-İnternet/VPN → NPM (SSL + FQDN) → frontend:1111 ─┬─ /              → SPA
+Internet/VPN → NPM (SSL + FQDN) → frontend:1111 ─┬─ /              → SPA
                                                   ├─ /api/*         → backend:4000
-                                                  ├─ /attachments/* → backend:4000  (yetki kontrollü)
-                                                  └─ /branding/*    → backend:4000  (public logolar)
+                                                  ├─ /attachments/* → backend:4000  (authorized)
+                                                  └─ /branding/*    → backend:4000  (public logos)
 ```
 
-Sadece `frontend` host'a açılır (`FRONTEND_PORT`, varsayılan `1111`); backend, Postgres ve Redis yalnızca dahili Docker network'ünde kalır. Ekler ve logolar diskten değil **backend üzerinden** servis edilir (token ve şirket kapsamı kontrolleri orada).
+Only `frontend` is exposed to the host (`FRONTEND_PORT`, default `1111`); backend, Postgres and Redis stay on the internal Docker network. Attachments and logos are served **through the backend**, not from disk (token and company-scope checks happen there).
 
-> **Mevcut kurulumdan güncelliyorsan** proje `prisma db push` yerine versiyonlu migration'lara geçti; bir kereye mahsus baseline için [docs/kurulum.md](docs/kurulum.md#mevcut-veritabanını-baselineleme).
+> **Upgrading an existing install?** The project moved from `prisma db push` to versioned migrations; for the one-time baseline see [docs/installation.md](docs/installation.md#baselining-an-existing-database).
 
 ---
 
-## 📚 Dokümantasyon
+## 📚 Documentation
 
-| Doküman | İçerik |
+| Document | Content |
 |---|---|
-| [docs/kurulum.md](docs/kurulum.md) | Kurulum: geliştirme, production, Coolify/NPM, env, migration, sorun giderme |
-| [docs/kullanim.md](docs/kullanim.md) | Kullanım: talep eden akışı, IT ekibi paneli, yönetici işlemleri |
-| [docs/mimari.md](docs/mimari.md) | Mimari: modüller, veri modeli, auth, kuyruk, SSE |
-| [docs/yol-haritasi.md](docs/yol-haritasi.md) | Olgunluk ve planlanan özellikler |
-| [docs/operasyon.md](docs/operasyon.md) | Yedekleme, geri dönüş, retention, sağlık kontrolleri |
-| [CHANGELOG.md](CHANGELOG.md) | Sürüm geçmişi (SemVer) |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Katkı rehberi ve kodlama kuralları |
-| [SECURITY.md](SECURITY.md) | Güvenlik açığı bildirimi |
+| [docs/installation.md](docs/installation.md) | Installation: development, production, Coolify/NPM, env, migrations, troubleshooting |
+| [docs/usage.md](docs/usage.md) | Usage: requester flow, IT team panel, admin operations |
+| [docs/architecture.md](docs/architecture.md) | Architecture: modules, data model, auth, queue, SSE |
+| [docs/roadmap.md](docs/roadmap.md) | Maturity and planned features |
+| [docs/operations.md](docs/operations.md) | Backup, restore, retention, health checks |
+| [CHANGELOG.md](CHANGELOG.md) | Release history (SemVer) |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guide and coding conventions |
+| [SECURITY.md](SECURITY.md) | Vulnerability reporting |
+
+> Every document has a Turkish counterpart with the `.tr.md` suffix (e.g. [README.tr.md](README.tr.md), [docs/installation.tr.md](docs/installation.tr.md)).
 
 ---
 
-## 🔒 Kurmadan önce
+## 🔒 Before you deploy
 
-Bu sistem **iç ağ / VPN arkasında** çalışmak üzere tasarlandı. Public portal bilinçli olarak
-kimlik doğrulaması yapmaz (erişim, tahmin edilemez bağlantı token'larına dayanır). İnternete
-doğrudan açmadan önce kendi erişim kontrol katmanını (VPN, IP allowlist veya kimlik doğrulayan
-reverse proxy) ekle. Ayrıntı: [SECURITY.md](SECURITY.md).
+This system is designed to run **behind a VPN / on an internal network**. The public portal
+intentionally performs no authentication (access relies on unguessable link tokens). Before
+exposing it directly to the internet, add your own access-control layer (VPN, IP allowlist, or
+an authenticating reverse proxy). Details: [SECURITY.md](SECURITY.md).
 
 ---
 
-## 🤝 Katkı
+## 🤝 Contributing
 
-Katkılar memnuniyetle karşılanır — [CONTRIBUTING.md](CONTRIBUTING.md) ile başla. Yeni route ve
-ekranlarda tipli sözleşme, kapsam/RBAC ve regresyon testi standardını koru.
+Contributions are welcome — start with [CONTRIBUTING.md](CONTRIBUTING.md). For new routes and
+screens, keep the typed-contract, scope/RBAC, and regression-test standards.
 
-## 📄 Lisans
+## 📄 License
 
 [MIT](LICENSE) © Mahmut YUM
 
@@ -181,6 +183,6 @@ ekranlarda tipli sözleşme, kapsam/RBAC ve regresyon testi standardını koru.
 
 <div align="center">
 
-**🇬🇧 Looking for English? → [README.en.md](README.en.md)**
+**🇹🇷 Looking for Türkçe? → [README.tr.md](README.tr.md)**
 
 </div>

@@ -1,5 +1,7 @@
 # Kurulum
 
+[🇬🇧 English](installation.md) · 🇹🇷 **Türkçe**
+
 - [Gereksinimler](#gereksinimler)
 - [Geliştirme ortamı](#geliştirme-ortamı)
 - [Ortam değişkenleri](#ortam-değişkenleri)
@@ -148,7 +150,7 @@ docker compose --profile backup up -d
 
 Hedef tanımlama, zamanlama ve çalışma geçmişi panelden (`/staff/backups`,
 `/staff/scheduled-jobs`) yönetilir. Uzak hedeflerde `BACKUP_ENCRYPTION_RECIPIENT`
-zorunludur; ayrıntı: [operasyon](operasyon.md).
+zorunludur; ayrıntı: [operasyon](operations.tr.md).
 
 ### Yalnızca Docker Compose'un kullandığı değişkenler
 
