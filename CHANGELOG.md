@@ -6,13 +6,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Planned work is tracked in [docs/yol-haritasi.md](docs/yol-haritasi.md)._
+_Planned work is tracked in [docs/roadmap.md](docs/roadmap.md)._
+
+## [1.3.1] - 2026-11-19
+
+Security and maintenance release: dependency vulnerabilities closed (including
+breaking-major bumps), Node.js base image moved to 24 LTS, nginx to the 1.30 stable
+branch, and the documentation set is now English-primary with Turkish counterparts.
+
+### Upgrade notes
+- Rebuild all images (backend, frontend, backup-service, nginx proxy). No database
+  migration in this release; no API or behavior change.
+- Zod was upgraded 3 → 4 internally (with `fastify-type-provider-zod` 4 → 7). Schemas
+  keep their runtime semantics — env boolean parsing was reordered to
+  `z.string().default('..').transform(..)` because zod 4 no longer parses default values
+  through the chain (the old order silently returned raw strings).
+- Documentation moved to English-primary: every document now has a plain filename
+  (English) plus a `.tr.md` Turkish counterpart — `README.md` / `README.tr.md`,
+  `docs/installation.md` / `docs/installation.tr.md`, etc. Old Turkish filenames
+  (`docs/kurulum.md`, `docs/kullanim.md`, ...) no longer exist; update your links.
+  `README.en.md` was replaced by `README.md`.
+
+### Changed
+- **Node.js 22 → 24 LTS** (supported until April 2028) across all five Dockerfiles,
+  CI (`.github/workflows/ci.yml`) and a new `.nvmrc`; `@types/node` bumped to 24.
+- **nginx 1.25 → 1.30** (current stable) for the frontend runtime image and the proxy.
+- Dependency security updates — `npm audit` is now clean (0 vulnerabilities, dev
+  included) in both backend and frontend:
+  - backend: `zod` 3.25 → 4.6 (GHSA-mrhx-c7xc-m3w5, high), `fastify-type-provider-zod`
+    4.0 → 7.0, `nodemailer` 9 → 10 (GHSA fix) with `@types/nodemailer` aligned,
+    `vitest`/`@vitest/coverage-v8` → 4.1.12 (mocker advisories).
+  - frontend: `react-router-dom` 6.30 → 7.18 (declarative v6 API unchanged in the
+    codebase), `vite` 6.0 → 6.4.6 (multiple launch-editor/fs-allow advisories),
+    `vitest` → 4.1.12.
+- zod 4 code adaptations: `z.record` now two-argument, removed `z.ZodIssueCode` usage,
+  explicit full-object `.default()` values for SLA sub-settings, typed lookup response
+  record; deprecated-but-working string format validators (`.email()` etc.) left as-is.
+
+### Added
+- English-primary documentation: English versions of the installation, usage,
+  architecture, operations, roadmap, public-repo-security and contributing guides
+  (Turkish originals preserved as `*.tr.md`), plus a Turkish `SECURITY.tr.md` and
+  language-switcher links on every document pair.
+
+### Fixed
+- Pre-existing lint error (unused `Save` import) in the staff Dictionaries page.
 
 ## [1.3.0] - 2026-11-14
 
 DB-managed dictionaries ("Sözlükler"), "Taleplerim" unified requester view, S3-compatible
 storage driver and accessibility/UX hardening. The Docker Hub publishing pipeline is
-deliberately deferred (see docs/yol-haritasi.md).
+deliberately deferred (see docs/roadmap.md).
 
 ### Upgrade notes
 - Run migrations (`prisma migrate deploy`, automatic on container start): new `dict_*`
@@ -77,7 +121,7 @@ hardening.
   encryption (`BACKUP_ENCRYPTION_RECIPIENT`). Unencrypted remote upload is refused —
   `environment.snapshot` contains secrets.
 - `ticket_backup_last_success_timestamp` now exists on `/metrics`; the "backup older than
-  26h" sample alert in `docs/operasyon.md` becomes automatically monitorable.
+  26h" sample alert in `docs/operations.md` becomes automatically monitorable.
 
 ### Added
 - **Central scheduled-job registry** (`Zamanlanmış Görevler` admin page): cron /
