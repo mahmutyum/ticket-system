@@ -219,7 +219,7 @@ export default function OnsiteSupportPage() {
         ) : (
           <div className="relative flex">
             {/* Saat sütunu */}
-            <div className="w-16 flex-shrink-0 border-r border-gray-200 dark:border-slate-800">
+            <div className="w-16 shrink-0 border-r border-gray-200 dark:border-slate-800">
               {Array.from({ length: TOTAL_HOURS }, (_, i) => {
                 const hour = TIMELINE_START_HOUR + i;
                 return (
@@ -299,14 +299,14 @@ export default function OnsiteSupportPage() {
                   >
                     <div className="flex gap-1.5 h-full">
                       <div
-                        className={`w-1 rounded-full flex-shrink-0 ${
+                        className={`w-1 rounded-full shrink-0 ${
                           TYPE_BAR_COLORS[event.type] || 'bg-gray-400'
                         } ${cancelled ? 'opacity-40' : ''}`}
                       />
                       <div className="flex-1 min-w-0 leading-tight">
                         {compact ? (
                           <div className="flex items-baseline gap-1 truncate">
-                            <span className="font-semibold text-[11px] flex-shrink-0">
+                            <span className="font-semibold text-[11px] shrink-0">
                               {start.toLocaleTimeString(locale, {
                                 hour: '2-digit',
                                 minute: '2-digit',
@@ -324,12 +324,12 @@ export default function OnsiteSupportPage() {
                             </span>
                             <div className="font-medium truncate">{event.ticket?.subject}</div>
                             <div className="text-muted truncate flex items-center gap-1">
-                              <User className="w-3 h-3 flex-shrink-0" />
+                              <User className="w-3 h-3 shrink-0" />
                               <span className="truncate">{event.ticket?.createdBy?.fullName}</span>
                             </div>
                             {height >= 76 && (
                               <div className="text-muted truncate flex items-center gap-1">
-                                <MapPin className="w-3 h-3 flex-shrink-0" />
+                                <MapPin className="w-3 h-3 shrink-0" />
                                 <span className="truncate">{event.location?.name}</span>
                               </div>
                             )}
@@ -406,7 +406,7 @@ export default function OnsiteSupportPage() {
                 <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-gray-200 dark:border-slate-800">
                   <div className="flex items-start gap-3 min-w-0">
                     <div
-                      className={`w-1.5 self-stretch rounded-full flex-shrink-0 ${
+                      className={`w-1.5 self-stretch rounded-full shrink-0 ${
                         TYPE_BAR_COLORS[ev.type] || 'bg-gray-400'
                       }`}
                     />
@@ -423,7 +423,7 @@ export default function OnsiteSupportPage() {
                   </div>
                   <button
                     onClick={() => setSelectedEvent(null)}
-                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex-shrink-0"
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 shrink-0"
                     title={t('common.close')}
                   >
                     <X className="w-5 h-5" />
@@ -432,14 +432,14 @@ export default function OnsiteSupportPage() {
 
                 <div className="px-5 py-4 space-y-2.5 text-sm">
                   <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-muted flex-shrink-0" />
+                    <Clock className="w-4 h-4 text-muted shrink-0" />
                     <span>
                       {fmt(start)} – {fmt(end)}{' '}
                       <span className="text-muted">({t('onsite.durationMin', { count: durationMin })})</span>
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CalendarDays className="w-4 h-4 text-muted flex-shrink-0" />
+                    <CalendarDays className="w-4 h-4 text-muted shrink-0" />
                     <span className="capitalize">
                       {start.toLocaleDateString(locale, {
                         weekday: 'long',
@@ -451,19 +451,19 @@ export default function OnsiteSupportPage() {
                   </div>
                   {ev.ticket?.ticketNumber && (
                     <div className="flex items-center gap-2">
-                      <Hash className="w-4 h-4 text-muted flex-shrink-0" />
+                      <Hash className="w-4 h-4 text-muted shrink-0" />
                       <span>{ev.ticket.ticketNumber}</span>
                     </div>
                   )}
                   {ev.ticket?.createdBy?.fullName && (
                     <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-muted flex-shrink-0" />
+                      <User className="w-4 h-4 text-muted shrink-0" />
                       <span>{ev.ticket.createdBy.fullName}</span>
                     </div>
                   )}
                   {ev.location?.name && (
                     <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-muted flex-shrink-0" />
+                      <MapPin className="w-4 h-4 text-muted shrink-0" />
                       <span>{ev.location.name}</span>
                     </div>
                   )}

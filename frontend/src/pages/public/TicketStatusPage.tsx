@@ -165,7 +165,7 @@ export default function TicketStatusPage() {
         <div className="space-y-4">
           {ticket.history?.map(h => (
             <div key={h.id || h.createdAt} className="flex gap-3 text-sm">
-              <div className="w-2 h-2 rounded-full bg-gray-300 mt-1.5 flex-shrink-0" />
+              <div className="w-2 h-2 rounded-full bg-gray-300 mt-1.5 shrink-0" />
               <div className="flex-1">
                 <span className="text-muted">
                   {new Date(h.createdAt).toLocaleString(dateLocale())}
@@ -189,7 +189,7 @@ export default function TicketStatusPage() {
           {/* Public notes */}
           {ticket.notes?.map(note => (
             <div key={note.id} className="flex gap-3 text-sm">
-              <div className="w-2 h-2 rounded-full bg-primary-400 mt-1.5 flex-shrink-0" />
+              <div className="w-2 h-2 rounded-full bg-primary-400 mt-1.5 shrink-0" />
               <div className="flex-1 rounded-inset bg-primary-50 p-3 dark:bg-primary-500/10">
                 <div className="flex justify-between mb-1">
                   <span className="font-medium text-primary-700">{note.createdBy.fullName}</span>

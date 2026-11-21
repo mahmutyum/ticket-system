@@ -295,7 +295,7 @@ export default function PasswordsPage() {
               [...Array(4)].map((_, i) => (
                 <tr key={i} className="border-b border-gray-100 dark:border-slate-800/60">
                   <td colSpan={6} className="px-4 py-3">
-                    <div className="h-4 bg-gray-100 dark:bg-slate-800 rounded animate-pulse" />
+                    <div className="h-4 bg-gray-100 dark:bg-slate-800 rounded-sm animate-pulse" />
                   </td>
                 </tr>
               ))

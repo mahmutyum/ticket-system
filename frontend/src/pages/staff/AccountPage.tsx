@@ -83,7 +83,7 @@ export default function AccountPage() {
         <div><h2 className="font-semibold">{t('account.mfaHeading')}</h2><p className="text-sm text-muted">{t('account.mfaDescription')}</p></div>
         {!mfaSetup ? <button onClick={startMfa} className="btn-secondary">{t('account.startMfa')}</button> : <div className="space-y-3">
           <p className="text-sm">{t('account.mfaAddKey')}</p>
-          <code className="block break-all rounded bg-gray-100 dark:bg-slate-800 p-3 select-all">{mfaSetup.secret}</code>
+          <code className="block break-all rounded-sm bg-gray-100 dark:bg-slate-800 p-3 select-all">{mfaSetup.secret}</code>
           <a className="text-sm text-primary-600 underline" href={mfaSetup.uri}>{t('account.openInAuthenticator')}</a>
           <label className="block text-sm">{t('account.mfaCodeLabel')}
             <input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={mfaCode}

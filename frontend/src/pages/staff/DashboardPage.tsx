@@ -115,7 +115,7 @@ export default function DashboardPage() {
               </select>
             </div>
             <label className="flex items-center gap-2 text-sm cursor-pointer pb-2">
-              <input type="checkbox" checked={onlyMine} onChange={e => setOnlyMine(e.target.checked)} className="rounded text-primary-600" />
+              <input type="checkbox" checked={onlyMine} onChange={e => setOnlyMine(e.target.checked)} className="rounded-sm text-primary-600" />
               {t('dashboard.onlyMine')}
             </label>
           </div>

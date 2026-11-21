@@ -199,7 +199,7 @@ export function SmtpConfigModal({
               </div>
               <div className="flex items-end pb-1">
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="checkbox" checked={form.secure} onChange={(event) => setForm({ ...form, secure: event.target.checked })} className="rounded" /> SSL/TLS
+                  <input type="checkbox" checked={form.secure} onChange={(event) => setForm({ ...form, secure: event.target.checked })} className="rounded-sm" /> SSL/TLS
                 </label>
               </div>
             </div>
@@ -225,7 +225,7 @@ export function SmtpConfigModal({
             </div>
           </div>
           <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input type="checkbox" checked={form.isActive} onChange={(event) => setForm({ ...form, isActive: event.target.checked })} className="rounded" />
+            <input type="checkbox" checked={form.isActive} onChange={(event) => setForm({ ...form, isActive: event.target.checked })} className="rounded-sm" />
             {t('companyMgmt.smtp.activeLabel')}
           </label>
           <div className="flex gap-2 pt-3 border-t">

@@ -362,14 +362,14 @@ export default function CompanyManagementPage() {
                 </button>
                 <button
                   onClick={() => { setEditId(company.id); setForm(companyToForm(company)); setShowForm(true); }}
-                  className="p-1.5 hover:bg-gray-100 rounded"
+                  className="p-1.5 hover:bg-gray-100 rounded-sm"
                   title={t('common.edit')}
                 >
                   <Edit2 className="w-4 h-4 text-gray-500" />
                 </button>
                 <button
                   onClick={() => handleToggleCompanyActive(company)}
-                  className="p-1.5 hover:bg-red-50 rounded"
+                  className="p-1.5 hover:bg-red-50 rounded-sm"
                   title={company.isActive === false ? t('companyMgmt.reactivate') : t('companyMgmt.deactivate')}
                 >
                   {company.isActive === false
@@ -423,14 +423,14 @@ export default function CompanyManagementPage() {
                     <div className="ml-auto flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => openEditLocation(loc)}
-                        className="p-1 hover:bg-gray-100 rounded"
+                        className="p-1 hover:bg-gray-100 rounded-sm"
                         title={t('common.edit')}
                       >
                         <Edit2 className="w-3 h-3 text-gray-500" />
                       </button>
                       <button
                         onClick={() => handleDeleteLocation(loc)}
-                        className="p-1 hover:bg-red-50 rounded"
+                        className="p-1 hover:bg-red-50 rounded-sm"
                         title={t('common.delete')}
                       >
                         <Trash2 className="w-3 h-3 text-red-500" />

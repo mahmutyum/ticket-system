@@ -35,6 +35,10 @@ test('/create dark mode kritik kontrast ihlali taşımıyor', async ({ page }) =
   await mockPublicApi(page);
   await page.goto('/create');
   await expect(page.locator('html')).toHaveClass(/dark/);
+  // axe, branding yükleme ekranını değil gerçek sayfayı taramalı: sayfa
+  // gövdesinin render'ını beklemeden taranan "Loading" durumu, body arka
+  // planının açığa çıkmasıyla sahte kontrast ihlalleri üretir.
+  await expect(page.getByRole('heading').first()).toBeVisible();
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
   expect(results.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);
 });

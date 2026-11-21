@@ -84,7 +84,7 @@ export default function TicketTimeline({ history = [], notes = [] }: Props) {
               <div className="flex items-center gap-2 mb-2">
                 {item.isInternal ? <Lock className="w-4 h-4 text-amber-600 dark:text-amber-300" /> : <MessageSquare className="w-4 h-4 text-primary-600 dark:text-primary-300" />}
                 <span className="font-medium text-sm">{item.createdBy?.fullName}</span>
-                {item.isInternal && <span className="rounded bg-amber-200 px-1.5 py-0.5 text-xs text-amber-800 dark:bg-amber-500/20 dark:text-amber-200">{t('ticketList.timeline.internalNote')}</span>}
+                {item.isInternal && <span className="rounded-sm bg-amber-200 px-1.5 py-0.5 text-xs text-amber-800 dark:bg-amber-500/20 dark:text-amber-200">{t('ticketList.timeline.internalNote')}</span>}
                 <span className="ml-auto text-xs text-muted">{new Date(item.createdAt).toLocaleString(dateLocale())}</span>
               </div>
               <p className="text-sm text-gray-700 dark:text-slate-100">{item.content}</p>
@@ -94,7 +94,7 @@ export default function TicketTimeline({ history = [], notes = [] }: Props) {
 
         return (
           <div key={`hist-${item.id}`} className="flex gap-3 text-sm text-muted">
-            <div className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-gray-300 dark:bg-slate-500" />
+            <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-gray-300 dark:bg-slate-500" />
             <div className="flex-1">
               <span className="text-xs text-muted">{new Date(item.createdAt).toLocaleString(dateLocale())}</span>
               {item.createdBy && <span className="text-xs ml-2">({item.createdBy.fullName})</span>}

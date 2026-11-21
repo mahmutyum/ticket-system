@@ -50,7 +50,7 @@ export default function TicketAsset({ ticket }: { ticket: Ticket }) {
           <input className="input-field text-xs" value={q} onChange={e => setQ(e.target.value)} placeholder={t('assets.search')} autoFocus />
           {q.trim().length < 2 && hits.length > 0 && <p className="text-[11px] text-muted">{t('assets.assignedToRequester')}</p>}
           {hits.slice(0, 8).map(h => (
-            <button key={h.id} type="button" className="w-full rounded p-1.5 text-left text-xs hover:bg-gray-50 dark:hover:bg-slate-800/50" onClick={() => void link(h.id)}>
+            <button key={h.id} type="button" className="w-full rounded-sm p-1.5 text-left text-xs hover:bg-gray-50 dark:hover:bg-slate-800/50" onClick={() => void link(h.id)}>
               <span className="font-mono">{h.tag}</span> · {h.name}
             </button>
           ))}

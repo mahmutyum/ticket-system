@@ -262,7 +262,7 @@ export default function TemplatesPage() {
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <code className="surface-2 rounded px-2 py-0.5 text-xs">{tpl.slug}</code>
+                    <code className="surface-2 rounded-sm px-2 py-0.5 text-xs">{tpl.slug}</code>
                   </div>
                   <h3 className="font-medium">{tpl.subject}</h3>
                   <p className="mt-1 text-xs text-muted">{t('templates.variablesList', { list: parseVariables(tpl.variables).join(', ') || '-' })}</p>
@@ -295,7 +295,7 @@ export default function TemplatesPage() {
             <div key={tpl.id} className="card">
               <div className="flex items-start justify-between">
                 <div>
-                  <code className="surface-2 rounded px-2 py-0.5 text-xs">{tpl.slug}</code>
+                  <code className="surface-2 rounded-sm px-2 py-0.5 text-xs">{tpl.slug}</code>
                   <p className="mt-2 text-sm">{tpl.body}</p>
                   <p className="mt-1 text-xs text-muted">{t('templates.variablesList', { list: parseVariables(tpl.variables).join(', ') || '-' })}</p>
                 </div>
@@ -329,7 +329,7 @@ export default function TemplatesPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-medium">{cr.title}</h3>
-                    {cr.category && <span className="surface-2 rounded px-2 py-0.5 text-xs">{cr.category}</span>}
+                    {cr.category && <span className="surface-2 rounded-sm px-2 py-0.5 text-xs">{cr.category}</span>}
                   </div>
                   <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">{cr.content}</p>
                 </div>

@@ -326,7 +326,7 @@ export default function CreateTicketPage() {
               {/* Domain rejection — no detail about which domains are allowed */}
               {form.email && emailDomain && allCompanies && !hasAccessibleCompanies && (
                 <div className="mt-2 flex items-start gap-2 text-red-700 bg-red-50 rounded-inset p-3 text-sm dark:bg-red-500/15 dark:text-red-300">
-                  <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                   <span>{t('createTicket.step1.domainRejected')}</span>
                 </div>
               )}

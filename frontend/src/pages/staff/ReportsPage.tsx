@@ -161,7 +161,7 @@ export default function ReportsPage() {
                   <button
                     key={p}
                     onClick={() => setPeriod(p)}
-                    className={`text-xs px-3 py-1.5 rounded border transition-colors ${
+                    className={`text-xs px-3 py-1.5 rounded-sm border transition-colors ${
                       period === p
                         ? 'bg-primary-600 text-white border-primary-600'
                         : 'border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800'
@@ -354,7 +354,7 @@ export default function ReportsPage() {
                   <button
                     key={p}
                     onClick={() => setSlaPeriod(p)}
-                    className={`text-xs px-3 py-1.5 rounded border transition-colors ${
+                    className={`text-xs px-3 py-1.5 rounded-sm border transition-colors ${
                       slaPeriod === p
                         ? 'bg-primary-600 text-white border-primary-600'
                         : 'border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800'

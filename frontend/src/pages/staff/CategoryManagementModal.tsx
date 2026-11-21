@@ -181,7 +181,7 @@ export function CategoryManagementModal({ companyId, companyName, onClose }: {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{category.name}</span>
-                        {!category.isActive && <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-700 dark:bg-slate-700 dark:text-slate-200">{t('common.inactive')}</span>}
+                        {!category.isActive && <span className="rounded-sm bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-700 dark:bg-slate-700 dark:text-slate-200">{t('common.inactive')}</span>}
                       </div>
                       <p className="mt-0.5 text-xs text-muted">
                         {t('companyMgmt.category.metaLine', { order: category.sortOrder, response: category.slaResponseMinutes || '—', resolution: category.slaResolutionMinutes || '—' })}

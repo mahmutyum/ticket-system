@@ -349,12 +349,12 @@ export default function TasksPage() {
                 <label className="block text-sm font-medium mb-1">{t('tasks.assigneesLabel', { count: form.assigneeIds.length })}</label>
                 <div className="border rounded-inset max-h-60 overflow-y-auto p-2 space-y-1">
                   {staffList?.filter(s => s.isActive).map(s => (
-                    <label key={s.id} className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-colors ${form.assigneeIds.includes(s.id) ? 'bg-primary-50 border border-primary-300' : 'hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>
+                    <label key={s.id} className={`flex items-center gap-3 p-2 rounded-sm cursor-pointer transition-colors ${form.assigneeIds.includes(s.id) ? 'bg-primary-50 border border-primary-300' : 'hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>
                       <input
                         type="checkbox"
                         checked={form.assigneeIds.includes(s.id)}
                         onChange={() => toggleAssignee(s.id)}
-                        className="rounded text-primary-600"
+                        className="rounded-sm text-primary-600"
                       />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium">{s.fullName}</div>
@@ -444,10 +444,10 @@ export default function TasksPage() {
                     </select>
                     {isManager && (
                       <>
-                        <button onClick={() => handleEdit(task)} className="p-1.5 hover:bg-gray-100 rounded" title={t('common.edit')}>
+                        <button onClick={() => handleEdit(task)} className="p-1.5 hover:bg-gray-100 rounded-sm" title={t('common.edit')}>
                           <Edit2 className="w-4 h-4 text-gray-500" />
                         </button>
-                        <button onClick={() => handleDelete(task.id)} className="p-1.5 hover:bg-red-100 rounded" title={t('common.delete')}>
+                        <button onClick={() => handleDelete(task.id)} className="p-1.5 hover:bg-red-100 rounded-sm" title={t('common.delete')}>
                           <Trash2 className="w-4 h-4 text-red-500" />
                         </button>
                       </>

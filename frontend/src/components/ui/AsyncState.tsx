@@ -9,7 +9,7 @@ export function SkeletonRows({ rows = 5 }: { rows?: number }) {
       {Array.from({ length: rows }, (_, index) => (
         <div key={index} className="flex items-center gap-4 px-5 py-4">
           <div className="h-9 w-9 rounded-inset surface-2" />
-          <div className="flex-1 space-y-2"><div className="h-3 w-2/3 rounded surface-2" /><div className="h-2.5 w-1/3 rounded surface-2" /></div>
+          <div className="flex-1 space-y-2"><div className="h-3 w-2/3 rounded-sm surface-2" /><div className="h-2.5 w-1/3 rounded-sm surface-2" /></div>
           <div className="h-6 w-20 rounded-full surface-2" />
         </div>
       ))}

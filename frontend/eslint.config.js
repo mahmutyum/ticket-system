@@ -31,6 +31,18 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // react-hooks v7, `recommended` içine React Compiler benimseme
+      // kurallarını da koydu (set-state-in-effect, refs, immutability,
+      // static-components, preserve-manual-memoization). Bunlar mevcut
+      // React 19 kodunu YANLIŞ olarak değil, compiler'a geçişte
+      // refactor edilecek deseni işaret eder — bakım sürümünde 8 dosyalık
+      // refactor yapılmaz; uyarı olarak görünür, klasik doğruluk kuralları
+      // (rules-of-hooks, exhaustive-deps) error kalmaya devam eder.
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/refs': 'warn',
+      'react-hooks/immutability': 'warn',
+      'react-hooks/static-components': 'warn',
+      'react-hooks/preserve-manual-memoization': 'warn',
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': [

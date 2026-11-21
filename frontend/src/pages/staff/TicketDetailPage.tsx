@@ -226,7 +226,7 @@ export default function TicketDetailPage() {
                         key={cr.id}
                         type="button"
                         onClick={() => { setNoteContent(cr.content); setShowCanned(false); }}
-                        className="w-full text-left p-2 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded text-sm"
+                        className="w-full text-left p-2 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-sm text-sm"
                       >
                         <span className="font-medium">{cr.title}</span>
                         {cr.category && <span className="text-xs text-gray-400 ml-2">[{cr.category}]</span>}
@@ -301,7 +301,7 @@ export default function TicketDetailPage() {
             <div>
               <span className="text-xs text-gray-500 block mb-1">
                 {t('ticketDetail.createdBy')}
-                {ticket.source === 'email' && <span className="ml-2 rounded bg-blue-100 px-1.5 py-0.5 text-[11px] text-blue-800 dark:bg-blue-500/15 dark:text-blue-300">{t('ticketDetail.viaEmail')}</span>}
+                {ticket.source === 'email' && <span className="ml-2 rounded-sm bg-blue-100 px-1.5 py-0.5 text-[11px] text-blue-800 dark:bg-blue-500/15 dark:text-blue-300">{t('ticketDetail.viaEmail')}</span>}
               </span>
               <div className="flex items-center gap-2 text-sm">
                 <Mail className="w-4 h-4 text-gray-400" />

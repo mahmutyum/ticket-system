@@ -222,7 +222,7 @@ export default function StaffManagementPage() {
                     type="checkbox"
                     checked={selectedCompanyIds.includes(c.id)}
                     onChange={() => toggleCompany(c.id)}
-                    className="rounded text-primary-600"
+                    className="rounded-sm text-primary-600"
                   />
                   <div>
                     <span className="font-medium text-sm">{c.name}</span>
@@ -268,7 +268,7 @@ export default function StaffManagementPage() {
                     ) : companyNames.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
                         {companyNames.map((name: string) => (
-                          <span key={name} className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">{name}</span>
+                          <span key={name} className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-sm">{name}</span>
                         ))}
                       </div>
                     ) : (

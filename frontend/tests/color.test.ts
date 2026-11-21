@@ -55,10 +55,10 @@ describe('generatePalette — geçit', () => {
 
 describe('applyPalette', () => {
   it('geçersiz renkte hiçbir CSS değişkeni YAZMAZ', () => {
-    document.documentElement.style.removeProperty('--color-primary-500');
+    document.documentElement.style.removeProperty('--primary-500');
     const ok = applyPalette('javascript:alert(1)');
     expect(ok).toBe(false);
-    expect(document.documentElement.style.getPropertyValue('--color-primary-500')).toBe('');
+    expect(document.documentElement.style.getPropertyValue('--primary-500')).toBe('');
   });
 
   it('null/undefined güvenle ele alınır', () => {
@@ -69,7 +69,7 @@ describe('applyPalette', () => {
   it('geçerli renkte değişkenleri yazar', () => {
     const ok = applyPalette('#2563eb');
     expect(ok).toBe(true);
-    expect(document.documentElement.style.getPropertyValue('--color-primary-500')).toMatch(
+    expect(document.documentElement.style.getPropertyValue('--primary-500')).toMatch(
       /^\d{1,3} \d{1,3} \d{1,3}$/,
     );
   });

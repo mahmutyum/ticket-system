@@ -30,7 +30,7 @@ export default function KbInsert({ companyId, onInsert }: { companyId: string; o
         <div className="absolute z-10 w-full space-y-1 rounded-inset border border-subtle bg-white p-2 shadow-overlay dark:bg-slate-900">
           <input className="input-field text-xs" value={q} onChange={e => setQ(e.target.value)} placeholder={t('kb.staff.search')} autoFocus />
           {published.map(h => (
-            <button key={h.id} type="button" className="w-full rounded p-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-slate-800/50"
+            <button key={h.id} type="button" className="w-full rounded-sm p-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-slate-800/50"
               onClick={() => { onInsert(`${title(h)}: ${window.location.origin}/kb/${h.id}?c=${companyId}`); setOpen(false); }}>
               {title(h)}
             </button>

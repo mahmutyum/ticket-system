@@ -77,7 +77,7 @@ export function applyPalette(hex: string | null | undefined): boolean {
     // Reset to defaults — clear inline overrides
     const root = document.documentElement;
     [50, 100, 200, 300, 400, 500, 600, 700, 800, 900].forEach(k =>
-      root.style.removeProperty(`--color-primary-${k}`)
+      root.style.removeProperty(`--primary-${k}`)
     );
     return false;
   }
@@ -85,7 +85,7 @@ export function applyPalette(hex: string | null | undefined): boolean {
   if (!palette) return false;
   const root = document.documentElement;
   for (const [k, v] of Object.entries(palette)) {
-    root.style.setProperty(`--color-primary-${k}`, v);
+    root.style.setProperty(`--primary-${k}`, v);
   }
   return true;
 }

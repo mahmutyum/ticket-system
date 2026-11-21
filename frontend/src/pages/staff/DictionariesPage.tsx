@@ -161,7 +161,7 @@ export default function DictionariesPage() {
                   <tr key={entry.key} className={`border-t ${entry.isActive ? '' : 'opacity-55'}`}>
                     <td className="px-3 py-2 font-mono text-xs">
                       {entry.key}
-                      {entry.isSystem && <span className="ml-1 rounded bg-gray-200 px-1 text-[10px] text-gray-600 dark:bg-slate-700 dark:text-slate-300">system</span>}
+                      {entry.isSystem && <span className="ml-1 rounded-sm bg-gray-200 px-1 text-[10px] text-gray-600 dark:bg-slate-700 dark:text-slate-300">system</span>}
                     </td>
                     <td className="px-3 py-2"><input className="input-field !w-44 text-sm" value={draft.labelTr} onChange={(e) => setDraft(entry, { labelTr: e.target.value })} maxLength={120} /></td>
                     <td className="px-3 py-2"><input className="input-field !w-44 text-sm" value={draft.labelEn} onChange={(e) => setDraft(entry, { labelEn: e.target.value })} maxLength={120} /></td>

@@ -107,7 +107,7 @@ export function Modal({ open, onClose, ariaLabel, title, size = 'max-w-md', pane
         tabIndex={-1}
         onKeyDown={trapTab}
         onClick={(event) => event.stopPropagation()}
-        className={`${surface} w-full outline-none ${size} ${panelClassName ?? DEFAULT_PANEL}`}
+        className={`${surface} w-full outline-hidden ${size} ${panelClassName ?? DEFAULT_PANEL}`}
       >
         {title !== undefined && (
           <div className="mb-3 flex items-center justify-between gap-3">
