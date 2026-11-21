@@ -106,9 +106,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Pre-release etiketleri (vX.Y.Z-rc.1 gibi) otomatik prerelease kalır
-          # ve "latest" sürümü etkilemez.
+          # Pre-release etiketleri (vX.Y.Z-rc.1 gibi) prerelease işaretlenir ve
+          # "latest" sürümü etkilemez — gh otomatik algılamaz, suffix'e bakarız.
+          EXTRA=""
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then EXTRA="--prerelease --latest=false"; fi
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
             --notes-file release-notes.md \
-            --verify-tag
+            --verify-tag $EXTRA
