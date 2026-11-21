@@ -66,6 +66,13 @@ scope (deferred indefinitely — no date/version).
   0 vulnerabilities (dev included) in both apps.
 - TypeScript stays on 5.9.x deliberately (TS 7 has no compiler API for toolchains yet;
   tracked as a v1.4 candidate).
+- Repository fix surfaced by the new release pipeline's CI: the unanchored `backups/`
+  .gitignore rule had been silently swallowing `backend/src/modules/backups/` — the
+  Backups admin routes module was missing from every clone since v1.2 (local builds
+  masked it). The rule is now anchored to the repo root and the module is tracked.
+  A metadata-only migration renames the `ticket_templates` foreign key constraint so
+  the schema matches the migration chain exactly (checked by CI with the Prisma 7
+  `migrate diff --exit-code` drift gate, which replaced the removed v6 flags).
 - Documentation: roadmap status/test counts refreshed; the production guide gained the
   GHCR prebuilt-images option; CONTRIBUTING "where to start" now points at v1.4
   candidates.
