@@ -56,7 +56,9 @@ pnpm-debug.log*
 *.sqlite
 *.sqlite3
 *.db
-backups/
+# Yalnızca kökteki veri dizini — başına / konmazsa kaynak kod klasörlerini de
+# yutar (v1.3.2'de backend/src/modules/backups/ bu yüzden repoya girmemişti).
+/backups/
 
 # Editör / IDE
 .vscode/

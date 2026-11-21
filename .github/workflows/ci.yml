@@ -172,17 +172,15 @@ jobs:
 
       # Şema ile veritabanı birebir örtüşmeli. Örtüşmüyorsa birileri şemayı
       # değiştirip migration üretmeyi unutmuştur — CI burada yakalar.
+      # Prisma 7: --from-url/--to-schema-datamodel kaldırıldı; bağlantı
+      # prisma.config.ts'ten (DATABASE_URL) okunur, --exit-code ile boş diff
+      # (örtüşme) 0, fark varsa 2 döner.
       - name: Şema veritabanıyla örtüşüyor mu
         run: |
-          DIFF=$(npx prisma migrate diff \
-            --from-url "$DATABASE_URL" \
-            --to-schema-datamodel prisma/schema.prisma \
-            --script)
-          echo "$DIFF"
-          if ! echo "$DIFF" | grep -q "This is an empty migration"; then
-            echo "::error::Şema ile migration'lar örtüşmüyor — eksik migration var."
-            exit 1
-          fi
+          npx prisma migrate diff \
+            --from-config-datasource \
+            --to-schema prisma/schema.prisma \
+            --script --exit-code
 
       - name: Seed çalışıyor mu
         env:
