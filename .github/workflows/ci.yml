@@ -1,9 +1,11 @@
 name: CI
 
-# Otomatik GitHub doğrulamaları kapalıdır. Gerektiğinde Actions ekranındaki
-# "Run workflow" düğmesiyle elle çalıştırılabilir.
+# Otomatik GitHub doğrulamaları (push/PR) kapalıdır: gerektiğinde Actions
+# ekranındaki "Run workflow" düğmesiyle elle çalıştırılır. release.yml,
+# etiket push'unda bu workflow'u workflow_call ile buradan çağırır.
 on:
   workflow_dispatch:
+  workflow_call:
 
 # Aynı dal için eski koşuları iptal et — art arda push'ta kuyruk birikmesin.
 concurrency:
@@ -209,3 +211,7 @@ jobs:
         run: docker build -f backend/Dockerfile backend
       - name: Frontend imajı
         run: docker build -f frontend/Dockerfile frontend
+      - name: Backup servisi imajı
+        run: docker build -f backup-service/Dockerfile backup-service
+      - name: Nginx proxy imajı
+        run: docker build -f nginx/Dockerfile nginx

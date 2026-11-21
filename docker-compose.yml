@@ -1,5 +1,8 @@
 services:
   backend:
+    # image: yerel derlemeyi GHCR adıyla etiketler (docker compose push ile
+    # yayınlanabilir). Hazır imaj kullanımı için docker-compose.hub.yml'e bakın.
+    image: ghcr.io/mahmutyum/ticket-system-backend
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -27,6 +30,7 @@ services:
     restart: unless-stopped
 
   frontend:
+    image: ghcr.io/mahmutyum/ticket-system-frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -72,6 +76,7 @@ services:
   # arşivi + env anlık görüntüsü + SHA256SUMS üretir, tanımlı hedeflere (rclone)
   # şifreleyerek yükler, periyodik restore provası yapar.
   backup:
+    image: ghcr.io/mahmutyum/ticket-system-backup
     build:
       context: ./backup-service
       dockerfile: Dockerfile
@@ -119,6 +124,7 @@ services:
   # Optional: built-in nginx proxy (use if NOT behind Coolify/NPM)
   # Activate with: docker compose --profile proxy up
   nginx:
+    image: ghcr.io/mahmutyum/ticket-system-proxy
     build: ./nginx
     ports:
       - "${NGINX_HTTP_PORT:-80}:80"

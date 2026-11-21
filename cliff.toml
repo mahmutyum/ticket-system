@@ -1,0 +1,56 @@
+# git-cliff yapılandırması — Conventional Commits'ten Keep a Changelog bölümü üretir.
+#
+# CHANGELOG.md'nin elle yazılmış tarihi korunur: yalnızca son etiketten bu yana
+# biriken commit'ler yeni bölüm olarak başa eklenir:
+#   ./scripts/release-changelog.sh v1.3.2
+# GitHub Release notları CI'da `git cliff --latest --strip all` ile üretilir
+# (.github/workflows/release.yml).
+# Sürüm bölümü cliff'in ürettiği iskelet üzerine elle cilalanabilir (Upgrade
+# notes gibi anlatı blokları); yapı Keep a Changelog'a uygun kalır.
+
+[changelog]
+# --prepend, bu başlığı dosyada bularak hemen altına yeni bölümü ekler.
+# CHANGELOG.md'nin ilk 5 satırıyla birebir aynıdır.
+header = """
+# Changelog
+
+All notable changes to this project are documented here.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+"""
+
+body = """
+## [{% if version %}{{ version | trim_start_matches(pat="v") }}{% else %}Unreleased{% endif %}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% for group, commits in commits | group_by(attribute="group") %}\
+
+### {{ group | upper_first }}
+
+{% for commit in commits %}\
+- {% if commit.breaking %}**breaking:** {% endif %}{{ commit.message | split(pat="\n") | first | trim }}
+{% endfor %}\
+
+{% endfor %}\
+"""
+
+footer = "<!-- CHANGELOG'un bu bölümü git-cliff ile üretildi; elle cilalanabilir. -->\n"
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+sort = "oldest"
+
+commit_parsers = [
+  { message = "^feat", group = "Added" },
+  { message = "^fix", group = "Fixed" },
+  { message = "^perf", group = "Changed" },
+  { message = "^refactor", group = "Changed" },
+  { message = "^docs", group = "Changed" },
+  { message = "^test", group = "Changed" },
+  { message = "^build", group = "Changed" },
+  { message = "^ci", group = "Changed" },
+  # Sürüm/kirletme commit'leri günlüğe girmez.
+  { message = "^chore\\(release\\)", skip = true },
+  { message = "^chore", group = "Changed" },
+  { message = ".*", skip = true },
+]
