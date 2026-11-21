@@ -1,6 +1,11 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  // Node ESM + tsc derlemesi: üretilen importlar `.js` uzantısı taşır —
+  // TS bundler resolution `./enums.js` → `enums.ts` eşler, tsc specifier'ı
+  // olduğu gibi dist'e taşır ve Node çalışma zamanı çözer.
+  moduleFormat        = "esm"
+  importFileExtension = "js"
 }
 
 // Prisma 7: bağlantı URL'i artık şemada değil `prisma.config.ts`'te yaşar.
