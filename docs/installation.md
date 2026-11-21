@@ -168,6 +168,28 @@ remote targets; details: [operations](operations.md).
 
 ## Production
 
+### Option A — prebuilt images (GHCR, no clone needed)
+
+The release pipeline publishes multi-arch (amd64/arm64) images to
+[GHCR](https://github.com/mahmutyum/ticket-system/pkgs/container/ticket-system-backend):
+`ticket-system-backend`, `ticket-system-frontend`, `ticket-system-backup`,
+`ticket-system-proxy`. Tag scheme: `:1.3.2` (exact), `:1.3` (latest patch of the
+minor), `:latest`.
+
+```bash
+mkdir ticket-system && cd ticket-system   # only .env + compose file are needed
+cp /path/to/.env.example .env             # or download it from the repo
+./scripts/check-production-env.sh .env    # from the repo (a clone or raw download)
+VERSION=1.3.2 docker compose -f docker-compose.hub.yml up -d
+```
+
+Pinning `VERSION` to a full version keeps updates explicit: bump it manually after
+reading the release notes — auto-update is not built in by design (migrations are
+forward-only). `docker compose -f docker-compose.hub.yml pull && \
+docker compose -f docker-compose.hub.yml up -d` performs the update in place.
+
+### Option B — build from source
+
 ```bash
 cp .env.example .env      # fill in the values
 ./scripts/check-production-env.sh .env

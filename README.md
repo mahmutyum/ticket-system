@@ -68,13 +68,13 @@ Every screen is captured in both Turkish and English — **[full gallery: docs/s
 
 | Layer | Technology |
 |---|---|
-| Backend | Node.js 24 · Fastify 5 · TypeScript (ESM) · Prisma 6 · Zod |
-| Frontend | React 18 · Vite 6 · TailwindCSS 3 · TanStack Query 5 · Zustand 5 |
+| Backend | Node.js 24 · Fastify 5 · TypeScript (ESM) · Prisma 7 · Zod |
+| Frontend | React 19 · Vite 8 · TailwindCSS 4 · TanStack Query 5 · Zustand 5 |
 | Database | PostgreSQL 16 |
 | Queue / Cache | Redis 7 + BullMQ |
 | Realtime | SSE (Server-Sent Events) |
 | i18n | react-i18next · `Accept-Language`-based API messages |
-| Deploy | Docker Compose (Coolify + Nginx Proxy Manager compatible) |
+| Deploy | Docker Compose · GHCR multi-arch images (Coolify + Nginx Proxy Manager compatible) |
 
 ---
 
@@ -114,6 +114,10 @@ docker compose exec backend npm run db:seed:demo     # 36 tickets, 24 tasks, vau
 ```
 
 UI at **http://localhost:1111** · API docs at **http://localhost:4000/docs**
+
+> **No clone, prebuilt images?** The release pipeline publishes multi-arch images to
+> GHCR (`ghcr.io/mahmutyum/ticket-system-*`): `VERSION=1.3.2 docker compose -f docker-compose.hub.yml up -d`.
+> Details: [docs/installation.md](docs/installation.md).
 
 ### Sample logins (seed)
 

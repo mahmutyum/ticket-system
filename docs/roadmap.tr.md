@@ -2,7 +2,7 @@
 
 [🇬🇧 English](roadmap.md) · 🇹🇷 **Türkçe**
 
-Projenin güncel olgunluğu ve planlanan işler. Durum: 2026-11-14 (v1.3.0).
+Projenin güncel olgunluğu ve planlanan işler. Durum: 2026-11-21 (v1.3.2).
 
 ## Olgunluk özeti
 
@@ -13,7 +13,7 @@ Projenin güncel olgunluğu ve planlanan işler. Durum: 2026-11-14 (v1.3.0).
 | Kurulum / deploy | 🟢 Docker Compose, Coolify ve Nginx belgeli |
 | Migration | 🟢 Versiyonlu; gerçek PostgreSQL üzerinde doğrulanabilir |
 | Backend testleri | 🟢 444 birim/route/worker testi |
-| Frontend testleri | 🟢 26 birim testi + 6 Playwright smoke/axe senaryosu |
+| Frontend testleri | 🟢 34 birim testi + 12 Playwright smoke/axe senaryosu |
 | Entegrasyon | 🟢 61 test — gerçek PostgreSQL + Redis; sahte OIDC sağlayıcısı, imzalı SAML yanıtı ve yerel webhook alıcısıyla uçtan uca |
 | API dokümantasyonu | 🟢 Kritik route'larda request/response sözleşmeleri (OpenAPI) |
 | Kod kalitesi | 🟢 Backend + frontend lint temiz, tipli |
@@ -22,6 +22,7 @@ Projenin güncel olgunluğu ve planlanan işler. Durum: 2026-11-14 (v1.3.0).
 | Gözlemlenebilirlik | 🟢 Prometheus `/metrics` + örnek alarm kuralları (v1.1) |
 | Yedekleme | 🟢 Otomatik (backup profili): rclone uzak hedefler, age şifreleme, GFS, restore provası (v1.2) |
 | Yönetilebilirlik | 🟢 Sözlükler panelden yönetilir; davranış durum SINIFINA bağlıdır (v1.3) |
+| Container imajları | 🟢 GHCR çok mimarili (amd64/arm64) yayın hattı + git-cliff changelog (v1.3.2) |
 
 ## Sürüm planı
 
@@ -29,7 +30,9 @@ Projenin güncel olgunluğu ve planlanan işler. Durum: 2026-11-14 (v1.3.0).
 |---|---|
 | **v1.1** ✅ | SLA doğruluğu, talep yaşam döngüsü, kurumsal entegrasyon, ürün olgunluğu, gözlemlenebilirlik |
 | **v1.2** ✅ | Otomatik yedekleme, merkezi zamanlanmış görev (cron) altyapısı, uzak yedek hedefleri |
-| **v1.3** | DB'den yönetilen sözlükler (şirket türü, durum, öncelik…), "Taleplerim", S3 depolama, Docker Hub imajları, sürüm otomasyonu |
+| **v1.3** ✅ | DB'den yönetilen sözlükler (şirket türü, durum, öncelik…), "Taleplerim", S3 depolama |
+| **v1.3.1** ✅ | Güvenlik/bakım: zod 4, Node 24 LTS, nginx 1.30, İngilizce öncelikli dokümantasyon |
+| **v1.3.2** ✅ | Bağımlılık major'ları (Prisma 7, React 19, Vite 8, Tailwind 4, BullMQ 6…), GHCR imaj yayını, git-cliff changelog |
 
 ---
 
@@ -269,7 +272,7 @@ Env değerleri varsayılandır; panelden yapılan değişiklik veritabanında sa
 
 ---
 
-## v1.3 — Yönetilebilir yapı ve dağıtım
+## v1.3 — ✅ tamamlandı (madde 3–4 v1.3.2'de GHCR ile teslim edildi)
 
 ### 1. DB'den yönetilen sözlükler (referans verileri)
 
@@ -361,31 +364,36 @@ yok — e-posta sahipliği doğrulanır. Mevcut altyapıyı (kısa ömürlü tok
 e-posta kuyruğu, rate limit) kullanır; yeni tablo gerektirmez. Yeni çift dilli
 bildirim şablonu (`my_tickets_link`) ve bir public sayfa (`MyTicketsPage`) eklenir.
 
-### 3. Docker Hub imajları ve tek-komut kurulum
+### 3. Container imajları — GHCR (✅ v1.3.2'de teslim edildi)
 
-> **⏸ Ertelendi (2026-11-14):** Ücret/efor araştırması yapıldı — public repo'da
-> Actions sınırsız + ücretsiz arm64 runner mevcut, Hub'da public repo sınırsız;
-> yani ücretsiz ve ~yarım günlük kurulum. Öncelik sıralaması nedeniyle bu döngüde
-> **sonraya bırakıldı**. Bu madde ertelenince **otomatik changelog** (madde 4) da
-> ertelendi: imaj etiketleri Hub yayınına bağlıydı; CHANGELOG elle bakılmaya devam
-> eder. Araştırma özeti: Docker Hub pull limitleri yalnızca İNDİREN tarafı etkiler
-> (kimliksiz ~10 pull/saat/IP, Nisan 2025); GHCR paralel yayını limitsiz alternatiftir.
+Release hattı (`.github/workflows/release.yml`) her `v*` etiket push'unda çalışır:
+önce CI doğrulaması, sonra dört first-party imajın **GitHub Container Registry**'ye
+çok mimarili (linux/amd64 + linux/arm64) yayını:
 
-Bugün `docker compose` imajları yerelde **derliyor**. Hedef: backend ve frontend
-imajlarını CI ile **Docker Hub'a yayınlamak** ve sürüm etiketiyle (`:1.0.0`, `:latest`)
-`docker pull` edilip derleme gerektirmeden çalıştırılabilen bir compose sağlamak — böylece
-sistem, kaynağı klonlamadan indirilip kurulabilir.
+- `ghcr.io/mahmutyum/ticket-system-backend` · `…-frontend` · `…-backup` · `…-proxy`
+- Etiketler: `:MAJOR.MINOR.PATCH`, `:MAJOR.MINOR`; kararlı semver sürümlerine `:latest`
+  da eklenir (pre-release etiketlerine `:latest` YAZILMAZ).
+- `docker-compose.hub.yml` kaynağı klonlamadan kurulum sağlar
+  (`VERSION=1.3.2 docker compose -f docker-compose.hub.yml up -d`);
+  `docker-compose.yml` yerel derlemeler için aynı `image:` adlarını taşır.
+- v1.2 `backup` servisi ve nginx proxy aynı akışla yayınlanır.
+- CI elle tetiklemede kalır (karar: `workflow_dispatch` + `workflow_call`); yalnızca
+  release hattı etiket push'unda otomatik çalışır.
 
-- GitHub Actions ile `main`/tag push'unda çok mimarili (amd64/arm64) imaj build + push.
-- Published imajları kullanan `docker-compose.hub.yml` (build yerine `image:`).
-- Sürüm etiketleme: `:MAJOR.MINOR.PATCH`, `:MAJOR.MINOR`, `:latest`.
-- v1.2 `backup` servisi imajı da aynı akışla yayınlanır.
+> **⏸ Docker Hub — süresiz ertelendi (2026-11-21):** birincil registry GHCR'dır
+> (limitsiz, ücretsiz, aynı pull mekaniği). Ek olarak Docker Hub'a yayınlamanın **planlı
+> bir tarihi/sürümü yoktur**; yalnızca somut kullanıcı talebi olursa yeniden
+> değerlendirilir. Önceki araştırma geçerliliğini korur: Hub public repo'da ücretsizdir;
+> pull limitleri yalnızca İNDİREN tarafı etkiler (kimliksiz ~10 pull/saat/IP).
 
-### 4. Sürüm takibi ve otomatik changelog
+### 4. Sürüm takibi ve otomatik changelog (✅ v1.3.2'de teslim edildi)
 
-- SemVer git tag'leri + GitHub Releases.
-- Conventional commit'lerden **otomatik CHANGELOG** üretimi (elle bakım yerine).
-- İmaj etiketleri sürümle senkron. *(Docker Hub ertelendiği için bu madde de ertelendi.)*
+- SemVer git tag'leri + GitHub Releases; notlar Conventional Commits'ten
+  **git-cliff** ile üretilir (`cliff.toml`, Keep a Changelog grupları).
+- CHANGELOG.md: elle yazılan anlatımlı stil korunur; yeni sürüm bölümleri
+  `scripts/release-changelog.sh vX.Y.Z` ile üretilir (yalnızca son etiketten sonraki
+  commit'leri ekler, geçmişi korur) ve etiket öncesinde elle cılanır.
+- İmaj etiketleri sürümle senkron (hatta git etiketinden türetilir).
 
 ### 5. S3-uyumlu depolama (AWS S3 / MinIO)
 
@@ -406,6 +414,21 @@ ve konteyner-dışı kalıcılık için.
 - Yedek almanın yanında geri yükleme tatbikatını da periyodik çalıştır (v1.2 ile otomatikleşir).
 - Retention işini izle (`db:retention:check`) ve onaylı bakım penceresinde uygula.
 - İnternete açık kurulumlarda erişim kontrolü ve `ENABLE_API_DOCS=false` zorunlu kabul et.
+
+## v1.4 adayları (zamanlanmadı)
+
+v1.3.x sonrasında bilinçli olarak açık bırakıldı; hiçbiri zamanlanmadı:
+
+- **Durum geçiş workflow'u** (v1.3 opsiyonel maddesi): şirket başına izinli geçiş
+  tanımı; bugün tüm geçişler serbesttir.
+- **Şirket kapsamlı sözlükler** (v1.3 opsiyonel maddesi): sözlük kayıtları bugün
+  globaldir; şirket başına aktivasyon küçük bir model uzantısı ister.
+- **DB destekli backend etiketleri**: `backend/src/i18n/labels.ts` hâlâ frontend ile
+  elle hizalı (v1.3 sözlük tablolarından önce yazıldı); sözlük tablolarından okunması
+  elle senkron noktasını kaldırır.
+- **İkinci faz rclone hedefleri**: Azure Blob, OneDrive / SharePoint.
+- **TypeScript 7** (native derleyici): typescript-eslint 7.1 dönemi compiler API'sini
+  destekleyene kadar ertelendi; proje bu tarihe kadar 5.9.x'te kalır.
 
 ## Ürün tercihleri (bilinçli)
 

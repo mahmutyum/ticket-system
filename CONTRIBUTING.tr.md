@@ -115,10 +115,12 @@ Repoya neyin girip girmeyeceği (secret, gerçek veri, PII, üretim görüntüs�
 
 ## Nereden başlamalı
 
-[Yol haritasındaki](docs/roadmap.tr.md) nispeten bağımsız işler:
+[Yol haritasındaki](docs/roadmap.tr.md) nispeten bağımsız işler (v1.4 adayları):
 
-- **"Taleplerim" görünümü** — talep sahibinin e-posta doğrulamalı, birleşik talep listesi
-  (yol haritasında akış tarif edildi). Yeni bir public sayfa + kısa ömürlü doğrulama akışı.
+- **Durum geçiş workflow'u** — şirket başına izinli geçiş tanımı (bugün tüm geçişler
+  serbesttir); v1.3 durum-sınıfı sözlük çalışmasıyla doğrudan eşleşir.
+- **Şirket kapsamlı sözlükler** — sözlük kayıtları bugün globaldir; şirket başına
+  aktivasyon küçük bir model uzantısıdır.
 - **Test kapsamını genişlet** — özellikle kapsam/RBAC ve public yüzey senaryoları; mevcut
   örnekler `tests/routes/` altında.
 - **Erişilebilirlik ve UX** — Playwright/axe senaryolarını genişlet.

@@ -2,7 +2,7 @@
 
 🇬🇧 **English** · [🇹🇷 Türkçe](roadmap.tr.md)
 
-The project's current maturity and planned work. Status: 2026-11-14 (v1.3.0).
+The project's current maturity and planned work. Status: 2026-11-21 (v1.3.2).
 
 ## Maturity summary
 
@@ -13,7 +13,7 @@ The project's current maturity and planned work. Status: 2026-11-14 (v1.3.0).
 | Setup / deploy | 🟢 Docker Compose, Coolify and Nginx documented |
 | Migration | 🟢 Versioned; verifiable on real PostgreSQL |
 | Backend tests | 🟢 444 unit/route/worker tests |
-| Frontend tests | 🟢 26 unit tests + 6 Playwright smoke/axe scenarios |
+| Frontend tests | 🟢 34 unit tests + 12 Playwright smoke/axe scenarios |
 | Integration | 🟢 61 tests — real PostgreSQL + Redis; end-to-end with a fake OIDC provider, a signed SAML response and a local webhook receiver |
 | API documentation | 🟢 Request/response contracts on critical routes (OpenAPI) |
 | Code quality | 🟢 Backend + frontend lint-clean, typed |
@@ -22,6 +22,7 @@ The project's current maturity and planned work. Status: 2026-11-14 (v1.3.0).
 | Observability | 🟢 Prometheus `/metrics` + sample alert rules (v1.1) |
 | Backup | 🟢 Automatic (backup profile): rclone remote targets, age encryption, GFS, restore drills (v1.2) |
 | Manageability | 🟢 Dictionaries ("Sözlükler") managed from the panel; behavior depends on the status CLASS (v1.3) |
+| Container images | 🟢 GHCR multi-arch (amd64/arm64) publish pipeline + git-cliff changelog (v1.3.2) |
 
 ## Release plan
 
@@ -29,7 +30,9 @@ The project's current maturity and planned work. Status: 2026-11-14 (v1.3.0).
 |---|---|
 | **v1.1** ✅ | SLA accuracy, ticket lifecycle, enterprise integration, product maturity, observability |
 | **v1.2** ✅ | Automatic backup, central scheduled-job (cron) infrastructure, remote backup targets |
-| **v1.3** | DB-managed dictionaries (company type, status, priority…), "Taleplerim" (My tickets), S3 storage, Docker Hub images, release automation |
+| **v1.3** ✅ | DB-managed dictionaries (company type, status, priority…), "Taleplerim" (My tickets), S3 storage |
+| **v1.3.1** ✅ | Security/maintenance: zod 4, Node 24 LTS, nginx 1.30, English-primary docs |
+| **v1.3.2** ✅ | Dependency majors (Prisma 7, React 19, Vite 8, Tailwind 4, BullMQ 6…), GHCR image publish, git-cliff changelog |
 
 ---
 
@@ -286,7 +289,7 @@ take precedence. Target credentials are not written to env.
 
 ---
 
-## v1.3 — Manageability and deployment
+## v1.3 — ✅ completed (items 3–4 shipped in v1.3.2 via GHCR)
 
 ### 1. DB-managed dictionaries (reference data)
 
@@ -382,33 +385,36 @@ password — email ownership is verified. It uses the existing infrastructure (s
 token, Redis, BullMQ email queue, rate limit); it requires no new table. A new bilingual
 notification template (`my_tickets_link`) and a public page (`MyTicketsPage`) are added.
 
-### 3. Docker Hub images and one-command setup
+### 3. Container images — GHCR (✅ shipped in v1.3.2)
 
-> **⏸ Deferred (2026-11-14):** A cost/effort investigation was done — on public repos
-> Actions are unlimited + a free arm64 runner is available, and public repos on the Hub are
-> unlimited; i.e. free and roughly a half-day setup. Due to priority ordering it was
-> **postponed** this cycle. With this item deferred, the **automatic changelog** (item 4)
-> was deferred too: the image tags depended on the Hub publish; the CHANGELOG continues to
-> be maintained by hand. Research summary: Docker Hub pull limits only affect the PULLING
-> side (~10 pulls/hour/IP unauthenticated, April 2025); publishing to GHCR in parallel is
-> an unlimited alternative.
+The release pipeline (`.github/workflows/release.yml`) runs on every `v*` tag push:
+CI validation first, then all four first-party images are published to
+**GitHub Container Registry** as multi-arch (linux/amd64 + linux/arm64):
 
-Today `docker compose` **builds** the images locally. The goal: **publish** the backend and
-frontend images to **Docker Hub** via CI and provide a compose file that can be
-`docker pull`ed with a release tag (`:1.0.0`, `:latest`) and run without building — so the
-system can be downloaded and installed without cloning the source.
+- `ghcr.io/mahmutyum/ticket-system-backend` · `…-frontend` · `…-backup` · `…-proxy`
+- Tags: `:MAJOR.MINOR.PATCH`, `:MAJOR.MINOR`, plus `:latest` for stable semver
+  releases (pre-release tags never get `:latest`).
+- `docker-compose.hub.yml` installs without cloning the source
+  (`VERSION=1.3.2 docker compose -f docker-compose.hub.yml up -d`);
+  `docker-compose.yml` carries the same `image:` names for local builds.
+- The v1.2 `backup` service and the nginx proxy publish through the same flow.
+- CI stays manual-trigger by decision (`workflow_dispatch` + `workflow_call`); only
+  the release pipeline auto-runs, on tag push.
 
-- Multi-arch (amd64/arm64) image build + push with GitHub Actions on `main`/tag push.
-- `docker-compose.hub.yml` using the published images (`image:` instead of build).
-- Release tagging: `:MAJOR.MINOR.PATCH`, `:MAJOR.MINOR`, `:latest`.
-- The v1.2 `backup` service image is published through the same flow.
+> **⏸ Docker Hub — deferred indefinitely (2026-11-21):** GHCR is the primary registry
+> (unlimited, free, same pull mechanics). Publishing to Docker Hub in addition has **no
+> scheduled date or version**; it will be reconsidered only if there is concrete user
+> demand. Earlier research stands: Hub is free for public repos; pull limits affect the
+> pulling side (~10/hour/IP unauthenticated).
 
-### 4. Release tracking and automatic changelog
+### 4. Release tracking and automatic changelog (✅ shipped in v1.3.2)
 
-- SemVer git tags + GitHub Releases.
-- **Automatic CHANGELOG** generation from Conventional Commits (instead of manual
-  maintenance).
-- Image tags in sync with releases. *(Deferred too, because Docker Hub was deferred.)*
+- SemVer git tags + GitHub Releases, notes generated by **git-cliff** from
+  Conventional Commits (`cliff.toml`, Keep a Changelog groups).
+- CHANGELOG.md: the hand-written narrative style stays; new release sections are
+  generated by `scripts/release-changelog.sh vX.Y.Z` (prepends only the unreleased
+  commits, keeps history) and hand-polished before tagging.
+- Image tags stay in sync with releases (the pipeline derives them from the git tag).
 
 ### 5. S3-compatible storage (AWS S3 / MinIO)
 
@@ -433,6 +439,21 @@ scale, redundancy and persistence outside the container.
   window.
 - For internet-facing installations, treat access control and `ENABLE_API_DOCS=false` as
   mandatory.
+
+## v1.4 candidates (unscheduled)
+
+Deliberately left open after v1.3.x; none is scheduled:
+
+- **Status transition workflow** (optional v1.3 item): a per-company allowed-transitions
+  definition; today every transition is free.
+- **Company-scoped dictionaries** (optional v1.3 item): dictionary records are global
+  today; per-company activation needs a small model extension.
+- **DB-driven backend labels**: `backend/src/i18n/labels.ts` is still hand-aligned with
+  the frontend (it predates the v1.3 dictionary tables); reading it from the dictionary
+  tables removes a manual sync point.
+- **Second-phase rclone targets**: Azure Blob, OneDrive / SharePoint.
+- **TypeScript 7** (native compiler): deferred until typescript-eslint supports the
+  7.1-era compiler API; the project stays on 5.9.x until then.
 
 ## Product preferences (deliberate)
 

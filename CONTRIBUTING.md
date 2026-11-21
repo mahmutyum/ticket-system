@@ -116,11 +116,12 @@ screenshots) and the pre-commit checklist: [docs/public-repo.md](docs/public-rep
 
 ## Where to start
 
-Relatively self-contained items from the [roadmap](docs/roadmap.md):
+Relatively self-contained items from the [roadmap](docs/roadmap.md) (v1.4 candidates):
 
-- **"Taleplerim" (My tickets) view** — a unified ticket list for the requester with email
-  verification (the flow is described in the roadmap). A new public page + a short-lived
-  verification flow.
+- **Status transition workflow** — per-company allowed-transitions definition (today
+  every transition is free); pairs with the v1.3 status-class dictionary work.
+- **Company-scoped dictionaries** — dictionary records are global today; per-company
+  activation is a small model extension.
 - **Expand test coverage** — especially scope/RBAC and public-surface scenarios; existing
   examples live under `tests/routes/`.
 - **Accessibility and UX** — extend the Playwright/axe scenarios.

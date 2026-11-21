@@ -68,13 +68,13 @@ Her ekran hem Türkçe hem İngilizce yakalanmıştır — **[tam galeri: docs/s
 
 | Katman | Teknoloji |
 |---|---|
-| Backend | Node.js 24 · Fastify 5 · TypeScript (ESM) · Prisma 6 · Zod |
-| Frontend | React 18 · Vite 6 · TailwindCSS 3 · TanStack Query 5 · Zustand 5 |
+| Backend | Node.js 24 · Fastify 5 · TypeScript (ESM) · Prisma 7 · Zod |
+| Frontend | React 19 · Vite 8 · TailwindCSS 4 · TanStack Query 5 · Zustand 5 |
 | Veritabanı | PostgreSQL 16 |
 | Kuyruk / Cache | Redis 7 + BullMQ |
 | Realtime | SSE (Server-Sent Events) |
 | Çok dillilik | react-i18next · `Accept-Language` bazlı API mesajları |
-| Deploy | Docker Compose (Coolify + Nginx Proxy Manager uyumlu) |
+| Deploy | Docker Compose · GHCR çok mimarili imajlar (Coolify + Nginx Proxy Manager uyumlu) |
 
 ---
 
@@ -114,6 +114,10 @@ docker compose exec backend npm run db:seed:demo     # 36 talep, 24 görev, kasa
 ```
 
 Arayüz **http://localhost:1111** · API dokümanı **http://localhost:4000/docs**
+
+> **Klonlamadan, hazır imajlarla mı?** Release hattı çok mimarili imajları GHCR'a
+> yayınlar (`ghcr.io/mahmutyum/ticket-system-*`): `VERSION=1.3.2 docker compose -f docker-compose.hub.yml up -d`.
+> Ayrıntı: [docs/installation.tr.md](docs/installation.tr.md).
 
 ### Örnek giriş (seed)
 

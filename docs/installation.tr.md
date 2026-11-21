@@ -167,6 +167,28 @@ zorunludur; ayrıntı: [operasyon](operations.tr.md).
 
 ## Production
 
+### Seçenek A — hazır imajlar (GHCR, klon gerekmez)
+
+Release hattı çok mimarili (amd64/arm64) imajları
+[GHCR'a](https://github.com/mahmutyum/ticket-system/pkgs/container/ticket-system-backend) yayınlar:
+`ticket-system-backend`, `ticket-system-frontend`, `ticket-system-backup`,
+`ticket-system-proxy`. Etiket şeması: `:1.3.2` (kesin), `:1.3` (minor'un en güncel patch'i),
+`:latest`.
+
+```bash
+mkdir ticket-system && cd ticket-system   # yalnızca .env + compose dosyası yeterli
+cp /yol/.env.example .env                 # ya da repodan indirin
+./scripts/check-production-env.sh .env    # repodan (klon veya ham indirme)
+VERSION=1.3.2 docker compose -f docker-compose.hub.yml up -d
+```
+
+`VERSION`'u tam sürüme sabitlemek güncellemeyi açık hale getirir: release notlarını
+okuduktan sonra elle yükseltin — otomatik güncelleme bilinçli olarak yoktur
+(migration'lar yalnızca ileri sarar). Güncelleme: `docker compose -f docker-compose.hub.yml pull
+&& docker compose -f docker-compose.hub.yml up -d`.
+
+### Seçenek B — kaynaktan derleme
+
 ```bash
 cp .env.example .env      # değerleri doldur
 ./scripts/check-production-env.sh .env
