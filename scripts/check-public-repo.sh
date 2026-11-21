@@ -30,7 +30,12 @@ then
   fail=1
 fi
 
-if git ls-files | grep -E '(^|/)(secrets?|private|backups?|logs?|test-results|playwright-report|\.agents?|\.codex|\.claude)(/|$)' >/dev/null; then
+# Yerel/özel içerik dizinleri yalnızca REPO KÖKÜNDE aranır: unanchored
+# '(^|/)(...)(/|$)' kalıbı kaynak kod klasörlerini de yakalar — v1.3.2'de
+# backend/src/modules/backups/ (Yedekler admin sayfasının route modülü) bu
+# yüzden reddedilmişti. Kök-anchored kalıp veri dizinlerini yakalamaya devam
+# eder (backups/, logs/, secrets/, test-results/ ...).
+if git ls-files | grep -E '^(secrets?|private|backups?|logs?|test-results|playwright-report|\.agents?|\.codex|\.claude)(/|$)' >/dev/null; then
   echo "Yerel/özel içerik dizini takip ediliyor." >&2
   fail=1
 fi
