@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import { randomBytes } from 'node:crypto';
-import { StaffRole, type IdentityProvider, type PrismaClient, type Staff } from '@prisma/client';
+import { StaffRole, type IdentityProvider, type PrismaClient, type Staff } from '../../generated/prisma/client.js';
 import { companyMappingSchema, roleMappingSchema, type CompanyMapping, type RoleMapping } from './config.js';
 
 /**

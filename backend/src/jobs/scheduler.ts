@@ -1,10 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import type { Queue } from 'bullmq';
-// cron-parser v4 CommonJS'tir — derlenmiş dist Node ESM altında NAMED import
-// çalışmaz ("Named export not found"); default import + interop zorunludur.
-// (Vitest'in CJS interop'u bu ayrımı gizlediği için yalnızca canlı koşuda görüldü.)
-import cronParser from 'cron-parser';
-import type { PrismaClient, ScheduledJob } from '@prisma/client';
+// cron-parser v5: yerel TS sürümü — `CronExpressionParser.parse` named export.
+// (v4'teki default-import + CJS interop geçici çözümü kaldırıldı.)
+import { CronExpressionParser } from 'cron-parser';
+import type { PrismaClient, ScheduledJob } from '../generated/prisma/client.js';
 import { prisma } from '../db.js';
 import { config } from '../config/index.js';
 import { backupQueue, mailFetchQueue, queueEmail, redisConnection, slaCheckQueue } from './queue.js';
@@ -102,12 +101,12 @@ export function jobDefinition(key: string): JobDefinition | undefined {
 
 /** Cron ifadesini doğrular; geçersizse hata fırlatır (panel girdisi için). */
 export function validateCron(expression: string, timezone = 'UTC'): void {
-  cronParser.parseExpression(expression, { tz: timezone });
+  CronExpressionParser.parse(expression, { tz: timezone });
 }
 
 /** Cron'un bir sonraki N çalışma zamanını önizler (panel "sonraki 5 çalışma"). */
 export function nextRuns(expression: string, timezone: string, count = 5): Date[] {
-  const interval = cronParser.parseExpression(expression, { tz: timezone });
+  const interval = CronExpressionParser.parse(expression, { tz: timezone });
   const out: Date[] = [];
   for (let i = 0; i < count; i += 1) out.push(interval.next().toDate());
   return out;

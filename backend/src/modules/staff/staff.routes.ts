@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { Prisma, StaffRole } from '@prisma/client';
+import { Prisma, StaffRole } from '../../generated/prisma/client.js';
 import bcrypt from 'bcrypt';
 import { createAuditLog } from '../../middleware/audit.js';
 import { invalidateAccessTokens } from '../../plugins/auth.js';

@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../generated/prisma/client.js';
 
 /**
  * v1.1 ile eklenen sistem e-posta şablonlarını garanti eder: SLA uyarı /

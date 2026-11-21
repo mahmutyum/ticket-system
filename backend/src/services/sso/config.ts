@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { IdentityProviderType, StaffRole } from '@prisma/client';
+import { IdentityProviderType, StaffRole } from '../../generated/prisma/client.js';
 
 /**
  * Kimlik sağlayıcı ayarları (`identity_providers.config` JSON) — tür başına şema.

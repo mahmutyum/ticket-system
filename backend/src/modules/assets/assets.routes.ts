@@ -1,7 +1,7 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client.js';
 import { createAuditLog } from '../../middleware/audit.js';
 import { commonErrorResponses, errorResponseSchema, successResponseSchema } from '../../utils/api-schema.js';
 import { csvRecords } from '../../utils/csv-parse.js';

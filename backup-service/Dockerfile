@@ -9,8 +9,9 @@ FROM node:24-alpine
 RUN apk add --no-cache postgresql16-client rclone age
 
 WORKDIR /app
-COPY package.json ./
-RUN npm install --omit=dev
+# Lockfile (v1.3.2'den beri) ile deterministik kurulum.
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev --ignore-scripts
 COPY lib.mjs worker.mjs ./
 
 CMD ["node", "worker.mjs"]

@@ -1,5 +1,5 @@
 import { TicketStatus } from '../config/constants.js';
-import { type PrismaClient } from '@prisma/client';
+import { type PrismaClient } from '../generated/prisma/client.js';
 
 /**
  * Ticket ilişkileri: birleştirme, üst/alt, izleyiciler (CC).

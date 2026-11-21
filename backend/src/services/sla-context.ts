@@ -1,5 +1,5 @@
 import type { } from '../config/constants.js';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../generated/prisma/client.js';
 import type { BusinessCalendar } from '../utils/business-hours.js';
 import { parseSlaSettings, resolveCalendar, type SlaSettings } from '../utils/sla-settings.js';
 

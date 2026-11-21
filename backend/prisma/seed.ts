@@ -1,9 +1,14 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../src/generated/prisma/client.js';
 import bcrypt from 'bcrypt';
 import { strongPassword } from '../src/utils/validation.js';
 import { ensureSystemEmailTemplates } from '../src/jobs/notification-templates.js';
 
-const prisma = new PrismaClient();
+// Prisma 7: pg driver adapter zorunlu. Script config modülünü YÜKLEMEZ —
+// yalnızca DATABASE_URL ile çalışır (bkz. src/db.ts notu).
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
+});
 
 const isProd = process.env.NODE_ENV === 'production';
 const force = process.argv.includes('--force');

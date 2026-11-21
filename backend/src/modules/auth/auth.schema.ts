@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { strongPassword } from '../../utils/validation.js';
-import { StaffRole } from '@prisma/client';
+import { StaffRole } from '../../generated/prisma/client.js';
 
 export const staffLoginSchema = z.object({
   email: z.string().email('Geçerli bir email adresi girin'),

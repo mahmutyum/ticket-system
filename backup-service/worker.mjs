@@ -50,7 +50,9 @@ const STAMP = () => new Date().toISOString().replace(/[-:.]/g, '').replace('T', 
 // Tarih damgası: 20261113T031500Z biçimi — backup.sh ile aynı kural.
 
 const pool = new Pool({ connectionString: DATABASE_URL, max: 2 });
-const redis = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
+// ioredis 6 RESP3 varsayılanı RESP2'ye sabitlenir — backend tarafındaki
+// bağlantılarla aynı davranış (bkz. backend/src/jobs/queue.ts).
+const redis = new IORedis(REDIS_URL, { maxRetriesPerRequest: null, protocol: 2 });
 
 // ==================== ÇALIŞMA KAYDI ====================
 // withJobRun'in backend'deki karşılığı; burada DB erişimi düz SQL'dir.
@@ -90,7 +92,9 @@ async function notifyFailure(jobKey, message) {
     );
     if (admins.length === 0) return;
     const { Queue } = await import('bullmq');
-    const bull = new Queue('email', { connection: new IORedis(REDIS_URL, { maxRetriesPerRequest: null }) });
+    const bull = new Queue('email', {
+      connection: new IORedis(REDIS_URL, { maxRetriesPerRequest: null, protocol: 2 }),
+    });
     for (const admin of admins) {
       await bull.add(
         'send-email',

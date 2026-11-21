@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import { maybeSendSurvey } from '../../src/services/satisfaction.js';
 
 type Row = Record<string, unknown>;

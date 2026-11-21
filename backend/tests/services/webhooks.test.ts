@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createHmac } from 'node:crypto';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import { signBody, slackBody, teamsBody, type WebhookPayload } from '../../src/services/webhooks/format.js';
 
 vi.mock('../../src/utils/net-guard.js', async (importOriginal) => {

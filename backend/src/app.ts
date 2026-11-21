@@ -1,7 +1,7 @@
 import Fastify from 'fastify';
 import type { FastifyError } from 'fastify';
 import { ZodError } from 'zod';
-import { Prisma } from '@prisma/client';
+import { Prisma } from './generated/prisma/client.js';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import cookie from '@fastify/cookie';

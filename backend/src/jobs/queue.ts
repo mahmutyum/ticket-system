@@ -2,7 +2,12 @@ import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { config } from '../config/index.js';
 
-export const redisConnection = new IORedis(config.REDIS_URL, { maxRetriesPerRequest: null });
+// ioredis 6 RESP3 varsayılanı RESP2'ye sabitlenir (bkz. plugins/redis.ts notu);
+// BullMQ bağlantısı `maxRetriesPerRequest: null` şartını korur.
+export const redisConnection = new IORedis(config.REDIS_URL, {
+  maxRetriesPerRequest: null,
+  protocol: 2,
+});
 
 export const emailQueue = new Queue('email', { connection: redisConnection });
 export const smsQueue = new Queue('sms', { connection: redisConnection });

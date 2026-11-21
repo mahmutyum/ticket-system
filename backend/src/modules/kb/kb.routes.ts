@@ -1,7 +1,7 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { Prisma, StaffRole, type KbArticle } from '@prisma/client';
+import { Prisma, StaffRole, type KbArticle } from '../../generated/prisma/client.js';
 import { createAuditLog } from '../../middleware/audit.js';
 import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
 import { pageParamsSchema, paginate, paginationMetaSchema, paginatedResponse } from '../../utils/pagination.js';

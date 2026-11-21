@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../generated/prisma/client.js';
 import { queueWebhookDelivery } from '../../jobs/queue.js';
 import { emitWebhookEvent } from './dispatch.js';
 import type { WebhookEvent } from './format.js';

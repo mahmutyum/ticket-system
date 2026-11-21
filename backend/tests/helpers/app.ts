@@ -1,7 +1,7 @@
 import Fastify, { FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import jwt from 'jsonwebtoken';
-import type { StaffRole } from '@prisma/client';
+import type { StaffRole } from '../../src/generated/prisma/client.js';
 import { authPlugin } from '../../src/plugins/auth.js';
 import { config } from '../../src/config/index.js';
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';

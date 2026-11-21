@@ -15,6 +15,9 @@ out/
 **/.prisma/
 **/node_modules/.prisma/
 backend/prisma/generated/
+# Prisma 7: istemci artık `prisma-client` generator'ı ile src altına üretilir
+# (schema.prisma → output). `npm install` sonrası postinstall üretir.
+backend/src/generated/
 
 # Ortam değişkenleri
 .env

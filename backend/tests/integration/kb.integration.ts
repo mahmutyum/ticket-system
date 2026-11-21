@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../src/generated/prisma/client.js';
 
 /** Bilgi bankası — gerçek PostgreSQL: yayın, şirket filtresi, çift dil, geri bildirim. */
 

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../src/generated/prisma/client.js';
 
 /** Varlıklar — gerçek PostgreSQL: CSV içe aktarma (ekle/güncelle/hata), ticket bağlantısı. */
 

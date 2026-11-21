@@ -2,7 +2,7 @@ import { TicketStatus } from '../../config/constants.js';
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client.js';
 import { queueEmail } from '../../jobs/queue.js';
 import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.js';
 import { calendarFor, loadCompanySlaContext } from '../../services/sla-context.js';

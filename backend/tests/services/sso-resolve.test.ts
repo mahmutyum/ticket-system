@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { IdentityProvider, PrismaClient } from '@prisma/client';
+import type { IdentityProvider, PrismaClient } from '../../src/generated/prisma/client.js';
 import { groupMatches, resolveCompanies, resolveRole, resolveSsoStaff } from '../../src/services/sso/resolve.js';
 
 describe('grup eşleme', () => {

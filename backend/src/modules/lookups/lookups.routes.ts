@@ -1,6 +1,6 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { StatusClass } from '@prisma/client';
+import { StatusClass } from '../../generated/prisma/client.js';
 import { createAuditLog } from '../../middleware/audit.js';
 import { commonErrorResponses } from '../../utils/api-schema.js';
 import { t } from '../../i18n/index.js';

@@ -1,7 +1,7 @@
 import { zLookupKey } from '../../services/lookups.js';
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '../../generated/prisma/client.js';
 import { PassThrough } from 'node:stream';
 import { once } from 'node:events';
 import { paginationSchema, paginate, paginatedResponse } from '../../utils/pagination.js';

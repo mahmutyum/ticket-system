@@ -3,7 +3,7 @@ import fp from 'fastify-plugin';
 import jwt from 'jsonwebtoken';
 import { nanoid } from 'nanoid';
 import type { StringValue } from 'ms';
-import type { StaffRole } from '@prisma/client';
+import type { StaffRole } from '../generated/prisma/client.js';
 import type { Redis } from 'ioredis';
 import { config } from '../config/index.js';
 

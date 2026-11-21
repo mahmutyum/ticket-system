@@ -10,7 +10,9 @@ declare module 'fastify' {
 }
 
 const redisPluginFn: FastifyPluginAsync = async (app) => {
-  const redis = new Redis(config.REDIS_URL);
+  // ioredis 6 RESP3'ü varsayılan yaptı — davranış değişikliğini sıfırlamak için
+  // RESP2 sabitlenir (BullMQ + Lua eval akışları v5 davranışında kalır).
+  const redis = new Redis(config.REDIS_URL, { protocol: 2 });
 
   redis.on('connect', () => {
     app.log.info('Redis connected');

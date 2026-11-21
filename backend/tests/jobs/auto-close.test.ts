@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import { runAutoClose } from '../../src/jobs/auto-close.js';
 
 /**

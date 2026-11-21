@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
-import type { Staff } from '@prisma/client';
+import type { Staff } from '../../generated/prisma/client.js';
 import { config } from '../../config/index.js';
 import { generateTokens, newSessionId, refreshKey } from '../../plugins/auth.js';
 

@@ -1,7 +1,7 @@
 import { zLookupKey } from '../../services/lookups.js';
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client.js';
 import { testSmtpConnection, invalidateCompanyTransporter } from '../../services/email.service.js';
 import { config } from '../../config/index.js';
 import { createAuditLog } from '../../middleware/audit.js';

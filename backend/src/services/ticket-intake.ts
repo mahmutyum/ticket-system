@@ -1,6 +1,6 @@
 import { TicketStatus } from '../config/constants.js';
 import { nanoid } from 'nanoid';
-import { type PrismaClient } from '@prisma/client';
+import { type PrismaClient } from '../generated/prisma/client.js';
 import { config } from '../config/index.js';
 import type { EmailJobData, SmsJobData } from '../jobs/queue.js';
 import { priorityLabel } from '../i18n/labels.js';

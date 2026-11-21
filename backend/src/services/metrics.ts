@@ -1,6 +1,6 @@
 import { collectDefaultMetrics, Counter, Gauge, Histogram, Registry } from 'prom-client';
 import type { Queue } from 'bullmq';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../generated/prisma/client.js';
 import { getClientCount } from './sse.service.js';
 
 /**

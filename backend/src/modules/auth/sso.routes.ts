@@ -2,7 +2,7 @@ import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
-import { IdentityProviderType, Prisma, type IdentityProvider } from '@prisma/client';
+import { IdentityProviderType, Prisma, type IdentityProvider } from '../../generated/prisma/client.js';
 import { config } from '../../config/index.js';
 import { createAuditLog } from '../../middleware/audit.js';
 import { invalidateAccessTokens } from '../../plugins/auth.js';

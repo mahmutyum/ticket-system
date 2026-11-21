@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../generated/prisma/client.js';
 import { authSettingsSchema, type AuthSettings } from './sso/config.js';
 
 /** `system_settings.auth` — bozuk/eksik değer varsayılanlara iner. */

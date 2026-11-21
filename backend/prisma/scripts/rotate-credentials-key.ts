@@ -29,7 +29,8 @@
  *   5) Bir kayıt "reveal" edip doğrula.
  */
 import crypto from 'node:crypto';
-import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../../src/generated/prisma/client.js';
 
 const ALGO = 'aes-256-gcm';
 
@@ -86,7 +87,10 @@ async function main() {
     throw new Error('CREDENTIALS_ENC_KEY_OLD ve CREDENTIALS_ENC_KEY aynı — rotasyona gerek yok');
   }
 
-  const prisma = new PrismaClient();
+  // Prisma 7: pg driver adapter zorunlu — config modülü yüklenmez (bkz. prisma/seed.ts).
+  const prisma = new PrismaClient({
+    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
+  });
   const stats = { credentials: 0, notes: 0, mfa: 0, smtp: 0, skipped: 0 };
 
   try {

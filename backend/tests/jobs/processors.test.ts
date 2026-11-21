@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import { isFinalAttempt, processEmailJob, processSmsJob } from '../../src/jobs/processors.js';
 
 describe('notification job processors', () => {

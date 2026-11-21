@@ -110,7 +110,7 @@ describe('POST /tickets/:ticketId/notes — iç not metni history\'ye yazılmaz'
     app.register(noteRoutes, { prefix: '/tickets' });
     await app.ready();
 
-    const { StaffRole } = await import('@prisma/client');
+    const { StaffRole } = await import('../../src/generated/prisma/client.js');
     const { authHeader } = await import('../helpers/app.js');
 
     await app.inject({
@@ -153,7 +153,7 @@ describe('POST /tickets/:ticketId/notes — iç not metni history\'ye yazılmaz'
     app.register(noteRoutes, { prefix: '/tickets' });
     await app.ready();
 
-    const { StaffRole } = await import('@prisma/client');
+    const { StaffRole } = await import('../../src/generated/prisma/client.js');
     const { authHeader } = await import('../helpers/app.js');
 
     const res = await app.inject({

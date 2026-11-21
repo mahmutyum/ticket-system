@@ -1,7 +1,11 @@
-import { PrismaClient, Priority, TaskStatus, TicketStatus } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient, Priority, TaskStatus, TicketStatus } from '../src/generated/prisma/client.js';
 import { encrypt } from '../src/utils/crypto.js';
 
-const prisma = new PrismaClient();
+// Prisma 7: pg driver adapter zorunlu — config modülü yüklenmez (bkz. prisma/seed.ts).
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
+});
 const DAY = 24 * 60 * 60 * 1000;
 
 const ticketSubjects = [

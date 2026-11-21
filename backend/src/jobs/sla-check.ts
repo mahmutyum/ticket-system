@@ -1,4 +1,4 @@
-import { StaffRole, type PrismaClient } from '@prisma/client';
+import { StaffRole, type PrismaClient } from '../generated/prisma/client.js';
 import { entriesOf, keysWithClass } from '../services/lookups.js';
 import { config } from '../config/index.js';
 import { formatDateTime, priorityLabel, slaTypeLabel, type SlaKind } from '../i18n/labels.js';

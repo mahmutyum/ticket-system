@@ -1,4 +1,4 @@
-import { WebhookKind, type Prisma, type PrismaClient } from '@prisma/client';
+import { WebhookKind, type Prisma, type PrismaClient } from '../../generated/prisma/client.js';
 import { config } from '../../config/index.js';
 import { decrypt } from '../../utils/crypto.js';
 import { assertIntegrationHost } from '../../utils/net-guard.js';

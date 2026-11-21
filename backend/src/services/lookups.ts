@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../generated/prisma/client.js';
 import { TICKET_STATUSES, PRIORITIES, TASK_STATUSES, ONSITE_TYPES, ONSITE_STATUSES, COMPANY_GROUP_TYPES } from '../config/constants.js';
 
 /**

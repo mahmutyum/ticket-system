@@ -3,7 +3,7 @@ import {
   NotificationType,
   NotificationStatus,
   CustomFieldType,
-} from '@prisma/client';
+} from '../generated/prisma/client.js';
 
 /**
  * Durum / öncelik / rol sözlükleri.

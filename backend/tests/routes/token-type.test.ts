@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { StaffRole } from '@prisma/client';
+import { StaffRole } from '../../src/generated/prisma/client.js';
 import jwt from 'jsonwebtoken';
 import { buildTestApp, tokenFor, refreshTokenFor } from '../helpers/app.js';
 import { config } from '../../src/config/index.js';

@@ -1,5 +1,5 @@
 import { prisma } from '../db.js';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../generated/prisma/client.js';
 
 export async function createAuditLog(params: {
   entityType: string;

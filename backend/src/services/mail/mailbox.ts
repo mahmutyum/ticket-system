@@ -1,4 +1,4 @@
-import { MailboxProvider, type CompanyMailbox } from '@prisma/client';
+import { MailboxProvider, type CompanyMailbox } from '../../generated/prisma/client.js';
 import { decrypt } from '../../utils/crypto.js';
 import { GmailSource, GraphSource, ImapSource, type MailSource } from './sources.js';
 

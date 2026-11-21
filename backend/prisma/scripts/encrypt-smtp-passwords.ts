@@ -14,10 +14,14 @@
  * ÖNCE VERİTABANI YEDEĞİ AL. CREDENTIALS_ENC_KEY kaybolursa bu şifreler
  * kurtarılamaz.
  */
-import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../../src/generated/prisma/client.js';
 import { encrypt, looksEncrypted } from '../../src/utils/crypto.js';
 
-const prisma = new PrismaClient();
+// Prisma 7: pg driver adapter zorunlu — config modülü yüklenmez (bkz. prisma/seed.ts).
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
+});
 
 async function main() {
   if (!process.env.CREDENTIALS_ENC_KEY) {

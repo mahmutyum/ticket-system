@@ -8,7 +8,7 @@ import { emitTicketEvent } from '../../services/webhooks/emit.js';
 import { config } from '../../config/index.js';
 import { broadcastToStaff, broadcastToTicket } from '../../services/sse.service.js';
 import { getStaffCompanyScope } from '../../utils/staff-scope.js';
-import { StaffRole } from '@prisma/client';
+import { StaffRole } from '../../generated/prisma/client.js';
 import { commonErrorResponses } from '../../utils/api-schema.js';
 import { t } from '../../i18n/index.js';
 

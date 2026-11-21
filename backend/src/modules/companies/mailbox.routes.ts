@@ -1,7 +1,7 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
-import { MailboxProvider, Prisma } from '@prisma/client';
+import { MailboxProvider, Prisma } from '../../generated/prisma/client.js';
 import { config } from '../../config/index.js';
 import { createAuditLog } from '../../middleware/audit.js';
 import { commonErrorResponses, errorResponseSchema, successResponseSchema } from '../../utils/api-schema.js';

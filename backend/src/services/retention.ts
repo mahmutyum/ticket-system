@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../generated/prisma/client.js';
 
 /**
  * Veri saklama (retention) politikası — v1.2'de CLI'dan ayrılıp servis olarak

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { StaffRole } from '@prisma/client';
+import { StaffRole } from '../../src/generated/prisma/client.js';
 import { buildTestApp, authHeader, scopeStub } from '../helpers/app.js';
 import { encrypt } from '../../src/utils/crypto.js';
 

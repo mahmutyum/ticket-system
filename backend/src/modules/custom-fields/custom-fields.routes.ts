@@ -1,6 +1,6 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { CustomFieldType } from '@prisma/client';
+import { CustomFieldType } from '../../generated/prisma/client.js';
 import { getStaffCompanyScope, isCompanyInScope } from '../../utils/staff-scope.js';
 import { commonErrorResponses, successResponseSchema } from '../../utils/api-schema.js';
 import { t } from '../../i18n/index.js';

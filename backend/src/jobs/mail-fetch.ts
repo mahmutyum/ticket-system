@@ -1,5 +1,5 @@
 import { Priority, TicketStatus } from '../config/constants.js';
-import { MailboxProvider, type CompanyMailbox, type PrismaClient } from '@prisma/client';
+import { MailboxProvider, type CompanyMailbox, type PrismaClient } from '../generated/prisma/client.js';
 import { assertIntegrationHost } from '../utils/net-guard.js';
 import { config } from '../config/index.js';
 import { extractTicketNumber, parseMail, type ParsedMail } from '../services/mail/parse.js';

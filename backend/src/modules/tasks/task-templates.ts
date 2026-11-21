@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../../generated/prisma/client.js';
 
 /**
  * Görev modülü için gerekli email template'lerini garanti eder.

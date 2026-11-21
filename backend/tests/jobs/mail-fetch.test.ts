@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { CompanyMailbox, PrismaClient } from '@prisma/client';
+import type { CompanyMailbox, PrismaClient } from '../../src/generated/prisma/client.js';
 import type { ParsedMail } from '../../src/services/mail/parse.js';
 
 /**

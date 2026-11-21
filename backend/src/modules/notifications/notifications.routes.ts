@@ -1,6 +1,6 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { Prisma, NotificationType, NotificationStatus } from '@prisma/client';
+import { Prisma, NotificationType, NotificationStatus } from '../../generated/prisma/client.js';
 import { queueEmail, queueSms } from '../../jobs/queue.js';
 import { getStaffCompanyScope } from '../../utils/staff-scope.js';
 import { commonErrorResponses } from '../../utils/api-schema.js';

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { Prisma, type PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '../../src/generated/prisma/client.js';
 
 /**
  * SLA duraklatma, şirket SLA ayarları ve otomatik kapatmanın gerçek PostgreSQL

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { StaffRole } from '@prisma/client';
+import { StaffRole } from '../../src/generated/prisma/client.js';
 import { authHeader, buildTestApp } from '../helpers/app.js';
 
 vi.mock('../../src/db.js', () => ({

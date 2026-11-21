@@ -1,7 +1,7 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { WebhookKind, type Prisma, type Webhook } from '@prisma/client';
+import { WebhookKind, type Prisma, type Webhook } from '../../generated/prisma/client.js';
 import { config } from '../../config/index.js';
 import { queueWebhookDelivery } from '../../jobs/queue.js';
 import { createAuditLog } from '../../middleware/audit.js';

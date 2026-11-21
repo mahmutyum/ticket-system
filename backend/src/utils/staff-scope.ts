@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../generated/prisma/client.js';
 
 export type CompanyFilter = {
   companyId?: string | { in: string[] };

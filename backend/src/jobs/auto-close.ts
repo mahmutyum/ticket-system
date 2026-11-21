@@ -1,6 +1,6 @@
 import { TICKET_STATUS_KEYS } from '../config/constants.js';
 import { keysWithClass } from '../services/lookups.js';
-import { type Prisma, type PrismaClient } from '@prisma/client';
+import { type Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import { config } from '../config/index.js';
 import { autoCloseReasonText, waitingCloseNote } from '../i18n/labels.js';
 import { calendarFor, createSlaContextCache } from '../services/sla-context.js';

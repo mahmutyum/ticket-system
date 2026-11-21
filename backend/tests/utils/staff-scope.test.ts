@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import {
   getStaffCompanyScope,
   companyWhereClause,

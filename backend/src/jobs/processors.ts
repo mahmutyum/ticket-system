@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../generated/prisma/client.js';
 import type { EmailJobData, SmsJobData } from './queue.js';
 import { renderHtmlTemplate, renderSubjectTemplate, renderTextTemplate, sendEmailForCompany } from '../services/email.service.js';
 import { sendSms } from '../services/sms.service.js';
