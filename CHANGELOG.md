@@ -8,6 +8,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Planned work is tracked in [docs/roadmap.md](docs/roadmap.md)._
 
+## [1.3.2] - 2026-11-21
+
+Dependency maintenance across both apps — every minor/major worth taking (Prisma 7,
+BullMQ 6, React 19, Vite 8, Tailwind 4, …), the container-image publish pipeline moves to
+GHCR, and the changelog becomes commit-generated. Docker Hub stays deliberately out of
+scope (deferred indefinitely — no date/version).
+
+### Upgrade notes
+- Rebuild all images (backend, frontend, backup-service, nginx proxy) — or switch to the
+  published GHCR images (`docker-compose.hub.yml`). No database migration; no API or
+  behavior change.
+- **Prisma 6 → 7**: the client now uses driver adapters — `PrismaClient` is constructed
+  with `@prisma/adapter-pg`; the generated client lives in `src/generated/prisma`
+  (`prisma-client` generator, git-ignored, rebuilt by the `postinstall` script); the CLI
+  reads the connection from the new `backend/prisma.config.ts` (v7 no longer auto-loads
+  `.env` — the repo-root file is loaded via dotenv there). Deployments are unaffected:
+  `prisma migrate deploy` still runs at container start.
+- **BullMQ 5 → 6** keeps its scheduler registry unchanged (the codebase already used the
+  v5 job-scheduler API, the only non-removed path); **ioredis 6** connections pin
+  `protocol: 2` (RESP2) so runtime behavior is identical.
+- **Tailwind 3 → 4**: configuration moved to CSS (`@theme`, `@custom-variant dark`);
+  the runtime brand palette (per-company primary color) is preserved via `@theme inline`;
+  class renames were applied with v3-parity values (`border` color default restored,
+  `backdrop-blur-sm` → `backdrop-blur-xs`, …). Verified with the full axe e2e suite plus
+  a manual dark-mode review; `body` also gained `dark:bg-slate-950` to remove the light
+  flash on dark-mode loads.
+- ESLint 10 with react-hooks 7: the new React Compiler adoption rules run as **warnings**
+  (16 flagged call sites are future refactor candidates; classic correctness rules stay
+  errors).
+- Node.js minimum is now **24** (`engines` field on all three packages); the frontend
+  `tsconfig` lib moved to ES2022.
+
+### Added
+- GHCR release pipeline (`.github/workflows/release.yml`): on `v*` tag pushes CI runs
+  first, then the four first-party images publish multi-arch (linux/amd64 + linux/arm64)
+  to `ghcr.io/mahmutyum/ticket-system-{backend,frontend,backup,proxy}` with
+  `:X.Y.Z` / `:X.Y` / `:latest` tags (pre-release tags never receive `:latest`), followed
+  by a git-cliff generated GitHub Release.
+- `docker-compose.hub.yml` — install without cloning the source
+  (`VERSION=1.3.2 docker compose -f docker-compose.hub.yml up -d`); documented in the
+  README and the installation guide as "Option A". `docker-compose.yml` carries the same
+  `image:` names for local builds.
+- `cliff.toml` + `scripts/release-changelog.sh`: CHANGELOG release sections are generated
+  from Conventional Commits (the hand-written narrative style is preserved; only the new
+  section is prepended and polished before tagging).
+
+### Changed
+- Backend majors: `prisma`/`@prisma/client` 7.10.1 (pinned — npm `latest` points at the
+  v8 RC), `bullmq` 6.7.8, `ioredis` 6, `cron-parser` 5 (`CronExpressionParser.parse`),
+  fastify 5.12.8 with the latest fastify-5 plugin majors; `effect` overridden to ^3.22.5
+  (ReDoS advisory GHSA-7589-6fvf-x4pw sits behind @prisma/config 7.10.1's exact pin).
+- Frontend majors: `react`/`react-dom` 19.3, `recharts` 3.11, `react-hot-toast` 2.6,
+  `lucide-react` 1.x, `vite` 8.3 (Rolldown) + `@vitejs/plugin-react` 6, `vitest` 5.1,
+  `tailwindcss` 4.3, `eslint` 10.15 + `typescript-eslint` 8.73 + `react-hooks` 7.1,
+  `i18next` 27 + `react-i18next` 18, `jsdom` 31, `@types/node` 24. `npm audit` stays at
+  0 vulnerabilities (dev included) in both apps.
+- TypeScript stays on 5.9.x deliberately (TS 7 has no compiler API for toolchains yet;
+  tracked as a v1.4 candidate).
+- Documentation: roadmap status/test counts refreshed; the production guide gained the
+  GHCR prebuilt-images option; CONTRIBUTING "where to start" now points at v1.4
+  candidates.
+- Node.js 24 minimum enforced via `engines` on backend, frontend and backup-service.
+
 ## [1.3.1] - 2026-11-19
 
 Security and maintenance release: dependency vulnerabilities closed (including
@@ -288,6 +351,10 @@ First tagged release. A production-ready, multi-tenant internal IT helpdesk.
 - Dockerized (Compose), versioned Prisma migrations, real PostgreSQL + Redis integration
   tests, backend + frontend test suites, and OpenAPI request/response contracts.
 
-[Unreleased]: https://github.com/mahmutyum/ticket-system/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/mahmutyum/ticket-system/compare/v1.3.2...HEAD
+[1.3.2]: https://github.com/mahmutyum/ticket-system/compare/v1.3.1...v1.3.2
+[1.3.1]: https://github.com/mahmutyum/ticket-system/compare/v1.3.0...v1.3.1
+[1.3.0]: https://github.com/mahmutyum/ticket-system/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/mahmutyum/ticket-system/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/mahmutyum/ticket-system/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/mahmutyum/ticket-system/releases/tag/v1.0.0

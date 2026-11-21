@@ -13,11 +13,13 @@ set -eu
 TAG="${1:?Kullanım: release-changelog.sh vX.Y.Z}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-command -v git-cliff >/dev/null 2>&1 || {
-  echo "git-cliff bulunamadı — kurulum: npm i -g git-cliff" >&2
-  exit 1
-}
+if command -v git-cliff >/dev/null 2>&1; then
+  CLIFF=(git-cliff)
+else
+  # PATH'te yoksa npx üzerinden çalıştır (npm i -g git-cliff önerilir).
+  CLIFF=(npx -y git-cliff)
+fi
 
 cd "$REPO_ROOT"
-git cliff --unreleased --tag "$TAG" --prepend CHANGELOG.md
+"${CLIFF[@]}" --unreleased --tag "$TAG" --prepend CHANGELOG.md
 echo "CHANGELOG.md güncellendi — bölümü gözden geçir, gerekirse elle cila yap."
